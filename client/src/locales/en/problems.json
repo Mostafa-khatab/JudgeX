@@ -1,0 +1,17 @@
+{
+	"status": "status",
+	"title": "title",
+	"difficulty": "difficulty",
+	"tags": "tags",
+	"point": "point",
+	"ac-rate": "%AC",
+	"ac-count": "#AC",
+	"easy": "easy",
+	"medium": "medium",
+	"hard": "hard",
+	"collapse": "collapse",
+	"expand": "expand",
+	"search-placeholder": "Search questions",
+	"pick": "pick one",
+	"refresh": "refresh"
+}

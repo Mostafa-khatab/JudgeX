@@ -1,0 +1,20 @@
+{
+	"home": "Home",
+	"problem": "Problem",
+	"submission": "Submission",
+	"contest": "Contest",
+	"user": "User",
+	"login": "Login",
+	"editor": "Editor",
+	"setting": "Setting",
+	"appearance": "Appearance",
+	"language": "Language",
+	"log-out": "Logout",
+	"light": "Light",
+	"dark": "Dark",
+	"system": "System",
+	"oops": "Oops!",
+	"no-mail": "Unfortunately, I will not reveal my information.",
+	"close": "close",
+	"admin-dashboard": "Admin dashboard"
+}
