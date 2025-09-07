@@ -11,8 +11,8 @@ const LayoutFooter = () => {
 		<footer className="border-t border-t-gray-300 py-4 text-gray-600 dark:border-gray-600 dark:text-gray-300">
 			<div className="mx-auto flex max-w-6xl flex-col items-center justify-between px-4 sm:flex-row">
 				<div className="text-center sm:text-left">
-					<h2 className="text-lg font-medium text-gray-700 dark:text-gray-100">My Online Judge</h2>
-					<p className="text-sm">© 2025 Nourist. All rights reserved.</p>
+					<h2 className="text-lg font-medium text-gray-700 dark:text-gray-100">JudgeX</h2>
+					<p className="text-sm">© 2025 JudgeX. All rights reserved.</p>
 				</div>
 				<div className="mt-4 flex gap-4 sm:mt-0">
 					<Dialog>
@@ -35,7 +35,7 @@ const LayoutFooter = () => {
 							</DialogFooter>
 						</DialogContent>
 					</Dialog>
-					<a href="https://github.com/nourist" target="_blank" rel="noopener noreferrer" className="hover:text-gray-500 hover:dark:text-white">
+					<a href="https://github.com/Mostafa-khatab" target="_blank" rel="noopener noreferrer" className="hover:text-gray-500 hover:dark:text-white">
 						<Github size={24} />
 					</a>
 				</div>

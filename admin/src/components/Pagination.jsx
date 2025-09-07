@@ -146,9 +146,6 @@ const PaginButton = ({ maxPage, page, setPage, maxButton }) => {
 };
 
 const Pagination = ({ maxPage, page, setPage, maxButton = 5, className = '' }) => {
-	if (page > maxPage) {
-		setPage(maxPage);
-	}
 	return (
 		<div className={`space-x-2 ${className}`}>
 			<CustomButton variant="text" className="cursor-pointer hover:-translate-x-1" disabled={page == 1} onClick={() => setPage((prev) => prev - 1)}>

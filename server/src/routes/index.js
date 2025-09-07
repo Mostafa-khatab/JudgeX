@@ -3,6 +3,7 @@ import user from './userRoutes.js';
 import problem from './problemRoutes.js';
 import submission from './submissionRoutes.js';
 import contest from './contestRoutes.js';
+import course from './courseRoutes.js';
 import statRoutes from './statRoutes.js';
 
 function route(app) {
@@ -12,6 +13,7 @@ function route(app) {
 	app.use('/problem', problem);
 	app.use('/submission', submission);
 	app.use('/contest', contest);
+	app.use('/course', course);
 	app.use('/stat', statRoutes);
 }
 

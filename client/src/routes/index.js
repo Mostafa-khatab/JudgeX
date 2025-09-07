@@ -20,6 +20,8 @@ import ResetPassword from '~/pages/ResetPassword';
 import SendVerifyCode from '~/pages/SendVerifyCode';
 import Setting from '~/pages/Setting';
 import AvatarChange from '~/pages/AvatarChange';
+import Courses from '~/pages/Courses/Courses';
+import Course from '~/pages/Course/Course';
 
 const routes = [
 	{
@@ -125,6 +127,16 @@ const routes = [
 		path: routesConfig.avatarChange,
 		page: AvatarChange,
 		type: 'auth',
+	},
+	{
+		path: routesConfig.courses,
+		page: Courses,
+		layout: DefaultLayoutWithFooter,
+	},
+	{
+		path: routesConfig.course,
+		page: Course,
+		layout: DefaultLayoutWithFooter,
 	},
 ];
 

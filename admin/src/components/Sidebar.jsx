@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import { Link } from 'react-router';
 import { Button } from '@material-tailwind/react';
-import { LayoutDashboard, Code, Activity, Trophy, User, LogOut } from 'lucide-react';
+import { LayoutDashboard, Code, Activity, Trophy, User, LogOut, BookOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { useState } from 'react';
@@ -20,7 +20,7 @@ const Sidebar = ({ classname = '' }) => {
 			<div className="px-4 py-6">
 				<Link to="/" className="flex items-center gap-2">
 					<img src={logo} className="size-8" alt="" />
-					<h2 className="text-base-content text-2xl font-bold">FloatPoint</h2>
+					<h2 className="text-base-content text-2xl font-bold">JudgeX</h2>
 				</Link>
 			</div>
 			{[
@@ -43,6 +43,11 @@ const Sidebar = ({ classname = '' }) => {
 					path: '/contest',
 					title: t('contest'),
 					icon: Trophy,
+				},
+				{
+					path: '/courses',
+					title: 'Courses',
+					icon: BookOpen,
 				},
 				{
 					path: '/user',

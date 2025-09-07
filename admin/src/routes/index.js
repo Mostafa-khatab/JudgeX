@@ -5,6 +5,7 @@ import Users from '~/pages/Users';
 import Problems from '~/pages/Problems';
 import Submissions from '~/pages/Submissions';
 import Contests from '~/pages/Contests';
+import Courses from '~/pages/Courses';
 import ProblemId from '~/pages/ProblemId';
 import CreateProblem from '~/pages/CreateProblem';
 import SubmissionId from '~/pages/SubmissionId';
@@ -66,6 +67,10 @@ const routes = [
 	{
 		path: '/contest/create',
 		page: CreateContest,
+	},
+	{
+		path: '/courses',
+		page: Courses,
 	},
 ];
 

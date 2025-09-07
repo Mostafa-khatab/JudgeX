@@ -22,8 +22,8 @@ loader.init().then((monacoInstance) => {
 
 console.log('%cHello! \ud83d\ude4b', 'color: #3486eb;font-size: 16px; font-weight: 600;');
 console.log(
-	`%cFloatPoint front-end was built with Javascript, React, Tailwind...
-FloatPoint back-end was built with NodeJS, ExpressJS, MongoDB...`,
+	`%cJudgeX front-end was built with Javascript, React, Tailwind...
+	JudgeX back-end was built with NodeJS, ExpressJS, MongoDB...`,
 	'color: #29c4a9;font-size: 14px;',
 );
 console.log('%cNote: This project inspired by LeetCode, DMOJ, Codeforces...', 'color: #f4a261;font-size: 14px; font-weight: 600;');

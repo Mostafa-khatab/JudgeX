@@ -2,7 +2,7 @@
 import mongoose from 'mongoose';
 import axios from 'axios';
 import puppeteer from 'puppeteer';
-import Problem from './src/models/problem.js'; // عدّل المسار حسب مشروعك
+import Problem from '../src/models/problem.js'; // عدّل المسار حسب مشروعك
 
 // -------------------------
 // 1. Connect to MongoDB

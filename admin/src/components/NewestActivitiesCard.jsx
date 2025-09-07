@@ -14,7 +14,7 @@ const NewestActivitiesCard = () => {
 	});
 
 	const getMessage = (item) => {
-		if (item.type == 'user') return `${t('user')} ${item.author} ${t('has-registered-to')} FloatPoint`;
+		if (item.type == 'user') return `${t('user')} ${item.author} ${t('has-registered-to')} JudgeX`;
 		else return `${t('user')} ${item.author} ${t('success-solve')} #${item.problem}`;
 	};
 

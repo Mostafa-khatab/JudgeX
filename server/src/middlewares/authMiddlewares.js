@@ -5,7 +5,14 @@ import User from '../models/user.js';
 const authMiddlewares = {
 	async isAuth(req, res, next) {
 		try {
-			const token = req.cookies.token;
+			// Support auth via cookie or Authorization: Bearer <token>
+			let token = req.cookies.token;
+			if (!token) {
+				const authHeader = req.headers.authorization || req.headers.Authorization;
+				if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+					token = authHeader.substring(7);
+				}
+			}
 
 			if (!token) {
 				return res.status(401).json({ success: false, msg: 'Unauthorized - no token provided' });
@@ -28,8 +35,10 @@ const authMiddlewares = {
 
 			next();
 		} catch (err) {
+			if (err?.name === 'JsonWebTokenError' || err?.name === 'TokenExpiredError') {
+				return res.status(401).json({ success: false, msg: 'Unauthorized - invalid token' });
+			}
 			res.status(500).json({ success: false, msg: 'Server error' });
-
 			console.error(`Error in checking auth: ${err.message}`);
 		}
 	},

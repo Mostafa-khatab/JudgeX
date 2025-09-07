@@ -1,14 +1,24 @@
 {
-	"name": "server",
+	"name": "judgex-server",
 	"version": "0.0.1",
-	"description": "",
+	"description": "JudgeX Online Judging System - Server",
 	"main": "src/index.js",
 	"scripts": {
 		"dev": "nodemon --inspect ./src/index.js",
 		"start": "node ./src/index.js",
-		"test": "echo \"Error: no test specified\" && exit 1"
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"seed:codeforces": "node seedCodeforcesProblems.js",
+		"seed:codeforces:simple": "node seedCodeforcesSimple.js",
+		"seed:codeforces:batch": "node seedCodeforcesBatch.js",
+		"seed:problems": "node seedProblems.js",
+		"clear:problems": "node clearProblems.js",
+		"check:problems": "node checkProblems.js",
+		"seed:courses": "node seedCourses.js",
+		"clear:courses": "node clearCourses.js",
+		"clear:contests": "node clearContests.js",
+		"seed:contests": "node seedContests.js"
 	},
-	"author": "nourist",
+	"author": "JudgeX Team",
 	"license": "ISC",
 	"type": "module",
 	"devDependencies": {
@@ -25,7 +35,7 @@
 		"crypto": "^1.0.1",
 		"dotenv": "^16.4.7",
 		"express": "^4.21.2",
-		"fs": "^0.0.1-security",
+		"fs": "0.0.1-security",
 		"fs-extra": "^11.3.1",
 		"jsonwebtoken": "^9.0.2",
 		"mailtrap": "^3.4.0",
