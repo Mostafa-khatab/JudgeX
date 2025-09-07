@@ -254,8 +254,5 @@ npm run check:problems
 ## 🤝 Contributing
 Contributions are welcome! Please feel free to submit a pull request or open an issue for any bugs or suggestions.
 
-## 📄 License
-This project is licensed under the [MIT](LICENSE) License.
-
 ---
 JudgeX is a comprehensive online judging system that continues to evolve with new features and improvements. If you enjoy this tool, feel free to give it a star on GitHub!
