@@ -21,9 +21,6 @@ const Footer = () => {
 			>
 				JudgeX
 			</a>
-			<a href="https://github.com/Mostafa-khatab/JudgeX/blob/main/LICENSE" className="hover:text-base-content ml-auto capitalize">
-				{t('license')}
-			</a>
 		</div>
 	);
 };
