@@ -86,7 +86,7 @@ int main(){
 					</button>
 					<a
 						className="mx-6 text-sm font-semibold text-gray-900 transition-all hover:text-gray-700 dark:text-gray-50 dark:hover:text-gray-300"
-						href="https://github.com/nourist"
+						href="https://github.com/Mostafa-khatab"
 					>
 						{t('about-me')}
 					</a>
@@ -124,7 +124,7 @@ int main(){
 					</Link>
 					<a
 						className="px-3.5 py-2.5 text-sm font-semibold transition-all hover:text-gray-700 dark:text-gray-50 dark:hover:text-gray-300"
-						href="https://github.com/nourist/Float-Point"
+						href="https://github.com/Mostafa-khatab/JudgeX"
 					>
 						{t('learn-more')}
 						<FontAwesomeIcon icon="fa-solid fa-arrow-right" className="mb-[-1px] ml-1" />

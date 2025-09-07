@@ -19,6 +19,8 @@ const routesConfig = {
 	users: '/users',
 	setting: '/setting',
 	avatarChange: '/avatar-change',
+	courses: '/courses',
+	course: '/course/:id',
 };
 
 export default routesConfig;

@@ -28,7 +28,7 @@ services:
             - app-network
         environment:
             - JUDGER_URL=http://judger:8090
-            - DATABASE_URL=mongodb://mongo:27017/FloatPoint
+            - DATABASE_URL=mongodb://mongo:27017/JudgeX
         depends_on:
             - mongo
     judger:

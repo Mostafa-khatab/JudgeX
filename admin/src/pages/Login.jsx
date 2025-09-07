@@ -54,7 +54,7 @@ const Login = () => {
 			<div className="bg-base-100 shadow-cxl/3 flex h-full w-full max-w-4xl flex-col-reverse lg:flex-row lg:overflow-hidden">
 				<div className="flex h-full flex-col gap-6 p-12 pb-0 lg:w-1/2">
 					<div className="mb-4 flex">
-						<h2 className="text-base-content text-[1.75rem] font-light">FloatPoint</h2>
+						<h2 className="text-base-content text-[1.75rem] font-light">JudgeX</h2>
 						<IconButton className="border-base-content/10 ml-auto size-10 cursor-pointer rounded-full" variant="outlined">
 							<img src="/logo.png" alt="" />
 						</IconButton>

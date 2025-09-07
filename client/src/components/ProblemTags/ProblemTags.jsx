@@ -29,11 +29,18 @@ const ProblemTags = ({ setActiveTags, className = '' }) => {
 	useEffect(() => {
 		getTags()
 			.then((res) => {
-				res.data.sort((a, b) => b[1] - a[1]);
-				setTags(res.data);
+				const list = res?.data || [];
+				if (Array.isArray(list)) {
+					list.sort((a, b) => b[1] - a[1]);
+					setTags(list);
+				} else {
+					setTags([]);
+				}
 			})
 			.catch((err) => {
-				toast.error(err.response.data.msg);
+				const msg = err?.response?.data?.msg || 'Failed to load tags';
+				toast.error(msg);
+				setTags([]);
 			});
 	}, []);
 

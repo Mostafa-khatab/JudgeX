@@ -17,11 +17,11 @@ const Footer = () => {
 			{t('by')}{' '}
 			<a
 				className="from-primary to-secondary bg-gradient-to-r bg-clip-text font-semibold transition-all duration-100 hover:text-transparent"
-				href="https://github.com/nourist"
+				href="https://github.com/Mostafa-khatab"
 			>
-				Nourist
+				JudgeX
 			</a>
-			<a href="https://github.com/nourist/Float-Point-Admin/blob/main/LICENSE" className="hover:text-base-content ml-auto capitalize">
+			<a href="https://github.com/Mostafa-khatab/JudgeX/blob/main/LICENSE" className="hover:text-base-content ml-auto capitalize">
 				{t('license')}
 			</a>
 		</div>

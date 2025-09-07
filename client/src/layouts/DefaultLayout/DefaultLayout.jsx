@@ -39,6 +39,10 @@ const DefaultLayout = ({ children, footer }) => {
 						path: routesConfig.problems,
 					},
 					{
+						title: 'Courses',
+						path: routesConfig.courses,
+					},
+					{
 						title: t('submission'),
 						path: routesConfig.submissions,
 					},

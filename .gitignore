@@ -14,7 +14,7 @@ dist
 dist-ssr
 
 # misc
-.env
+config.env
 .env.*
 
 npm-debug.log*

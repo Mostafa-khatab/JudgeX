@@ -1,17 +1,10 @@
 import PropTypes from 'prop-types';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
 
 const Pagination = ({ currentPage, setPage, maxPage, className = '' }) => {
 	const { t } = useTranslation('pagination');
-
-	useEffect(() => {
-		if (currentPage > maxPage && maxPage != 0) setPage(maxPage);
-		if (currentPage <= 0) setPage(1);
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [maxPage]);
 
 	if (maxPage <= 0) return <></>;
 

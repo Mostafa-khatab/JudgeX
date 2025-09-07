@@ -183,9 +183,31 @@ const contestControllers = {
 
 			await Promise.all(
 				req.body?.problems?.map(async (pid) => {
-					const problem = await Problem.findOne({ id: pid });
-					if (!problem.contest.includes(id)) {
-						problem.contest.push(id);
+					let problem = await Problem.findOne({ id: pid });
+					if (!problem) {
+						problem = await Problem.create({
+							id: pid,
+							name: `Problem ${pid}`,
+							tags: ['contest', id],
+							public: true,
+							contest: [id],
+							point: 100,
+							timeLimit: 2,
+							memoryLimit: 256,
+							difficulty: 'medium',
+							noOfSubm: 0,
+							noOfSuccess: 0,
+							task: `Solve the task for ${pid}.`,
+							testcase: [],
+						});
+					} else {
+						if (!Array.isArray(problem.contest)) problem.contest = [];
+						if (!problem.contest.includes(id)) {
+							problem.contest.push(id);
+						}
+						if (!Array.isArray(problem.tags)) problem.tags = [];
+						if (!problem.tags.includes('contest')) problem.tags.push('contest');
+						if (!problem.tags.includes(id)) problem.tags.push(id);
 					}
 					await problem.save();
 				}) || [],
