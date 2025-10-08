@@ -249,6 +249,50 @@ const contestControllers = {
 			console.error(`Error in delete contest: ${err.message}`);
 		}
 	},
+
+	//[GET] /contest/problems/:id
+	async getProblems(req, res, next) {
+		try {
+			const { id } = req.params;
+
+			if (!id) {
+				throw new Error('Id field is required');
+			}
+
+			const contest = await Contest.findOne({ id });
+
+			if (!contest) {
+				throw new Error('Contest not found');
+			}
+
+			const problems = await Promise.all(
+				contest.problems.map(async (problemId) => {
+					const problem = await Problem.findOne({ id: problemId });
+					if (!problem) return null;
+					return {
+						_id: problem._id,
+						id: problem.id,
+						name: problem.name,
+						point: problem.point,
+						timeLimit: problem.timeLimit,
+						memoryLimit: problem.memoryLimit,
+						noOfSubm: problem.noOfSubm,
+						noOfSuccess: problem.noOfSuccess
+					};
+				})
+			);
+
+			res.status(200).json({
+				success: true,
+				problems: problems.filter(p => p !== null)
+			});
+
+			console.log(`Get problems for contest ${id} successful`);
+		} catch (err) {
+			res.status(400).json({ success: false, msg: err.message });
+			console.error(`Error in get contest problems: ${err.message}`);
+		}
+	},
 };
 
 export default contestControllers;

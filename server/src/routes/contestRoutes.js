@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.get('/', contestControllers.getList);
 router.get('/info/:id', contestControllers.get);
+router.get('/problems/:id', contestControllers.getProblems);
 
 router.post('/join/:id', authMiddlewares.isAuth, contestControllers.join);
 router.post('/leave', authMiddlewares.isAuth, contestControllers.leave);
