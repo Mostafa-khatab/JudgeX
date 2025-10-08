@@ -14,5 +14,10 @@
 	"name": "name",
 	"total": "total",
 	"you": "you",
-	"time_remaining": "time remaining"
+	"time_remaining": "time remaining",
+	"problem": "Problem",
+	"points": "Points",
+	"solved": "Solved",
+	"memory": "Memory",
+	"time": "Time"
 }

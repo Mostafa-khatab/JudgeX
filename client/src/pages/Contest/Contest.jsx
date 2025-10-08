@@ -1,10 +1,10 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router';
+import { useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Button } from '~/components/ui/button';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link } from 'react-router-dom';
 import Markdown from 'react-markdown';
 import { Skeleton } from '~/components/ui/skeleton';
 import { Trophy, Clock, Info, FileText, Send, ArrowLeft } from 'lucide-react';
@@ -12,6 +12,7 @@ import { Badge } from '~/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Avatar } from '~/components/ui/avatar';
 import { Progress } from '~/components/ui/progress';
+import ContestProblems from '~/components/ContestProblems/ContestProblems';
 
 import { getContest, joinContest, leaveContest } from '~/services/contest';
 import routesConfig from '~/config/routes';
@@ -225,12 +226,9 @@ const Contest = () => {
 								<TabsTrigger
 									className="h-12 gap-2 rounded-none px-6 text-gray-600 transition-colors data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-none dark:text-gray-300 dark:data-[state=active]:border-blue-400 dark:data-[state=active]:bg-neutral-800/80 dark:data-[state=active]:text-blue-400"
 									value="d"
-									asChild
 								>
-									<Link to={`${routesConfig.problems}?contest=true`}>
-										<FileText className="size-4" />
-										<span className="capitalize">{t('problems')}</span>
-									</Link>
+									<FileText className="size-4" />
+									<span className="capitalize">{t('problems')}</span>
 								</TabsTrigger>
 
 								<TabsTrigger
@@ -277,6 +275,14 @@ const Contest = () => {
 							</CardContent>
 						</Card>
 					)}
+				</TabsContent>
+
+				<TabsContent value="d" className="mt-6">
+					<Card className="dark:border-neutral-700/50 dark:bg-neutral-800/60 dark:shadow-xl dark:shadow-blue-900/5">
+						<CardContent>
+							<ContestProblems />
+						</CardContent>
+					</Card>
 				</TabsContent>
 
 				<TabsContent value="c" className="mt-6">

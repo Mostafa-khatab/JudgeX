@@ -93,11 +93,11 @@ const Home = () => {
 							<div className="flex font-light">
 								<span className="text-sm dark:text-white">{t('better-than')}</span>
 								<span className="ml-auto text-sm dark:text-white">
-									<span className="text-blue-500">{100 - user?.topPercent}%</span> {t('user')}
+									<span className="text-blue-500">{user?.topPercent ? (100 - user.topPercent) : 0}%</span> {t('user')}
 								</span>
 							</div>
 							<div className="h-2 w-full bg-gray-200 dark:bg-[rgb(33,33,37)]">
-								<div className={`h-full bg-[#0066B8]`} style={{ width: `${100 - user?.topPercent}%` }}></div>
+								<div className={`h-full bg-[#0066B8]`} style={{ width: `${user?.topPercent ? (100 - user.topPercent) : 0}%` }}></div>
 							</div>
 						</div>
 						<div className="mt-auto flex h-28 w-full px-8">

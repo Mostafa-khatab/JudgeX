@@ -44,3 +44,13 @@ export const leaveContest = async () => {
 		throw err;
 	}
 };
+
+export const getProblemsByContest = async (id) => {
+	try {
+		const res = await httpRequest.get(`/contest/problems/${id}`);
+		return res.data;
+	} catch (err) {
+		console.error(err);
+		throw err;
+	}
+};

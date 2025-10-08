@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '~/components/ui/button';
 
 import Input from '~/components/Input';
+import GoogleButton from '~/components/GoogleButton';
 import PasswordIndicator from '~/components/PasswordIndicator';
 import routesConfig from '~/config/routes';
 import useAuthStore from '~/stores/authStore';
@@ -71,6 +72,7 @@ const Signup = () => {
 			>
 				<div className="space-y-5 p-8">
 					<h2 className="mb-8 bg-gradient-to-r from-sky-400 to-blue-400 bg-clip-text text-center text-3xl font-bold text-transparent">{t('title')}</h2>
+					<GoogleButton />
 					<Input
 						icon={<User size={'16px'} className="translate-y-[-1px]" />}
 						placeholder={t('username')}

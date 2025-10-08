@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import React, { useEffect } from 'react';
 import { ToastContainer } from 'react-toastify';
 import { TooltipProvider } from '~/components/ui/tooltip';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 import useThemeStore from './stores/themeStore';
 import useAuthStore from './stores/authStore';
@@ -46,10 +47,12 @@ const App = () => {
 
 	return (
 		<React.Suspense fallback={<Loading />}>
-			<TooltipProvider>
-				<AppRouter />
-				<ToastContainer position="bottom-right" theme={theme} newestOnTop draggable></ToastContainer>
-			</TooltipProvider>
+			<GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+				<TooltipProvider>
+					<AppRouter />
+					<ToastContainer position="bottom-right" theme={theme} newestOnTop draggable></ToastContainer>
+				</TooltipProvider>
+			</GoogleOAuthProvider>
 		</React.Suspense>
 	);
 };

@@ -9,6 +9,8 @@ const useAuthStore = create((set) => ({
 	error: null,
 	msg: null,
 	isLoading: false,
+	setUser: (user) => set({ user }),
+	setIsAuth: (isAuth) => set({ isAuth }),
 
 	async getInfo() {
 		useLoadingStore.setState({ isLoading: true }); //global loading state
