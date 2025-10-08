@@ -1,0 +1,95 @@
+erDiagram
+    USER {
+        string _id PK
+        string email
+        string password
+        string name
+        string fullname
+        string bio
+        date lastLogin
+        boolean isVerified
+        string permission
+        string joiningContest
+        string[] joinedContest
+        number totalScore
+        number totalAC
+        number totalAttempt
+        string defaultLanguage
+    }
+
+    CONTEST {
+        string _id PK
+        string id
+        string title
+        string description
+        date startTime
+        date endTime
+        string[] problems
+        string[] participant
+    }
+
+    PROBLEM {
+        string _id PK
+        string id
+        string name
+        string[] tags
+        boolean public
+        string[] contest
+        number point
+        number timeLimit
+        number memoryLimit
+        string difficulty
+        number noOfSubm
+        number noOfSuccess
+        string task
+    }
+
+    SUBMISSION {
+        string _id PK
+        string author FK
+        string src
+        string forProblem FK
+        string forContest FK
+        string language
+        number time
+        number memory
+        string status
+        object msg
+        number point
+    }
+
+    COURSE {
+        string _id PK
+        string title
+        string description
+        string instructor FK
+        string thumbnail
+        string[] tags
+        string difficulty
+        string duration
+        boolean isPublished
+        string[] enrolledUsers
+        number rating
+        number ratingCount
+    }
+
+    RATING {
+        string user FK
+        number value
+    }
+
+    TESTCASE {
+        string stdin
+        string stdout
+    }
+
+    %% Relationships
+    USER ||--o{ SUBMISSION : "makes"
+    USER ||--o{ CONTEST : "joined"
+    USER ||--o{ COURSE : "enrolled in"
+    CONTEST ||--o{ PROBLEM : "contains"
+    PROBLEM ||--o{ SUBMISSION : "receives"
+    COURSE ||--o{ RATING : "has"
+    USER ||--o{ RATING : "gives"
+    PROBLEM ||--o{ TESTCASE : "includes"
+    COURSE }o--|| USER : "instructor"
