@@ -13,5 +13,6 @@
 	"expand": "expand",
 	"search-placeholder": "Search questions",
 	"pick": "pick one",
-	"refresh": "refresh"
+	"refresh": "refresh",
+	"private": "private"
 }

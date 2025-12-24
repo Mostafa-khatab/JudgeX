@@ -9,6 +9,7 @@ const routesConfig = {
 	resetPassword: '/reset-password/:token',
 	home: '/home',
 	problem: '/problem/:id',
+	problemSolve: '/problem/:id/solve',
 	problems: '/problems',
 	submission: '/submission/:id',
 	submissions: '/submissions',
@@ -21,6 +22,8 @@ const routesConfig = {
 	avatarChange: '/avatar-change',
 	courses: '/courses',
 	course: '/course/:id',
+	interview: '/interview/:roomId',
+	createInterview: '/interview/create',
 };
 
 export default routesConfig;

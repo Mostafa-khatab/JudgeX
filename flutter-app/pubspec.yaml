@@ -1,0 +1,49 @@
+name: judgex_mobile
+description: JudgeX Mobile App - Flutter cross-platform application
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # UI & Theming
+  google_fonts: ^6.1.0
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # Navigation
+  go_router: ^13.0.0
+  
+  # Networking
+  dio: ^5.4.0
+  http: ^1.1.2
+  
+  # Storage
+  flutter_secure_storage: ^9.0.0
+  shared_preferences: ^2.2.2
+  
+  # Caching
+  cached_network_image: ^3.3.1
+  
+  # Code Display (for interview screen)
+  flutter_highlight: ^0.7.0
+  
+  # Icons
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/icons/

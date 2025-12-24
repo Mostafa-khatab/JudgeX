@@ -50,6 +50,10 @@ const DefaultLayout = ({ children, footer }) => {
 						title: t('contest'),
 						path: routesConfig.contests,
 					},
+					{
+						title: 'Interview',
+						path: routesConfig.createInterview,
+					},
 				].map((item, index) => (
 					<Button key={index} variant="ghost" asChild>
 						<Link

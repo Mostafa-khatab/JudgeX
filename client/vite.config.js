@@ -6,6 +6,10 @@ import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+	define: {
+		global: 'window',
+		'process.env': {},
+	},
 	plugins: [
 		react(),
 		svgr({

@@ -19,3 +19,4 @@ router.post('/forgot-password', authControllers.forgotPassword);
 router.post('/reset-password/:token', authControllers.resetPassword);
 
 export default router;
+

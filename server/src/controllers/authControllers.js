@@ -9,7 +9,7 @@ import Contest from '../models/contest.js';
 import googleLogin from './auth/googleController.js';
 
 const authControllers = {
-    googleLogin,
+	googleLogin,
 	//[POST] /auth/signup
 	async signup(req, res, next) {
 		const { email, password, name } = req.body;
@@ -314,3 +314,4 @@ const authControllers = {
 };
 
 export default authControllers;
+

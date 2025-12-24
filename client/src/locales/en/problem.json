@@ -1,6 +1,7 @@
 {
 	"id": "id",
 	"submit": "submit",
+	"solve": "solve",
 	"submissions": "submissions",
 	"point": "point",
 	"time-limit": "time limit",
@@ -15,5 +16,8 @@
 	"constraints": "constraints",
 	"details": "details",
 	"problems": "problems",
-	"no-tags": "no tags"
+	"no-tags": "no tags",
+	"description": "description",
+	"problem-info": "problem information",
+	"statistics": "statistics"
 }

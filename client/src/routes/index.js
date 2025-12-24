@@ -4,6 +4,7 @@ import Welcome from '~/pages/Welcome';
 import NotFound from '~/pages/NotFound';
 import Home from '~/pages/Home';
 import Problem from '~/pages/Problem';
+import ProblemSolve from '~/pages/ProblemSolve';
 import Problems from '~/pages/Problems';
 import Submission from '~/pages/Submission';
 import Submissions from '~/pages/Submissions';
@@ -22,6 +23,8 @@ import Setting from '~/pages/Setting';
 import AvatarChange from '~/pages/AvatarChange';
 import Courses from '~/pages/Courses/Courses';
 import Course from '~/pages/Course/Course';
+import InterviewPage from '~/pages/Interview/InterviewPage';
+import CreateInterviewRoom from '~/pages/Interview/CreateInterviewRoom';
 
 const routes = [
 	{
@@ -78,6 +81,12 @@ const routes = [
 	{
 		path: routesConfig.problem,
 		page: Problem,
+	},
+	{
+		path: routesConfig.problemSolve,
+		page: ProblemSolve,
+		layout: null,
+		type: 'auth',
 	},
 	{
 		path: routesConfig.problems,
@@ -137,6 +146,17 @@ const routes = [
 		path: routesConfig.course,
 		page: Course,
 		layout: DefaultLayoutWithFooter,
+	},
+	{
+		path: routesConfig.interview,
+		page: InterviewPage,
+		layout: null,
+	},
+	{
+		path: routesConfig.createInterview,
+		page: CreateInterviewRoom,
+		layout: null,
+
 	},
 ];
 

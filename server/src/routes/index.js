@@ -5,6 +5,8 @@ import submission from './submissionRoutes.js';
 import contest from './contestRoutes.js';
 import course from './courseRoutes.js';
 import statRoutes from './statRoutes.js';
+import chatbot from './chatbotRoutes.js';
+import codeRunner from './codeRunnerRoutes.js';
 
 function route(app) {
 	app.get('/', (req, res, next) => res.send('Hello world!'));
@@ -15,6 +17,8 @@ function route(app) {
 	app.use('/contest', contest);
 	app.use('/course', course);
 	app.use('/stat', statRoutes);
+	app.use('/chatbot', chatbot);
+	app.use('/code', codeRunner);
 }
 
 export default route;

@@ -4,7 +4,7 @@
 	"description": "JudgeX Online Judging System - Server",
 	"main": "src/index.js",
 	"scripts": {
-		"dev": "nodemon --inspect ./src/index.js",
+		"dev": "nodemon ./src/index.js",
 		"start": "node ./src/index.js",
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"seed:codeforces": "node seedCodeforcesProblems.js",
@@ -26,6 +26,8 @@
 		"nodemon": "^3.1.9"
 	},
 	"dependencies": {
+		"@google/genai": "^1.29.0",
+		"@google/generative-ai": "^0.24.1",
 		"axios": "^1.11.0",
 		"bcryptjs": "^2.4.3",
 		"cheerio": "^1.1.2",
@@ -33,7 +35,7 @@
 		"cookie-parser": "^1.4.7",
 		"cors": "^2.8.5",
 		"crypto": "^1.0.1",
-		"dotenv": "^16.4.7",
+		"dotenv": "^16.6.1",
 		"express": "^4.21.2",
 		"fs": "0.0.1-security",
 		"fs-extra": "^11.3.1",
@@ -48,6 +50,7 @@
 		"pidusage": "^4.0.1",
 		"puppeteer": "^24.19.0",
 		"showdown": "^2.1.0",
+		"socket.io": "^4.8.2",
 		"turndown": "^7.2.1"
 	}
 }

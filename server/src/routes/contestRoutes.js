@@ -17,3 +17,4 @@ router.post('/edit/:id', authMiddlewares.requireAd, contestControllers.edit);
 router.delete('/delete/:id', authMiddlewares.requireAd, contestControllers.delete);
 
 export default router;
+

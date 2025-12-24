@@ -277,14 +277,14 @@ const contestControllers = {
 						timeLimit: problem.timeLimit,
 						memoryLimit: problem.memoryLimit,
 						noOfSubm: problem.noOfSubm,
-						noOfSuccess: problem.noOfSuccess
+						noOfSuccess: problem.noOfSuccess,
 					};
-				})
+				}),
 			);
 
 			res.status(200).json({
 				success: true,
-				problems: problems.filter(p => p !== null)
+				problems: problems.filter((p) => p !== null),
 			});
 
 			console.log(`Get problems for contest ${id} successful`);
@@ -296,3 +296,4 @@ const contestControllers = {
 };
 
 export default contestControllers;
+

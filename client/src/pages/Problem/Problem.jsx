@@ -28,7 +28,7 @@ const Problem = () => {
 				setProblem(res.data);
 			})
 			.catch((err) => {
-				toast.error(err.response.data.msg);
+				toast.error(err?.response?.data?.msg || 'Failed to load problem');
 			})
 			.finally(() => setLoading(false));
 	}, [id]);
@@ -120,20 +120,26 @@ const Problem = () => {
 						<div className="rounded-xl border border-gray-200 bg-white p-5 shadow-md dark:border-neutral-800 dark:bg-neutral-900">
 							{isAuth && (
 								<>
+									{/* Solve button: force white text (works in dark mode) */}
 									<Button asChild className="w-full" size="lg">
 										<Link
-											to={`${routesConfig.submit}?problem=${id}`}
-											className="bg-gradient-to-r from-blue-600 to-indigo-600 font-medium capitalize !text-white shadow-sm hover:from-blue-700 hover:to-indigo-700 dark:from-blue-700 dark:to-indigo-700 dark:hover:from-blue-800 dark:hover:to-indigo-800"
+											to={routesConfig.problemSolve.replace(':id', id)}
+											className="w-full inline-flex items-center justify-center bg-gradient-to-r from-blue-600 to-indigo-600 font-medium capitalize text-white shadow-sm hover:from-blue-700 hover:to-indigo-700 dark:from-blue-700 dark:to-indigo-700 dark:hover:from-blue-800 dark:hover:to-indigo-800"
 										>
-											{t('submit')}
+											{t('solve')}
 										</Link>
 									</Button>
 									<div className="my-4 h-px bg-gray-200 dark:bg-neutral-700" />
 								</>
 							)}
+
+							{/* Submissions button: outline variant, ensure link text visible in dark */}
 							<Button variant="outline" asChild className="w-full border-gray-300 hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-800" size="lg">
-								<Link to={`${routesConfig.submissions}?problem=${id}`} className="font-medium capitalize text-gray-900 dark:text-gray-100">
-									<AlignJustify className="mr-2 h-4 w-4" />
+								<Link
+									to={`${routesConfig.submissions}?problem=${id}`}
+									className="font-medium capitalize text-gray-900 dark:text-white inline-flex items-center justify-center"
+								>
+									<AlignJustify className="mr-2 h-4 w-4 text-current" />
 									{t('submissions')}
 								</Link>
 							</Button>
@@ -188,7 +194,7 @@ const Problem = () => {
 										<div className="space-y-3">
 											<div className="group flex items-center justify-between">
 												<div className="flex items-center text-gray-500 transition group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300">
-													<Hash className="mr-2 h-4 w-4" />
+													<Hash className="mr-2 h-4 w-4 text-current" />
 													<span className="text-sm capitalize">{t('id')}</span>
 												</div>
 												<span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">{problem?.id}</span>
@@ -196,7 +202,7 @@ const Problem = () => {
 
 											<div className="group flex items-center justify-between">
 												<div className="flex items-center text-gray-500 transition group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300">
-													<Award className="mr-2 h-4 w-4" />
+													<Award className="mr-2 h-4 w-4 text-current" />
 													<span className="text-sm capitalize">{t('point')}</span>
 												</div>
 												<span className="font-medium text-gray-900 dark:text-gray-100">{problem?.point}p</span>
@@ -204,7 +210,7 @@ const Problem = () => {
 
 											<div className="group flex items-center justify-between">
 												<div className="flex items-center text-gray-500 transition group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300">
-													<Tag className="mr-2 h-4 w-4" />
+													<Tag className="mr-2 h-4 w-4 text-current" />
 													<span className="text-sm capitalize">{t('difficulty')}</span>
 												</div>
 												<span
@@ -224,7 +230,7 @@ const Problem = () => {
 										<div className="space-y-3">
 											<div className="group flex items-center justify-between">
 												<div className="flex items-center text-gray-500 transition group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300">
-													<Clock className="mr-2 h-4 w-4" />
+													<Clock className="mr-2 h-4 w-4 text-current" />
 													<span className="text-sm capitalize">{t('time-limit')}</span>
 												</div>
 												<span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">{problem?.timeLimit}s</span>
@@ -232,7 +238,7 @@ const Problem = () => {
 
 											<div className="group flex items-center justify-between">
 												<div className="flex items-center text-gray-500 transition group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300">
-													<Cpu className="mr-2 h-4 w-4" />
+													<Cpu className="mr-2 h-4 w-4 text-current" />
 													<span className="text-sm capitalize">{t('memory-limit')}</span>
 												</div>
 												<span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">{problem?.memoryLimit}MB</span>
