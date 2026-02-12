@@ -20,6 +20,62 @@ const problemSchema = new mongoose.Schema(
         stdout: { type: String, required: true },
       },
     ],
+    // ===== Starter Code Templates for Interview =====
+    starterCode: {
+      cpp: {
+        type: String,
+        default: `#include <bits/stdc++.h>
+using namespace std;
+
+class Solution {
+public:
+    void solve() {
+        // Write your solution here
+    }
+};
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    Solution().solve();
+    return 0;
+}`
+      },
+      python: {
+        type: String,
+        default: `class Solution:
+    def solve(self):
+        # Write your solution here
+        pass
+
+if __name__ == "__main__":
+    Solution().solve()`
+      },
+      javascript: {
+        type: String,
+        default: `class Solution {
+    solve() {
+        // Write your solution here
+    }
+}
+
+new Solution().solve();`
+      },
+      java: {
+        type: String,
+        default: `import java.util.*;
+
+public class Solution {
+    public void solve() {
+        // Write your solution here
+    }
+    
+    public static void main(String[] args) {
+        new Solution().solve();
+    }
+}`
+      }
+    },
   },
   {
     timestamps: true,

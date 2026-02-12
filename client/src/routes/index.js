@@ -23,8 +23,10 @@ import Setting from '~/pages/Setting';
 import AvatarChange from '~/pages/AvatarChange';
 import Courses from '~/pages/Courses/Courses';
 import Course from '~/pages/Course/Course';
-import InterviewPage from '~/pages/Interview/InterviewPage';
-import CreateInterviewRoom from '~/pages/Interview/CreateInterviewRoom';
+// Interview System (Simplified)
+import InterviewIndex from '~/pages/Interview/index';
+import InterviewRoom from '~/pages/Interview/Room';
+import InterviewResults from '~/pages/Interview/Results';
 
 const routes = [
 	{
@@ -147,16 +149,27 @@ const routes = [
 		page: Course,
 		layout: DefaultLayoutWithFooter,
 	},
+	// Interview System Routes (Simplified)
 	{
-		path: routesConfig.interview,
-		page: InterviewPage,
+		path: routesConfig.interviewDashboard,
+		page: InterviewIndex,
+		layout: null,
+		type: 'auth',
+	},
+	{
+		path: routesConfig.interviewRoom,
+		page: InterviewRoom,
 		layout: null,
 	},
 	{
-		path: routesConfig.createInterview,
-		page: CreateInterviewRoom,
+		path: routesConfig.interviewJoin,
+		page: InterviewRoom, // Same room, different entry point
 		layout: null,
-
+	},
+	{
+		path: routesConfig.interviewResults,
+		page: InterviewResults,
+		layout: null,
 	},
 ];
 

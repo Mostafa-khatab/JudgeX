@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ToastContainer } from 'react-toastify';
 import { TooltipProvider } from '~/components/ui/tooltip';
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -15,7 +15,10 @@ const App = () => {
 	const { i18n } = useTranslation();
 	const { theme } = useThemeStore();
 	const { getInfo } = useAuthStore();
+
+
 	const { isLoading } = useLoadingStore();
+	const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
 	useEffect(() => {
 		i18n.changeLanguage(localStorage.getItem('lang') || 'en');
@@ -35,13 +38,17 @@ const App = () => {
 	}, [theme]);
 
 	useEffect(() => {
-		getInfo();
+		const checkAuth = async () => {
+			await getInfo();
+			setIsCheckingAuth(false);
+		};
+		checkAuth();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	useThemeListener();
 
-	if (isLoading) {
+	if (isLoading || isCheckingAuth) {
 		return <Loading />;
 	}
 

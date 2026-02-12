@@ -31,7 +31,7 @@ const authMiddlewares = {
 			}
 
 			req.userId = decoded.userId;
-			req.userPermission = user.permission;
+			req.userPermission = user.permission.toLowerCase();
 
 			next();
 		} catch (err) {
@@ -59,24 +59,24 @@ const authMiddlewares = {
 
 			const user = await User.findById(decoded.userId);
 
-			if (!user.isVerified) {
+			if (!user || !user.isVerified) {
 				return next();
 			}
 
 			req.userId = decoded.userId;
-			req.userPermission = user.permission;
+			req.userPermission = user.permission.toLowerCase();
 
 			next();
 		} catch (err) {
-			res.status(500).json({ success: false, msg: 'Server error' });
-
-			console.error(`Error in checking auth: ${err.message}`);
+			// On any error, just continue without auth - this is soft auth
+			console.error(`Soft auth error (continuing): ${err.message}`);
+			next();
 		}
 	},
 
 	requireAd(req, res, next) {
 		try {
-			if (req.userPermission != 'Admin') {
+			if (req.userPermission !== 'admin') {
 				return res.status(401).json({ success: false, msg: 'Unauthorized - admin permission required' });
 			}
 

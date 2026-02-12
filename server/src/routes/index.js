@@ -7,6 +7,8 @@ import course from './courseRoutes.js';
 import statRoutes from './statRoutes.js';
 import chatbot from './chatbotRoutes.js';
 import codeRunner from './codeRunnerRoutes.js';
+import interview from './interviewRoutes.js';
+import queueRoutes from './queueRoutes.js';
 
 function route(app) {
 	app.get('/', (req, res, next) => res.send('Hello world!'));
@@ -19,6 +21,8 @@ function route(app) {
 	app.use('/stat', statRoutes);
 	app.use('/chatbot', chatbot);
 	app.use('/code', codeRunner);
+	app.use('/interview', interview);
+	app.use('/queue', queueRoutes);
 }
 
 export default route;

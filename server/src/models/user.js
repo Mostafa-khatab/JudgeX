@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema(
 		},
 		permission: {
 			type: String,
-			enum: ['Member', 'Admin'],
+			enum: ['Member', 'Admin', 'Instructor'],
 			default: 'Member',
 		},
 		joiningContest: {

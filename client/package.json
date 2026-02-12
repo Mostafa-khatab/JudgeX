@@ -50,6 +50,7 @@
 		"react-router-dom": "^7.0.2",
 		"react-syntax-highlighter": "^16.1.0",
 		"react-toastify": "^11.0.5",
+		"remark-gfm": "^4.0.1",
 		"simple-peer": "^9.11.1",
 		"socket.io-client": "^4.8.2",
 		"styled-components": "^6.1.14",

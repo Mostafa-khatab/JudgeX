@@ -37,12 +37,15 @@ const authControllers = {
 
 			await sendVerificationEmail(user.email, user.verificationToken);
 
+			const token = generateTokenAndSetCookie(res, user._id, true);
+
 			res.status(201).json({
 				success: true,
 				msg: 'User created successfully',
+				token,
 				user: {
 					...user._doc,
-					_id: undefined,
+					id: user._id,
 					password: undefined,
 					resetPasswordToken: undefined,
 					verificationToken: undefined,
@@ -130,33 +133,39 @@ const authControllers = {
 	//[GET] /auth/login
 	async login(req, res, next) {
 		const { email, password, admin, remember = true } = req.body;
+		console.log('Login attempt:', { email, admin, remember }); // Don't log password
 
 		try {
 			if (!email || !password) {
+				console.log('Login failed: Missing fields');
 				throw new Error('All fields are required');
 			}
 
 			const user = await User.findOne({ email });
 
-			if (admin && user.permission !== 'Admin') {
+			if (admin && user?.permission !== 'Admin') {
+				console.log('Login failed: Not admin');
 				throw new Error('You are not Admin');
 			}
 
 			if (!user) {
+				console.log('Login failed: User not found');
 				throw new Error('User does not exist');
 			}
 
 			const isPasswordValid = await bcryptjs.compare(password, user.password);
 
 			if (!isPasswordValid) {
+				console.log('Login failed: Invalid password');
 				throw new Error('Password not valid');
 			}
 
 			if (!user.isVerified) {
-				throw new Error("User doesn't verified");
+				console.log('Login failed: User not verified');
+				throw new Error("User is not verified");
 			}
 
-			generateTokenAndSetCookie(res, user._id, remember);
+			const token = generateTokenAndSetCookie(res, user._id, remember);
 
 			user.lastLogin = new Date();
 			await user.save();
@@ -167,11 +176,12 @@ const authControllers = {
 			res.status(200).json({
 				success: true,
 				msg: 'Logged in successfully',
+				token,
 				user: {
 					...user._doc,
+					id: user._id,
 					top,
 					topPercent,
-					_id: undefined,
 					password: undefined,
 					resetPasswordToken: undefined,
 					verificationToken: undefined,

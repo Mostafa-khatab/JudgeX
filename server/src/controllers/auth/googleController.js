@@ -1,5 +1,7 @@
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
+import bcryptjs from 'bcryptjs';
+import crypto from 'crypto';
 import User from '../../models/user.js';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -43,13 +45,25 @@ const googleLogin = async (req, res) => {
 		let user = await User.findOne({ email });
 
 		if (!user) {
-			// Create new user if doesn't exist
+			// Generate random password
+			const randomPassword = crypto.randomBytes(16).toString('hex');
+			const hashedPassword = await bcryptjs.hash(randomPassword, 10);
+
+			// Generate unique username from name + random suffix
+			// Sanitize name for username (remove spaces, special chars)
+			const baseName = name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 15);
+			const randomSuffix = crypto.randomBytes(3).toString('hex');
+			const username = `${baseName}${randomSuffix}`;
+
+			// Create new user
 			user = await User.create({
 				email,
-				name,
+				name: username,
+				fullname: name,
+				password: hashedPassword,
 				avatar: picture,
 				isVerified: true, // Google accounts are pre-verified
-				permission: 'User',
+				permission: 'Member',
 			});
 		}
 
@@ -68,6 +82,7 @@ const googleLogin = async (req, res) => {
 		res.status(200).json({
 			success: true,
 			msg: 'Successfully logged in with Google',
+			token,
 			user: {
 				id: user._id,
 				name: user.name,

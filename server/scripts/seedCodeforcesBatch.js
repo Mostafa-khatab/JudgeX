@@ -1,158 +1,260 @@
 import mongoose from 'mongoose';
 import puppeteer from 'puppeteer';
 import fetch from 'node-fetch';
+import TurndownService from 'turndown';
 import Problem from '../src/models/problem.js';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const MONGO_URI = process.env.DATABASE_URL || process.env.MONGO_URI || "mongodb://127.0.0.1:27017/FloatPoint";
-if (!MONGO_URI) { console.error("❌ MongoDB URI not found"); process.exit(1); }
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-// 📝 جلب قائمة المشاكل من API
+const MONGO_URI = process.env.DATABASE_URL || "mongodb://127.0.0.1:27017/FloatPoint";
+
+// Initialize Turndown service
+const turndownService = new TurndownService();
+
+// Fetch problem list from Codeforces API
 async function fetchProblemsList() {
-    const res = await fetch(`https://codeforces.com/api/problemset.problems`);
-    const data = await res.json();
-    if (data.status !== 'OK') return [];
-    return data.result.problems;
+    try {
+        const res = await fetch(`https://codeforces.com/api/problemset.problems`);
+        const data = await res.json();
+        if (data.status !== 'OK') return [];
+        // Filter out problems without rating (often unrated/training)
+        return data.result.problems.filter(p => p.rating !== undefined);
+    } catch (err) {
+        console.error("Failed to fetch problem list:", err.message);
+        return [];
+    }
 }
 
-// 📝 جلب نص المشكلة والعينات المرئية
-async function fetchProblemPage(contestId, index) {
-    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+// Scrape problem page
+async function fetchProblemPage(browser, contestId, index) {
+    const page = await browser.newPage();
     try {
-        const page = await browser.newPage();
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36');
+        // Set user agent to avoid bot detection
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
 
         const url = `https://codeforces.com/contest/${contestId}/problem/${index}`;
         console.log(`🔍 Fetching: ${url}`);
 
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
-        await page.waitForSelector('.problem-statement', { timeout: 20000 });
+        await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+        
+        // Wait for usage of the selector
+        try {
+            await page.waitForSelector('.problem-statement', { timeout: 10000 });
+        } catch (e) {
+            console.warn(`⚠️ Problem statement not found for ${contestId}${index}`);
+            return null;
+        }
 
         const problemData = await page.evaluate(() => {
             const statement = document.querySelector('.problem-statement');
             if (!statement) return null;
 
-            const inputSpec = statement.querySelector('.input-specification')?.innerText.trim() || '';
-            const outputSpec = statement.querySelector('.output-specification')?.innerText.trim() || '';
+            // Helper to get innerHTML of a query
+            const getHtml = (sel) => {
+                const el = statement.querySelector(sel);
+                return el ? el.innerHTML : '';
+            };
 
-            let problemParas = [];
-            let child = statement.firstElementChild;
-            while (child && !child.classList.contains('input-specification')) {
-                if (!child.classList.contains('title') && !child.classList.contains('time-limit') && !child.classList.contains('memory-limit')) {
-                    problemParas.push(child.innerText.trim());
-                }
-                child = child.nextElementSibling;
+            const header = statement.querySelector('.header');
+            let info = { timeLimit: '', memoryLimit: '', inputFile: '', outputFile: '' };
+            
+            if (header) {
+                const timeLimitEl = header.querySelector('.time-limit');
+                const memoryLimitEl = header.querySelector('.memory-limit');
+                if (timeLimitEl) info.timeLimit = timeLimitEl.innerText.replace('time limit per test', '').trim();
+                if (memoryLimitEl) info.memoryLimit = memoryLimitEl.innerText.replace('memory limit per test', '').trim();
             }
-            const problemText = problemParas.join('\n\n');
 
+            // Get all sections
+            const title = header ? header.querySelector('.title').innerText : '';
+            
+            // Statement text: usually generic paragraphs before input-spec
+            // We'll grab the raw HTML of the children divs that assume structure
+            // Codeforces usually has <div> (statement) <div> (input) <div> (output) <div> (sample) <div> (note)
+            
+            const children = Array.from(statement.children);
+            let statementHtml = '';
+            let inputHtml = '';
+            let outputHtml = '';
+            
+            let currentSection = 'statement'; // statement, input, output, note
+            
+            children.forEach(child => {
+                if (child.classList.contains('header')) return;
+                
+                if (child.classList.contains('input-specification')) {
+                    const title = child.querySelector('.section-title');
+                    if (title) title.remove();
+                    inputHtml = child.innerHTML;
+                    return;
+                }
+                if (child.classList.contains('output-specification')) {
+                    const title = child.querySelector('.section-title');
+                    if (title) title.remove();
+                    outputHtml = child.innerHTML;
+                    return;
+                }
+                if (child.classList.contains('sample-tests')) {
+                    return; // Handled separately
+                }
+                if (child.classList.contains('note')) {
+                    return; // Skip note for now or append to statement
+                }
+                
+                if (currentSection === 'statement') {
+                   statementHtml += child.outerHTML;
+                }
+            });
+
+            // Sample tests
             const sampleTests = [];
-            const sampleInputs = statement.querySelectorAll('.input pre');
-            const sampleOutputs = statement.querySelectorAll('.output pre');
+            const sampleInputs = statement.querySelectorAll('.sample-test .input pre');
+            const sampleOutputs = statement.querySelectorAll('.sample-test .output pre');
 
             for (let i = 0; i < Math.min(sampleInputs.length, sampleOutputs.length); i++) {
-                const stdin = sampleInputs[i].innerText;
-                const stdout = sampleOutputs[i].innerText;
+                // Use innerText to get newlines correctly, but be careful with <br>
+                const stdin = sampleInputs[i].innerText.trim();
+                const stdout = sampleOutputs[i].innerText.trim();
                 sampleTests.push({ stdin, stdout });
             }
 
-            return { statement: problemText, inputSpec, outputSpec, sampleTests };
+            return { 
+                title,
+                statementHtml, 
+                inputHtml, 
+                outputHtml, 
+                sampleTests,
+                info
+            };
         });
 
+        if (!problemData) return null;
+
         return problemData;
+
     } catch (err) {
         console.error(`❌ Error fetching page ${contestId}${index}:`, err.message);
         return null;
     } finally {
-        await browser.close();
+        await page.close();
     }
 }
 
-// 🚀 السكريبت الرئيسي
+// Main Script
 (async () => {
+    let browser;
     try {
         await mongoose.connect(MONGO_URI);
         console.log("✅ Connected to MongoDB");
 
+        console.log("🚀 Launching browser...");
+        browser = await puppeteer.launch({ 
+            headless: "new", 
+            args: ['--no-sandbox', '--disable-setuid-sandbox'] 
+        });
+
+        console.log("📥 Fetching problem list...");
         const allProblems = await fetchProblemsList();
-        const problemsToFetch = allProblems.slice(0, 300); // أول 300 مشكلة
+        console.log(`Found ${allProblems.length} problems via API.`);
 
-        for (const problemMeta of problemsToFetch) {
+        // Sort by contestId descending (newest first)
+        allProblems.sort((a, b) => b.contestId - a.contestId);
+        
+        let processedCount = 0;
+        const TARGET_COUNT = 50; 
+        
+        for (const problemMeta of allProblems) {
+            if (processedCount >= TARGET_COUNT) break;
+
             const { contestId, index, name, rating, tags } = problemMeta;
-            const pageData = await fetchProblemPage(contestId, index);
+            const problemId = `${contestId}${index}`;
 
-            if (!pageData) {
-                console.log(`⚠️ Skipped problem ${contestId}${index}`);
+            // Check if exists
+            const existing = await Problem.findOne({ id: problemId });
+            if (existing) {
+                console.log(`⏭️  Skipping/Existing: ${problemId}`);
                 continue;
             }
 
-            const points = rating ? Math.round(rating / 100) : 1;
-            let difficulty = 'easy';
-            if (rating >= 1800) difficulty = 'hard';
-            else if (rating >= 1000) difficulty = 'medium';
+            const pageData = await fetchProblemPage(browser, contestId, index);
 
-            const details = {
-                title: name,
-                timeLimit: problemMeta.timeLimitSeconds || 1,
-                memoryLimit: problemMeta.memoryLimitBytes ? problemMeta.memoryLimitBytes / 1024 / 1024 : 256,
-                ...pageData,
-                points,
-                difficulty,
-                tags: tags || [] // إضافة التاجز من API
-            };
+            if (!pageData) {
+                console.log(`⚠️ Skipped problem ${problemId} (failed to parse)`);
+                continue;
+            }
 
-            const formattedTask = `
-**Time limit per test:** ${details.timeLimit} seconds  
-**Memory limit per test:** ${details.memoryLimit} MB  
-**Points:** ${details.points}  
-**Difficulty:** ${details.difficulty}
-**Tags:** ${details.tags.join(', ')}
+            // Convert HTML to Markdown
+            const statementMd = turndownService.turndown(pageData.statementHtml);
+            const inputMd = turndownService.turndown(pageData.inputHtml);
+            const outputMd = turndownService.turndown(pageData.outputHtml);
+            
+            // Format for JudgeX Task
+            const formattedTask = `## ${pageData.title}
+            
+${statementMd}
 
-## Problem Statement
-${details.statement}
+### Input
+${inputMd}
 
-## Input
-${details.inputSpec}
+### Output
+${outputMd}
 
-## Output
-${details.outputSpec}
-
-## Examples
-${details.sampleTests.map((t, i) => `**Example ${i + 1}:**
-
-Input:
+### Examples
+${pageData.sampleTests.map((t, i) => `#### Example ${i + 1}
+**Input**
 \`\`\`
 ${t.stdin}
 \`\`\`
-
-Output:
+**Output**
 \`\`\`
 ${t.stdout}
-\`\`\``).join('\n\n')}
+\`\`\`
+`).join('\n')}
 `;
 
+            // Calculate difficulty
+            let difficulty = 'easy';
+            if (rating >= 2000) difficulty = 'hard';
+            else if (rating >= 1400) difficulty = 'medium';
+
+            // Parse Limits (e.g., "1.0 s", "256 MB")
+            const timeLimit = parseFloat(pageData.info.timeLimit) || 1; 
+            const memoryLimit = parseFloat(pageData.info.memoryLimit) || 256;
+
             const problem = new Problem({
-                id: `${contestId}${index}`,
-                name: details.title,
+                id: problemId,
+                name: pageData.title || name,
                 contest: [String(contestId)],
-                timeLimit: details.timeLimit,
-                memoryLimit: details.memoryLimit,
+                timeLimit: timeLimit,
+                memoryLimit: memoryLimit,
                 task: formattedTask,
-                testcase: details.sampleTests,
-                points: details.points,
-                difficulty: details.difficulty,
-                tags: details.tags,
-                public: true // جميع المشاكل Public
+                testcase: pageData.sampleTests,
+                point: rating ? Math.round(rating / 100) * 100 : 100, // Round to nearest 100
+                difficulty: difficulty,
+                tags: tags || [],
+                public: true,
+                noOfSubm: 0,
+                noOfSuccess: 0
             });
 
             await problem.save();
-            console.log(`✅ Saved problem ${contestId}${index} as public`);
+            console.log(`✅ Saved problem ${problemId} (${name})`);
+            processedCount++;
+
+            // Wait a bit to be nice to Codeforces
+            await new Promise(r => setTimeout(r, 2000));
         }
 
     } catch (err) {
-        console.error("❌ Database error:", err.message);
+        console.error("❌ Database/Script error:", err);
     } finally {
+        if (browser) await browser.close();
         await mongoose.disconnect();
         console.log("🔌 Disconnected from MongoDB");
     }

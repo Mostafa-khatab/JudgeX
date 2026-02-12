@@ -21,7 +21,7 @@ const submissionSchema = new mongoose.Schema(
 		language: {
 			type: String,
 			required: true,
-			enum: ['c', 'c11', 'c++11', 'c++14', 'c++17', 'c++20', 'python2', 'python3'],
+			enum: ['c', 'c11', 'c++11', 'c++14', 'c++17', 'c++20', 'python2', 'python3', 'java', 'javascript'],
 		},
 		time: {
 			type: Number,
@@ -33,8 +33,8 @@ const submissionSchema = new mongoose.Schema(
 		},
 		status: {
 			type: String,
-			default: 'IE',
-			enum: ['AC', 'WA', 'TLE', 'MLE', 'RTE', 'CE', 'IE'],
+			default: 'PENDING',
+			enum: ['AC', 'WA', 'TLE', 'MLE', 'RTE', 'CE', 'IE', 'PENDING', 'JUDGING'],
 		},
 		msg: Object,
 		point: {
@@ -60,6 +60,31 @@ const submissionSchema = new mongoose.Schema(
 				msg: String,
 			},
 		],
+		// ===== Queue-related fields =====
+		jobId: {
+			type: String,
+			default: null,
+		},
+		queuedAt: {
+			type: Date,
+			default: null,
+		},
+		startedAt: {
+			type: Date,
+			default: null,
+		},
+		completedAt: {
+			type: Date,
+			default: null,
+		},
+		workerId: {
+			type: String,
+			default: null,
+		},
+		retryCount: {
+			type: Number,
+			default: 0,
+		},
 	},
 	{
 		timestamps: true,

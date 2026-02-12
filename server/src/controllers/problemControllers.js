@@ -23,7 +23,7 @@ const problemControllers = {
 			}
 			data = data.map((d) => d.toObject());
 
-			if (req.userPermission != 'Admin') {
+			if (req.userPermission !== 'admin') {
 				data = data.filter((problem) => problem.public);
 			}
 
@@ -72,11 +72,11 @@ const problemControllers = {
 				throw new Error('Problem not found');
 			}
 
-			if (!problem.public && req.userPermission !== 'Admin') {
+			if (!problem.public && req.userPermission !== 'admin') {
 				return res.status(401).json({ success: false, msg: 'You cant see this content' });
 			}
 
-			if (req.userPermission === 'Admin') {
+			if (req.userPermission === 'admin') {
 				res.status(200).json({
 					success: true,
 					data: problem,
@@ -215,6 +215,99 @@ const problemControllers = {
 			res.status(400).json({ success: false, msg: err.message });
 
 			console.error(`Error in delete problem: ${err.message}`);
+		}
+	},
+
+	// [GET] /problem/search-for-interview - Search problems for interview (no test cases)
+	async searchForInterview(req, res) {
+		try {
+			const { q, difficulty, tags, page = 1, limit = 10 } = req.query;
+			
+			const filter = { public: true };
+			
+			// Difficulty filter
+			if (difficulty && ['easy', 'medium', 'hard'].includes(difficulty)) {
+				filter.difficulty = difficulty;
+			}
+			
+			// Tags filter
+			if (tags) {
+				const tagArray = tags.split(',').map(t => t.trim().toLowerCase());
+				filter.tags = { $in: tagArray };
+			}
+			
+			// Text search
+			if (q) {
+				filter.$or = [
+					{ name: { $regex: q, $options: 'i' } },
+					{ id: { $regex: q, $options: 'i' } }
+				];
+			}
+			
+			const problems = await Problem.find(filter)
+				.select('_id id name difficulty tags point timeLimit memoryLimit starterCode')
+				.skip((parseInt(page) - 1) * parseInt(limit))
+				.limit(parseInt(limit))
+				.lean();
+			
+			const total = await Problem.countDocuments(filter);
+			
+			res.json({
+				success: true,
+				data: problems,
+				pagination: { 
+					page: parseInt(page), 
+					limit: parseInt(limit), 
+					total, 
+					pages: Math.ceil(total / parseInt(limit)) 
+				}
+			});
+		} catch (err) {
+			res.status(500).json({ success: false, message: err.message });
+		}
+	},
+
+	// [GET] /problem/:id/for-interview - Get problem for interview (role-based)
+	async getForInterview(req, res) {
+		try {
+			const { id } = req.params;
+			const { role } = req.query; // 'interviewer' or 'candidate'
+			
+			const problem = await Problem.findById(id);
+			
+			if (!problem) {
+				return res.status(404).json({ success: false, message: 'Problem not found' });
+			}
+			
+			// Base fields for everyone
+			const publicData = {
+				_id: problem._id,
+				id: problem.id,
+				name: problem.name,
+				task: problem.task,
+				difficulty: problem.difficulty,
+				timeLimit: problem.timeLimit,
+				memoryLimit: problem.memoryLimit,
+				tags: problem.tags,
+				starterCode: problem.starterCode
+			};
+			
+			// Interviewer gets additional data
+			if (role === 'interviewer') {
+				return res.json({
+					success: true,
+					data: {
+						...publicData,
+						testcase: problem.testcase // Hidden test cases
+					}
+				});
+			}
+			
+			// Candidate only gets public data
+			res.json({ success: true, data: publicData });
+			
+		} catch (err) {
+			res.status(500).json({ success: false, message: err.message });
 		}
 	},
 };

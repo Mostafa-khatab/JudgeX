@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 services:
     client:
         build:
@@ -8,6 +8,8 @@ services:
             - '5173:5173'
         networks:
             - app-network
+        depends_on:
+            - server
 
     admin:
         build:
@@ -17,6 +19,8 @@ services:
             - '5174:5174'
         networks:
             - app-network
+        depends_on:
+            - server
 
     server:
         build:
@@ -28,9 +32,20 @@ services:
             - app-network
         environment:
             - JUDGER_URL=http://judger:8090
-            - DATABASE_URL=mongodb://mongo:27017/JudgeX
+            - DATABASE_URL=mongodb://mongo:27017/FloatPoint
+            - DATABASE_URL=mongodb://mongo:27017/FloatPoint
+            - REDIS_URL=redis://redis:6379
+            - HOST_PROJECT_ROOT=${HOST_PROJECT_ROOT}
+            - TEMP_VOLUME_NAME=${TEMP_VOLUME_NAME}
+        volumes:
+            - ./server:/app/server
+            - /app/server/node_modules
+            - /var/run/docker.sock:/var/run/docker.sock
+            - judgex-temp:/app/server/temp
         depends_on:
             - mongo
+            - redis
+
     judger:
         build:
             context: .
@@ -39,6 +54,35 @@ services:
             - '8090:8090'
         networks:
             - app-network
+        environment:
+            - REDIS_URL=redis://redis:6379
+            - DATABASE_URL=mongodb://mongo:27017/FloatPoint
+            - HOST_PROJECT_ROOT=${HOST_PROJECT_ROOT}
+        volumes:
+            - ./judger:/app/judger
+            - /app/judger/node_modules
+            - /var/run/docker.sock:/var/run/docker.sock
+            - judger-testcases:/app/testcases
+        depends_on:
+            - redis
+            - mongo
+        privileged: false
+
+    redis:
+        image: redis:7-alpine
+        container_name: judgex-redis
+        ports:
+            - '6379:6379'
+        networks:
+            - app-network
+        volumes:
+            - redis-data:/data
+        command: redis-server --appendonly yes
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
     mongo:
         image: mongo:6.0
@@ -49,6 +93,11 @@ services:
             - '27017:27017'
         volumes:
             - mongo-data:/data/db
+        healthcheck:
+            test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
 networks:
     app-network:
@@ -56,3 +105,7 @@ networks:
 
 volumes:
     mongo-data:
+    redis-data:
+    judger-testcases:
+    judgex-temp:
+        name: judgex-temp

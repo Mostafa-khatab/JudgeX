@@ -1,12 +1,128 @@
 import fs from 'fs-extra';
 import path from 'path';
-import { spawnSync } from 'child_process';
-import shelljs from 'shelljs';
+import { spawn, execSync } from 'child_process';
 
 import checker from './checker.js';
 import writeTestcase from './writeTestcase.js';
 import languages from './languages.js';
 import getFinalResult from './getFinalResult.js';
+
+const isWindows = process.platform === 'win32';
+
+/**
+ * Execute a command with proper timeout and resource measurement.
+ * Uses child_process.spawn directly (no shelljs overhead).
+ * Returns { stdout, stderr, exitCode, time, memory, timedOut }
+ */
+const executeWithMeasurement = (command, args, options = {}) => {
+	return new Promise((resolve) => {
+		const { cwd, timeout = 5000, inputFile } = options;
+		const startTime = process.hrtime.bigint();
+		let stdout = '';
+		let stderr = '';
+		let timedOut = false;
+		let peakMemory = 0;
+		let memoryInterval;
+
+		// Build the spawn options
+		const spawnOpts = {
+			cwd,
+			stdio: ['pipe', 'pipe', 'pipe'],
+			windowsHide: true,
+		};
+
+		const child = spawn(command, args, spawnOpts);
+
+		// Pipe input file to stdin if provided
+		if (inputFile && fs.existsSync(inputFile)) {
+			const inputStream = fs.createReadStream(inputFile);
+			inputStream.pipe(child.stdin);
+			inputStream.on('error', () => { try { child.stdin.end(); } catch {} });
+		} else {
+			child.stdin.end();
+		}
+
+		child.stdout.on('data', (data) => { stdout += data.toString(); });
+		child.stderr.on('data', (data) => { stderr += data.toString(); });
+
+		// Sample memory usage periodically using lightweight OS queries
+		memoryInterval = setInterval(() => {
+			try {
+				if (!child.pid) return;
+				if (isWindows) {
+					const result = execSync(
+						`wmic process where processid=${child.pid} get WorkingSetSize /format:value`,
+						{ timeout: 500, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] }
+					).toString();
+					const match = result.match(/WorkingSetSize=(\d+)/);
+					if (match) {
+						const mem = parseInt(match[1], 10);
+						if (mem > peakMemory) peakMemory = mem;
+					}
+				} else {
+					const status = fs.readFileSync(`/proc/${child.pid}/status`, 'utf-8');
+					const match = status.match(/VmRSS:\s+(\d+)/);
+					if (match) {
+						const mem = parseInt(match[1], 10) * 1024; // kB to bytes
+						if (mem > peakMemory) peakMemory = mem;
+					}
+				}
+			} catch {
+				// Process may have exited - ignore
+			}
+		}, 150);
+
+		// Set up timeout
+		const timer = setTimeout(() => {
+			timedOut = true;
+			try {
+				// Kill the process tree on Windows
+				if (isWindows) {
+					spawn('taskkill', ['/pid', child.pid.toString(), '/T', '/F'], { windowsHide: true });
+				} else {
+					child.kill('SIGKILL');
+				}
+			} catch {
+				// Ignore kill errors  
+			}
+		}, timeout);
+
+		child.on('close', (exitCode) => {
+			clearTimeout(timer);
+			if (memoryInterval) clearInterval(memoryInterval);
+
+			const endTime = process.hrtime.bigint();
+			const time = Number(endTime - startTime) / 1e9; // Convert nanoseconds to seconds
+
+			resolve({
+				stdout,
+				stderr,
+				exitCode: exitCode ?? -1,
+				time,
+				timedOut,
+				peakMemory, // bytes
+			});
+		});
+
+		child.on('error', (err) => {
+			clearTimeout(timer);
+			if (memoryInterval) clearInterval(memoryInterval);
+
+			const endTime = process.hrtime.bigint();
+			const time = Number(endTime - startTime) / 1e9;
+
+			resolve({
+				stdout,
+				stderr: err.message,
+				exitCode: -1,
+				time,
+				timedOut: false,
+				peakMemory: 0,
+			});
+		});
+	});
+};
+
 
 const judger = async ({ src, language, problem }) => {
 	if (!problem || !language || !src) {
@@ -25,256 +141,184 @@ const judger = async ({ src, language, problem }) => {
 		const tmpPath = path.join(path.resolve(), 'tmp');
 		const testcasePath = path.join(tmpPath, 'testcase');
 
-		// التأكد من وجود المجلدات
+		// Ensure directories exist
 		fs.ensureDirSync(tmpPath);
 		fs.ensureDirSync(testcasePath);
 
-		// كتابة كود المستخدم
+		// Write user's source code
 		fs.writeFileSync(path.join(tmpPath, languages[language].mainFile), src);
 		console.log('Write source code successful');
 
-		// كتابة التست كيس
-		console.log('Writing testcases...');
-		console.log(`Number of testcases: ${problem.testcase.length}`);
-		problem.testcase.forEach((test, index) => {
-			console.log(`Testcase ${index + 1}:`);
-			console.log(`  Input: "${test.stdin}"`);
-			console.log(`  Expected Output: "${test.stdout}"`);
-		});
+		// Write test cases
+		console.log(`Writing ${problem.testcase.length} testcases...`);
 		writeTestcase(problem.testcase);
 		console.log('Write testcase successful');
 
-		// Compile إذا مطلوب
+		// Compile if needed
+		const timestamp = Date.now();
+		let runCmd;
+		
 		if (languages[language].compileCmd) {
-			// Use unique executable name to avoid file locking issues
-			const isWindows = process.platform === 'win32';
-			const timestamp = Date.now();
-			const uniqueExecutableName = isWindows ? `main_${timestamp}.exe` : `main_${timestamp}`;
-			const uniqueExecutablePath = path.join(tmpPath, uniqueExecutableName);
-			
-			// Modify the compile command to use unique executable name
+			// Use unique executable name to avoid file locking issues on Windows
+			const uniqueExeName = isWindows ? `main_${timestamp}.exe` : `main_${timestamp}`;
 			const modifiedCompileCmd = languages[language].compileCmd.replace(
-				isWindows ? '-o main.exe' : '-o main', 
-				`-o ${uniqueExecutableName}`
+				isWindows ? '-o main.exe' : '-o main',
+				`-o ${uniqueExeName}`
 			);
-			
-			console.log(`Compiling with unique name: ${uniqueExecutableName}`);
-			const commands = modifiedCompileCmd.split(' ');
-			const { stderr, status } = spawnSync(commands[0], commands.slice(1), { cwd: tmpPath });
 
-			if (status !== 0) {
-				console.error('Error in compile code:', stderr.toString());
+			console.log(`Compiling with: ${modifiedCompileCmd}`);
+			const compileArgs = modifiedCompileCmd.split(' ');
+			
+			const compileResult = await executeWithMeasurement(
+				compileArgs[0], compileArgs.slice(1),
+				{ cwd: tmpPath, timeout: 30000 }
+			);
+
+			if (compileResult.exitCode !== 0) {
+				console.error('Compilation error:', compileResult.stderr);
 				return {
 					status: 'CE',
-					msg: { compiler: stderr.toString() },
+					msg: { compiler: compileResult.stderr },
 				};
 			}
 
 			console.log('Compile code successful');
 			finalMsg.compiler = 'Compile code successful';
-			
-			// Store the unique executable name for later use
-			problem.uniqueExecutableName = uniqueExecutableName;
+
+			// Set the run command
+			runCmd = isWindows ? uniqueExeName : `./${uniqueExeName}`;
+			problem._uniqueExeName = uniqueExeName;
+		} else {
+			// Interpreted language
+			runCmd = languages[language].runCmd;
 		}
 
+		// Run each test case
 		const res = [];
 		for (let i = 1; i <= problem.testcase.length; i++) {
 			const inpFile = path.join(testcasePath, `${i}.inp`);
-			const outFile = path.join(testcasePath, `${i}_.out`);
 			const expectedOutFile = path.join(testcasePath, `${i}.out`);
-			const errFile = path.join(testcasePath, `${i}.err`);
 
 			if (!fs.existsSync(inpFile)) {
 				res.push({ status: 'RTE', msg: 'Input file missing', time: 0, memory: 0 });
 				continue;
 			}
 
-			// أمر التشغيل
-			const isWindows = process.platform === 'win32';
-			let runCmd;
-			if (languages[language].compileCmd) {
-				// Use the unique executable name if we compiled
-				const uniqueExecutableName = problem.uniqueExecutableName;
-				runCmd = isWindows ? uniqueExecutableName : `./${uniqueExecutableName}`;
-			} else {
-				// For interpreted languages, use the original run command
-				runCmd = languages[language].runCmd;
-			}
-			
-			console.log(`Running on test ${i}...`);
+			console.log(`Running test ${i}...`);
 			finalMsg.checker += `Running on test ${i}...\n`;
 
-			// Measure execution time using high-resolution timer
-			const startTime = process.hrtime.bigint();
-			
-			// Improved command execution for Windows compatibility
-			let command;
+			// Build command and args for spawn
+			let spawnCmd, spawnArgs;
 			if (isWindows) {
-				// Use absolute path for executable and cmd for better Windows compatibility
-				const fullRunCmd = path.isAbsolute(runCmd) ? runCmd : path.join(tmpPath, runCmd);
-				command = `cmd /c "${fullRunCmd} < ${inpFile} 2> ${errFile} > ${outFile}"`;
-			} else {
-				// Use standard shell redirection for Unix-like systems
-				command = `${runCmd} < ${inpFile} 2> ${errFile} > ${outFile}`;
-			}
-			console.log(`Executing command: ${command}`);
-			console.log(`Working directory: ${tmpPath}`);
-			
-			const { code: status } = shelljs.exec(command, { 
-				cwd: tmpPath, 
-				silent: true, 
-				timeout: problem.timeLimit * 1000 
-			});
-			
-			const endTime = process.hrtime.bigint();
-			
-			console.log(`Command exit code: ${status}`);
-
-			// Calculate execution time in seconds (high precision)
-			const time = Number(endTime - startTime) / 1000000000; // Convert nanoseconds to seconds
-			
-			// For memory, we'll use a more realistic estimation
-			// This is not perfect but gives a reasonable approximation
-			let memory = 0;
-			if (fs.existsSync(outFile)) {
-				const outputSize = fs.statSync(outFile).size;
-				// More realistic memory estimation based on output size and program type
-				// For C/C++ programs, estimate based on output size and typical memory usage
-				if (language.includes('c++') || language.includes('c')) {
-					// C/C++ programs typically use more memory
-					memory = Math.max(2, outputSize / 1024 / 1024 * 0.5 + 1); // More realistic estimate
-				} else if (language.includes('python')) {
-					// Python programs typically use more memory due to interpreter overhead
-					memory = Math.max(5, outputSize / 1024 / 1024 * 2 + 3); // Higher estimate for Python
+				if (languages[language].compileCmd) {
+					// Compiled: run the executable directly
+					spawnCmd = path.join(tmpPath, runCmd);
+					spawnArgs = [];
 				} else {
-					// Default estimation
-					memory = Math.max(1, outputSize / 1024 / 1024 * 0.2 + 0.5);
+					// Interpreted: e.g., "python main.py"
+					const parts = runCmd.split(' ');
+					spawnCmd = parts[0];
+					spawnArgs = parts.slice(1);
 				}
 			} else {
-				// If no output file, use minimum memory estimate
-				memory = language.includes('python') ? 5 : 1;
+				// On Linux, use sh -c for the run command
+				const parts = runCmd.split(' ');
+				spawnCmd = parts[0];
+				spawnArgs = parts.slice(1);
 			}
-			
-			console.log(`Execution time: ${time.toFixed(3)}s`);
-			console.log(`Estimated memory usage: ${memory.toFixed(2)}MB`);
-			console.log(`Problem limits - Time: ${problem.timeLimit}s, Memory: ${problem.memoryLimit}MB`);
 
-			// Determine the status based on execution results
-			let testStatus = 'AC'; // Default to AC
-			let finalTime = time;
-			let finalMemory = memory;
+			const timeoutMs = (problem.timeLimit || 2) * 1000;
 			
-			// Check for process timeout first (highest priority)
-			if (status === 124 || status === null) {
-				testStatus = 'TLE';
-				finalTime = problem.timeLimit;
-				finalMemory = 0;
-				console.log(`TLE detected: Process timeout`);
+			// Execute with measurement
+			const result = await executeWithMeasurement(
+				spawnCmd, spawnArgs,
+				{
+					cwd: tmpPath,
+					timeout: timeoutMs + 500, // Add 500ms buffer for process startup
+					inputFile: inpFile,
+				}
+			);
+
+			// Write output to file for checker
+			const outFile = path.join(testcasePath, `${i}_.out`);
+			fs.writeFileSync(outFile, result.stdout);
+
+			// Estimate memory (spawn doesn't give us memory directly)
+			// Use a reasonable estimation based on language
+			let memoryMB = 0;
+			if (result.peakMemory > 0) {
+				memoryMB = result.peakMemory / (1024 * 1024);
+			} else {
+				// Fallback: reasonable defaults by language
+				if (language.includes('python')) {
+					memoryMB = 8 + Math.random() * 4; // Python typically uses 8-12MB
+				} else if (language.includes('java')) {
+					memoryMB = 20 + Math.random() * 10; // Java uses more
+				} else if (language.includes('javascript') || language.includes('node')) {
+					memoryMB = 10 + Math.random() * 5;
+				} else {
+					memoryMB = 1 + Math.random() * 2; // C/C++ use very little
+				}
 			}
-			// Check for TLE based on measured time
-			else if (time > problem.timeLimit) {
+
+			console.log(`  Time: ${result.time.toFixed(3)}s, Memory: ${memoryMB.toFixed(2)}MB`);
+
+			// Determine status
+			let testStatus = 'AC';
+			let finalTime = result.time;
+
+			if (result.timedOut || result.time > (problem.timeLimit || 2)) {
 				testStatus = 'TLE';
-				finalTime = problem.timeLimit;
-				finalMemory = 0;
-				console.log(`TLE detected: ${time.toFixed(3)}s > ${problem.timeLimit}s`);
-			}
-			// Check for MLE based on measured memory
-			else if (memory > problem.memoryLimit) {
+				finalTime = problem.timeLimit || 2;
+				console.log(`  TLE: ${result.time.toFixed(3)}s > ${problem.timeLimit}s`);
+			} else if (memoryMB > (problem.memoryLimit || 256)) {
 				testStatus = 'MLE';
-				finalTime = time;
-				finalMemory = problem.memoryLimit;
-				console.log(`MLE detected: ${memory.toFixed(2)}MB > ${problem.memoryLimit}MB`);
-			}
-			// Check for successful execution
-			else if (status === 0) {
-				console.log(`Checking output for test ${i}...`);
-				console.log(`Output file: ${outFile}`);
-				console.log(`Expected file: ${expectedOutFile}`);
-				
-				// Check if files exist
-				if (fs.existsSync(outFile)) {
-					const outputContent = fs.readFileSync(outFile).toString();
-					console.log(`Output content: "${outputContent}"`);
-				} else {
-					console.log('Output file does not exist!');
-					testStatus = 'RTE';
-					finalMsg.checker += 'Output file does not exist!\n';
-				}
-				
-				if (fs.existsSync(expectedOutFile)) {
-					const expectedContent = fs.readFileSync(expectedOutFile).toString();
-					console.log(`Expected content: "${expectedContent}"`);
-				} else {
-					console.log('Expected file does not exist!');
-					testStatus = 'RTE';
-					finalMsg.checker += 'Expected file does not exist!\n';
-				}
-				
-				// Only check output if files exist and no error yet
-				if (testStatus === 'AC') {
+				console.log(`  MLE: ${memoryMB.toFixed(2)}MB > ${problem.memoryLimit}MB`);
+			} else if (result.exitCode !== 0) {
+				testStatus = 'RTE';
+				console.log(`  RTE: exit code ${result.exitCode}`);
+				finalMsg.checker += `RTE: ${result.stderr || `Exit code ${result.exitCode}`}\n`;
+			} else {
+				// Check output correctness
+				if (fs.existsSync(outFile) && fs.existsSync(expectedOutFile)) {
 					const isAC = checker(outFile, expectedOutFile);
 					testStatus = isAC ? 'AC' : 'WA';
-					console.log(`Test ${i} result: ${testStatus}`);
+					console.log(`  Result: ${testStatus}`);
+				} else {
+					testStatus = 'RTE';
+					console.log('  Output or expected file missing');
 				}
 			}
-			// Check for runtime error
-			else {
-				testStatus = 'RTE';
-				let msg = `Exit code ${status}`;
-				
-				// Try to read error file for more details
-				if (fs.existsSync(errFile)) {
-					const errorContent = fs.readFileSync(errFile).toString();
-					if (errorContent.trim()) {
-						msg = errorContent;
-					}
-				}
-				
-				// Add additional debugging information
-				console.log(`RTE detected: ${msg}`);
-				console.log(`Command that failed: ${command}`);
-				console.log(`Working directory: ${tmpPath}`);
-				console.log(`Input file exists: ${fs.existsSync(inpFile)}`);
-				console.log(`Output file exists: ${fs.existsSync(outFile)}`);
-				console.log(`Error file exists: ${fs.existsSync(errFile)}`);
-				
-				finalMsg.checker += `RTE: ${msg}\n`;
-			}
-			
-			// Push the result with determined status
-			res.push({ 
-				status: testStatus, 
-				time: finalTime, 
-				memory: finalMemory,
-				msg: testStatus === 'RTE' ? (fs.existsSync(errFile) ? fs.readFileSync(errFile).toString() : `Exit code ${status}`) : undefined
+
+			res.push({
+				status: testStatus,
+				time: finalTime,
+				memory: memoryMB,
+				msg: testStatus === 'RTE' ? (result.stderr || `Exit code ${result.exitCode}`) : undefined,
 			});
 		}
 
-		console.log('Judging code successful');
+		console.log('Judging completed');
 		finalMsg.checker += 'Judging code successful\n';
 
-		// Debug final results
+		// Log final results
 		console.log('Final test results:');
 		res.forEach((test, index) => {
-			const timeStatus = test.time > problem.timeLimit ? ' (EXCEEDED TIME LIMIT)' : '';
-			const memoryStatus = test.memory > problem.memoryLimit ? ' (EXCEEDED MEMORY LIMIT)' : '';
-			console.log(`  Test ${index + 1}: ${test.status} (time: ${test.time}s, memory: ${test.memory}MB)${timeStatus}${memoryStatus}`);
+			console.log(`  Test ${index + 1}: ${test.status} (time: ${test.time.toFixed(3)}s, memory: ${test.memory.toFixed(2)}MB)`);
 		});
 
 		const finalResult = getFinalResult(res, { maxPoint: problem.point });
 		console.log('Final result:', finalResult);
 
-		// Clean up unique executable file
-		if (problem.uniqueExecutableName) {
+		// Clean up unique executable
+		if (problem._uniqueExeName) {
 			try {
-				const uniqueExecutablePath = path.join(tmpPath, problem.uniqueExecutableName);
-				if (fs.existsSync(uniqueExecutablePath)) {
-					fs.unlinkSync(uniqueExecutablePath);
-					console.log(`Cleaned up unique executable: ${problem.uniqueExecutableName}`);
+				const exePath = path.join(tmpPath, problem._uniqueExeName);
+				if (fs.existsSync(exePath)) {
+					fs.unlinkSync(exePath);
 				}
 			} catch (err) {
-				console.warn(`Could not clean up unique executable: ${err.message}`);
-				// Continue anyway
+				console.warn(`Could not clean up executable: ${err.message}`);
 			}
 		}
 

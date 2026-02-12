@@ -22,8 +22,12 @@ const routesConfig = {
 	avatarChange: '/avatar-change',
 	courses: '/courses',
 	course: '/course/:id',
-	interview: '/interview/:roomId',
-	createInterview: '/interview/create',
+	// Interview System routes
+	interviewDashboard: '/interview',
+	interviewRoom: '/interview/room/:id',
+	interviewJoin: '/interview/join/:token',
+	interviewResults: '/interview/results/:id',
 };
 
 export default routesConfig;
+

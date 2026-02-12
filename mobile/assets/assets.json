@@ -1,0 +1,9 @@
+{
+  "images": {
+    "icon": "./assets/icon.png",
+    "splash": "./assets/splash.png",
+    "adaptive-icon": "./assets/adaptive-icon.png",
+    "favicon": "./assets/favicon.png"
+  },
+  "note": "Please add your own icon and splash images to the assets folder"
+}

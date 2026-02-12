@@ -52,7 +52,7 @@ const DefaultLayout = ({ children, footer }) => {
 					},
 					{
 						title: 'Interview',
-						path: routesConfig.createInterview,
+						path: routesConfig.interviewDashboard,
 					},
 				].map((item, index) => (
 					<Button key={index} variant="ghost" asChild>

@@ -7,32 +7,32 @@ const getFinalResult = (testResult = [], { maxPoint }) => {
 	// Check for TLE (highest priority)
 	if (testResult.some((test) => test.status === 'TLE')) {
 		status = 'TLE';
-		time = -1;
-		memory = 0;
+		time = Math.max(...testResult.map((t) => t.time));
+		memory = Math.max(...testResult.map((t) => t.memory));
 	}
 	// Check for MLE (second priority)
 	else if (testResult.some((test) => test.status === 'MLE')) {
 		status = 'MLE';
-		time = testResult.reduce((acc, test) => acc + test.time, 0);
-		memory = -1;
+		time = Math.max(...testResult.map((t) => t.time));
+		memory = Math.max(...testResult.map((t) => t.memory));
 	}
 	// Check for RTE (third priority)
 	else if (testResult.some((test) => test.status === 'RTE')) {
 		status = 'RTE';
-		time = testResult.reduce((acc, test) => acc + test.time, 0);
-		memory = testResult.reduce((acc, test) => Math.max(acc, test.memory), 0);
+		time = Math.max(...testResult.map((t) => t.time));
+		memory = Math.max(...testResult.map((t) => t.memory));
 	}
 	// Check for WA (fourth priority)
 	else if (testResult.some((test) => test.status === 'WA')) {
 		status = 'WA';
-		time = testResult.reduce((acc, test) => acc + test.time, 0);
-		memory = testResult.reduce((acc, test) => Math.max(acc, test.memory), 0);
+		time = Math.max(...testResult.map((t) => t.time));
+		memory = Math.max(...testResult.map((t) => t.memory));
 	}
 	// All tests passed (AC)
 	else {
 		status = 'AC';
-		time = testResult.reduce((acc, test) => acc + test.time, 0);
-		memory = testResult.reduce((acc, test) => Math.max(acc, test.memory), 0);
+		time = Math.max(...testResult.map((t) => t.time));
+		memory = Math.max(...testResult.map((t) => t.memory));
 	}
 	
 	const noOfAC = testResult.reduce((acc, test) => acc + (test.status === 'AC'), 0);

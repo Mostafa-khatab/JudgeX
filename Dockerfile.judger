@@ -1,12 +1,44 @@
-FROM node:18
+# JudgeX Judger Dockerfile
+# Supports both HTTP mode (legacy) and Worker mode (BullMQ)
+
+FROM node:20-slim
+
+# Install Docker CLI and build tools for sandbox management
+RUN apt-get update && apt-get install -y \
+    curl \
+    gnupg \
+    lsb-release \
+    time \
+    coreutils \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list \
+    && apt-get update \
+    && apt-get install -y docker-ce-cli \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/judger
 
+# Copy package files first for better caching
+COPY judger/package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy application code
 COPY judger/ .
 
-RUN apt-get update && apt-get install -y time
-RUN npm install
+# Create temp directory for submissions
+RUN mkdir -p tmp testcases
+
+# Environment variables
+ENV NODE_ENV=production
+ENV JUDGER_MODE=worker
 
 EXPOSE 8090
 
-CMD ["npm", "start"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8090/health || exit 1
+
+# Default to worker mode, can be overridden
+CMD ["npm", "start", "--", "--worker"]

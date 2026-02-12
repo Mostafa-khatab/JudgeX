@@ -155,53 +155,96 @@ const submissionControllers = {
 				}
 			}
 
-			const response = await axios.post(`/judge`, { src, problem, language }, { baseURL: process.env.JUDGER_URL || 'http://localhost:8090' });
-
+			// Create submission with PENDING status (async judging)
 			const submission = new Submission({
 				author: user.name,
 				src,
 				forProblem: id,
 				forContest: contestId,
 				language,
-				...response.data.data,
+				status: 'PENDING',
+				queuedAt: new Date(),
 			});
-			problem.noOfSubm++;
-
-			const alreadyAC = await Submission.filter({ status: 'AC', author: user.name, problem: id });
-			if (alreadyAC.length === 0 && response.data.data.status === 'AC') {
-				problem.noOfSuccess++;
-				user.totalAC++;
-			}
-
-			const lastSubmissions = await Submission.filter({ author: user.name, problem: id });
-			const bestLastSubmit = lastSubmissions.reduce((acc, val) => Math.max(acc, val.point), 0);
-			user.totalScore -= bestLastSubmit;
-			user.totalScore += Math.max(bestLastSubmit, submission.point);
-
-			if (lastSubmissions.length === 0) {
-				user.totalAttempt++;
-			}
 
 			await submission.save();
-			await problem.save();
-			await user.save();
 
-			if (contest) {
-				contest.standing = contest.standing.map((usr) => {
-					if (usr.user == user.name) {
-						if (submission.point > (usr.score[contest.problems.indexOf(id)] || -1)) {
-							usr.score[contest.problems.indexOf(id)] = submission.point;
-							usr.time[contest.problems.indexOf(id)] = Date.now() - contest.startTime;
-							usr.status[contest.problems.indexOf(id)] = submission.status;
-						}
-					}
-					return usr;
+			// Add job to queue for async processing
+			try {
+				const { addSubmissionJob } = await import('../queue/index.js');
+				const job = await addSubmissionJob({
+					submissionId: submission._id.toString(),
+					src,
+					language,
+					problem: {
+						id: problem.id,
+						testcase: problem.testcase,
+						timeLimit: problem.timeLimit,
+						memoryLimit: problem.memoryLimit,
+						point: problem.point,
+					},
+					userId: user._id.toString(),
+					contestId: contestId || null,
 				});
 
-				await contest.save();
+				// Update submission with job ID
+				submission.jobId = job.id;
+				await submission.save();
+
+				console.log(`📥 Submission ${submission._id} queued as job ${job.id}`);
+			} catch (queueError) {
+				console.error('Queue error, falling back to sync:', queueError.message);
+				
+				// Fallback to synchronous judging if queue is unavailable
+				const response = await axios.post(`/judge`, { src, problem, language }, { 
+					baseURL: process.env.JUDGER_URL || 'http://localhost:8090' 
+				});
+
+				submission.status = response.data.data.status;
+				submission.time = response.data.data.time;
+				submission.memory = response.data.data.memory;
+				submission.point = response.data.data.point;
+				submission.testcase = response.data.data.testcase;
+				submission.msg = response.data.data.msg;
+				submission.completedAt = new Date();
+				await submission.save();
+
+				// Update user and problem stats for sync mode
+				problem.noOfSubm++;
+				const alreadyAC = await Submission.filter({ status: 'AC', author: user.name, problem: id });
+				if (alreadyAC.length === 0 && submission.status === 'AC') {
+					problem.noOfSuccess++;
+					user.totalAC++;
+				}
+
+				const lastSubmissions = await Submission.filter({ author: user.name, problem: id });
+				const bestLastSubmit = lastSubmissions.reduce((acc, val) => Math.max(acc, val.point), 0);
+				user.totalScore -= bestLastSubmit;
+				user.totalScore += Math.max(bestLastSubmit, submission.point);
+
+				if (lastSubmissions.length <= 1) {
+					user.totalAttempt++;
+				}
+
+				await problem.save();
+				await user.save();
 			}
 
-			res.status(201).json({ success: true, data: submission });
+			// Update problem attempt count
+			problem.noOfSubm++;
+			await problem.save();
+
+			res.status(201).json({ 
+				success: true, 
+				data: {
+					_id: submission._id,
+					status: submission.status,
+					jobId: submission.jobId,
+					queuedAt: submission.queuedAt,
+				},
+				message: submission.status === 'PENDING' 
+					? 'Submission queued for judging' 
+					: 'Submission judged'
+			});
 
 			console.log('Submit code successfull');
 		} catch (err) {
