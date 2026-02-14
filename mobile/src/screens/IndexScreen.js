@@ -38,12 +38,9 @@ const IndexScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       
-      {/* Header with Logo and Menu */}
+      {/* Header with Logo */}
       <View style={styles.header}>
         <Logo size={40} />
-        <TouchableOpacity style={styles.menuButton}>
-          <Text style={styles.menuIcon}>☰</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Main Content */}
@@ -110,17 +107,10 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
-  },
-  menuButton: {
-    padding: spacing.sm,
-  },
-  menuIcon: {
-    color: colors.text,
-    fontSize: typography.sizes.xl,
   },
   content: {
     flex: 1,

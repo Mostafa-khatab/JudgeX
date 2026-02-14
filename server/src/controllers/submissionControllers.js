@@ -104,7 +104,7 @@ const submissionControllers = {
 
 			const user = await User.findById(req.userId);
 
-			const submission = await Submission.findById(id);
+			const submission = await Submission.findById(id).lean();
 
 			if (!submission) {
 				throw new Error('Submission not found');

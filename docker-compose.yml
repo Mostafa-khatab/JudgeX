@@ -22,6 +22,17 @@ services:
         depends_on:
             - server
 
+    mobile:
+        build:
+            context: .
+            dockerfile: Dockerfile.mobile
+        ports:
+            - '8081:8081'
+        networks:
+            - app-network
+        depends_on:
+            - server
+
     server:
         build:
             context: .

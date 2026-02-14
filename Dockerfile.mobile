@@ -1,0 +1,12 @@
+FROM node:20-alpine
+
+WORKDIR /app
+COPY mobile ./mobile
+RUN cd mobile && npm install
+RUN cd mobile && npx expo install react-dom react-native-web
+RUN cd mobile && npx expo export --platform web
+
+RUN npm install -g serve
+
+EXPOSE 8081
+CMD ["serve", "-s", "mobile/dist", "-l", "8081"]

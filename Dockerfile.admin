@@ -7,4 +7,4 @@ RUN cd admin && npm install && npm run build
 RUN npm install -g serve
 
 EXPOSE 5174
-CMD ["serve", "-s", "client/dist", "-l", "5174"]
+CMD ["serve", "-s", "admin/dist", "-l", "5174"]

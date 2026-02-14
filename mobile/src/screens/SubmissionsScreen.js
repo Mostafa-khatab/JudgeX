@@ -9,6 +9,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { colors, spacing, typography, borderRadius } from '../theme/theme';
 import Logo from '../components/Logo';
@@ -21,6 +23,11 @@ const SubmissionsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+
+  // View Code State
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [codeLoading, setCodeLoading] = useState(false);
 
   const fetchSubmissions = useCallback(async () => {
     try {
@@ -89,36 +96,65 @@ const SubmissionsScreen = ({ navigation }) => {
     });
   };
 
+  const handleViewCode = async (submissionId) => {
+    try {
+      setCodeLoading(true);
+      setModalVisible(true);
+      setSelectedSubmission(null);
+
+      const response = await submissionService.getSubmission(submissionId);
+      const data = response.data || response;
+      const submissionData = data._doc ? data._doc : data;
+      
+      setSelectedSubmission(submissionData);
+    } catch (err) {
+      setError('Failed to load code');
+      setModalVisible(false);
+    } finally {
+      setCodeLoading(false);
+    }
+  };
+
   const SubmissionCard = ({ submission }) => (
-    <TouchableOpacity
-      style={styles.submissionCard}
-      onPress={() => navigation.navigate('ProblemDetail', { problemId: submission.forProblem })}
-      activeOpacity={0.8}
-    >
-      <View style={styles.cardLeft}>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(submission.status) + '20' }]}>
-          <Text style={[styles.statusText, { color: getStatusColor(submission.status) }]}>
-            {submission.status}
-          </Text>
+    <View style={styles.submissionCard}>
+      <TouchableOpacity
+        style={styles.cardMain}
+        onPress={() => navigation.navigate('ProblemDetail', { problemId: submission.forProblem })}
+        activeOpacity={0.7}
+      >
+        <View style={styles.cardLeft}>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(submission.status) + '20' }]}>
+            <Text style={[styles.statusText, { color: getStatusColor(submission.status) }]}>
+              {submission.status}
+            </Text>
+          </View>
         </View>
-      </View>
-      
-      <View style={styles.cardContent}>
-        <Text style={styles.problemId}>{submission.forProblem}</Text>
-        <View style={styles.submissionMeta}>
-          <Text style={styles.metaText}>{submission.language}</Text>
-          <Text style={styles.metaDot}>•</Text>
-          <Text style={styles.metaText}>{submission.time || 0}ms</Text>
-          <Text style={styles.metaDot}>•</Text>
-          <Text style={styles.metaText}>{submission.memory || 0}KB</Text>
+        
+        <View style={styles.cardContent}>
+          <Text style={styles.problemId}>{submission.forProblem}</Text>
+          <View style={styles.submissionMeta}>
+            <Text style={styles.metaText}>{submission.language}</Text>
+            <Text style={styles.metaDot}>•</Text>
+            <Text style={styles.metaText}>{submission.time || 0}ms</Text>
+            <Text style={styles.metaDot}>•</Text>
+            <Text style={styles.metaText}>{submission.memory || 0}KB</Text>
+          </View>
         </View>
-      </View>
-      
-      <View style={styles.cardRight}>
-        <Text style={styles.pointsText}>{submission.point || 0} pts</Text>
-        <Text style={styles.dateText}>{formatDate(submission.createdAt)}</Text>
-      </View>
-    </TouchableOpacity>
+        
+        <View style={styles.cardRight}>
+          <Text style={styles.pointsText}>{submission.point || 0} pts</Text>
+          <Text style={styles.dateText}>{formatDate(submission.createdAt)}</Text>
+        </View>
+      </TouchableOpacity>
+
+      {/* View Code Button */}
+      <TouchableOpacity 
+        style={styles.viewCodeButton} 
+        onPress={() => handleViewCode(submission._id)}
+      >
+        <Text style={styles.viewCodeText}>{'</> Code'}</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -135,6 +171,7 @@ const SubmissionsScreen = ({ navigation }) => {
       </View>
 
       {/* Stats */}
+      {/* ... (stats container same) ... */}
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: '#22C55E' }]}>
@@ -191,6 +228,33 @@ const SubmissionsScreen = ({ navigation }) => {
           }
         />
       )}
+
+      {/* Full Screen Code Modal */}
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Submission Code</Text>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {codeLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : selectedSubmission ? (
+            <ScrollView style={styles.codeScrollView} contentContainerStyle={styles.codeContent}>
+              <Text style={styles.codeText} selectable>{selectedSubmission.src}</Text>
+            </ScrollView>
+          ) : null}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -332,6 +396,61 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: typography.sizes.sm,
     textAlign: 'center',
+  },
+  viewCodeButton: {
+    padding: spacing.sm,
+    backgroundColor: '#0D1117',
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#30363d',
+    marginTop: spacing.sm,
+  },
+  viewCodeText: {
+    color: colors.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#0D1117',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: '#30363d',
+    backgroundColor: '#161b22',
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+  },
+  closeButton: {
+    padding: spacing.sm,
+  },
+  closeButtonText: {
+    color: colors.primary,
+    fontWeight: typography.weights.bold,
+    fontSize: typography.sizes.md,
+  },
+  codeScrollView: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  codeContent: {
+    paddingBottom: spacing.xxl,
+  },
+  codeText: {
+    color: '#e6edf3',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
 

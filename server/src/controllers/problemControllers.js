@@ -66,7 +66,7 @@ const problemControllers = {
 		try {
 			const { id } = req.params;
 
-			const problem = await Problem.findOne({ id }, '-_id -__v');
+			const problem = await Problem.findOne({ id }, '-_id -__v').lean();
 
 			if (!problem) {
 				throw new Error('Problem not found');
@@ -82,9 +82,10 @@ const problemControllers = {
 					data: problem,
 				});
 			} else {
+				const { testcase, ...problemWithoutTestcase } = problem;
 				res.status(200).json({
 					success: true,
-					data: { ...problem, testcase: undefined },
+					data: problemWithoutTestcase,
 				});
 			}
 

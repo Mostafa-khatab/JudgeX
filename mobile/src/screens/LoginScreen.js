@@ -15,9 +15,11 @@ import Card from '../components/Card';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import { useAuth } from '../context/AuthContext';
+import useGoogleAuth from '../services/googleAuth';
 
 const LoginScreen = ({ navigation }) => {
   const { login } = useAuth();
+  const { signInWithGoogle, loading: googleLoading, isReady } = useGoogleAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,7 +36,6 @@ const LoginScreen = ({ navigation }) => {
 
     try {
       await login(email, password);
-      // Navigation will be handled by AuthContext
     } catch (err) {
       setError(err.message || 'Login failed. Please try again.');
     } finally {
@@ -42,8 +43,18 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
-  const handleGoogleLogin = () => {
-    Alert.alert('Google Login', 'Google authentication will be implemented with expo-auth-session');
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      const result = await signInWithGoogle();
+      if (result?.user) {
+        await login(result.user.email, null, result.token, result.user);
+      }
+    } catch (err) {
+      setError(err.message || 'Google login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleForgotPassword = () => {
@@ -64,9 +75,6 @@ const LoginScreen = ({ navigation }) => {
         {/* Header */}
         <View style={styles.header}>
           <Logo size={40} />
-          <TouchableOpacity style={styles.menuButton}>
-            <Text style={styles.menuIcon}>☰</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Login Card */}
@@ -110,16 +118,20 @@ const LoginScreen = ({ navigation }) => {
               loading={loading}
               style={styles.loginButton}
             />
-            <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
+            <TouchableOpacity 
+              style={[styles.googleButton, (!isReady || googleLoading) && styles.googleButtonDisabled]} 
+              onPress={handleGoogleLogin}
+              disabled={!isReady || googleLoading}
+            >
               <Text style={styles.googleIcon}>G</Text>
             </TouchableOpacity>
           </View>
 
           {/* Sign Up Link */}
           <View style={styles.linkContainer}>
-            <Text style={styles.linkText}>Already have an account? </Text>
+            <Text style={styles.linkText}>Don't have an account? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-              <Text style={styles.link}>Log in</Text>
+              <Text style={styles.link}>Sign up</Text>
             </TouchableOpacity>
           </View>
         </Card>
@@ -140,7 +152,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
@@ -148,13 +160,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-  },
-  menuButton: {
-    padding: spacing.sm,
-  },
-  menuIcon: {
-    color: colors.text,
-    fontSize: typography.sizes.xl,
   },
   card: {
     marginHorizontal: spacing.lg,
@@ -202,6 +207,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  googleButtonDisabled: {
+    opacity: 0.6,
   },
   googleIcon: {
     fontSize: typography.sizes.xl,

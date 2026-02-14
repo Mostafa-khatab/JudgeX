@@ -1,9 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
-// API Base URL - Your computer's IP on WiFi
-const API_BASE_URL = 'http://192.168.1.5:8080';
-// For Android emulator use: 'http://10.0.2.2:5000'
-// For iOS simulator use: 'http://localhost:5000'
+// API Base URL - auto-detect for web (Docker) or use local IP for native
+const getApiBaseUrl = () => {
+  if (Platform.OS === 'web') {
+    // In Docker/web, use the same hostname but server port
+    const hostname = window.location.hostname || 'localhost';
+    return `http://${hostname}:8080`;
+  }
+  // For native mobile, use your computer's IP on WiFi
+  return 'http://192.168.1.5:8080';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Get auth token from storage
 const getAuthToken = async () => {
