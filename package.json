@@ -1,5 +1,14 @@
 {
+	"scripts": {
+		"dev": "concurrently \"npm run dev:server\" \"npm run dev:client\" \"npm run dev:admin\" \"npm run dev:judger\" \"npm run dev:ai\"",
+		"dev:server": "cd server && npm run dev",
+		"dev:client": "cd client && npm run dev",
+		"dev:admin": "cd admin && npm run dev",
+		"dev:judger": "cd judger && npm run dev",
+		"dev:ai": "cd ai-service && python main.py"
+	},
 	"devDependencies": {
+		"concurrently": "^9.2.1",
 		"prettier": "^3.5.3",
 		"prettier-plugin-tailwindcss": "^0.6.11"
 	},
