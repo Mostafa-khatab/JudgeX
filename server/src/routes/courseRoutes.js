@@ -7,6 +7,7 @@ const router = express.Router();
 
 // Public routes
 router.get('/', courseControllers.getList);
+router.get('/recommendations', authMiddlewares.isAuth, courseControllers.getRecommendations);
 router.get('/:id', courseControllers.get);
 
 // Protected routes (require authentication)

@@ -27,6 +27,7 @@ const routesConfig = {
 	interviewRoom: '/interview/room/:id',
 	interviewJoin: '/interview/join/:token',
 	interviewResults: '/interview/results/:id',
+    blogDetail: '/blog/:id',
 };
 
 export default routesConfig;

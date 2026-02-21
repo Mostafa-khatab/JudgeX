@@ -333,6 +333,45 @@ const courseControllers = {
 			console.error(`Error in upload thumbnail: ${err.message}`);
 		}
 	},
+	
+	//[GET] /course/recommendations
+	async getRecommendations(req, res, next) {
+		try {
+			const { calculateUserSkillGap } = await import('../services/skillGapService.js');
+			const User = (await import('../models/user.js')).default;
+			
+			const user = await User.findById(req.userId);
+			if (!user) throw new Error('Unauthorized');
+
+			const skillGap = await calculateUserSkillGap(user.name);
+			const weakTopics = skillGap.summary.weakTopics || [];
+
+			if (weakTopics.length === 0) {
+				// If no weak topics, recommend popular or intermediate courses as a fallback
+				const featured = await Course.find({ isPublished: true }).limit(4).sort({ enrolledUsers: -1 });
+				return res.status(200).json({ success: true, data: featured, type: 'featured' });
+			}
+
+			// Find courses matching any of the weak topics
+			const recommended = await Course.find({
+				isPublished: true,
+				tags: { $in: weakTopics },
+			}).limit(6);
+
+			res.status(200).json({
+				success: true,
+				data: recommended,
+				type: 'personalized',
+			});
+
+			console.log(`Recommendations generated for user: ${user.name}`);
+		} catch (err) {
+			console.error(`Error in get recommendations: ${err.message}`);
+			if (!res.headersSent) {
+				res.status(400).json({ success: false, msg: err.message });
+			}
+		}
+	},
 };
 
 export default courseControllers;

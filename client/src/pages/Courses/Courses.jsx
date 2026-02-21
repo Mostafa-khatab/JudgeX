@@ -5,6 +5,8 @@ import { Play, ExternalLink, Clock, Star, Users, Search as SearchIcon, RotateCcw
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip';
 import { Button } from '~/components/ui/button';
+import { Badge } from '~/components/ui/badge';
+import { Card, CardContent } from '~/components/ui/card';
 import { useSearchParams } from 'react-router';
 
 import courseService from '~/services/courseService';
@@ -21,6 +23,7 @@ const Courses = () => {
 	const [searchParams] = useSearchParams();
 
 	const [courses, setCourses] = useState([]);
+	const [recommendations, setRecommendations] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [difficultyFilter, setDifficultyFilter] = useState('all');
@@ -58,9 +61,14 @@ const Courses = () => {
 				order: sortOrder,
 			};
 
-			const response = await courseService.getCourses(params);
-			setCourses(response.data);
-			setTotalPages(response.maxPage);
+			const [coursesRes, recommendationsRes] = await Promise.all([
+				courseService.getCourses(params),
+				user ? courseService.getRecommendations() : { data: [] }
+			]);
+
+			setCourses(coursesRes.data);
+			setTotalPages(coursesRes.maxPage);
+			setRecommendations(recommendationsRes.data || []);
 		} catch (error) {
 			console.error('Error fetching courses:', error);
 		} finally {
@@ -159,9 +167,54 @@ const Courses = () => {
 							<RotateCcw className="size-4" />
 						</Button>
 					</TooltipTrigger>
-					<TooltipContent className="bg-gray-200 capitalize text-gray-700 dark:bg-[rgb(55,55,55)] dark:text-gray-200">Refresh</TooltipContent>
 				</Tooltip>
 			</div>
+
+			{/* AI Recommendations Section */}
+			{user && recommendations.length > 0 && (
+				<div className="mb-12 animate-in fade-in slide-in-from-top-4 duration-700">
+					<div className="flex items-center gap-2 mb-5">
+						<div className="p-2 rounded-lg bg-purple-500/10 text-purple-600">
+							<Shuffle className="w-5 h-5" />
+						</div>
+						<div>
+							<h2 className="text-xl font-bold text-gray-800 dark:text-white">Recommended for You</h2>
+							<p className="text-xs text-gray-500">Based on your recent Skill Gap Analysis</p>
+						</div>
+					</div>
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+						{recommendations.map((course) => (
+							<Link key={course._id} to={routesConfig.course.replace(':id', course._id)}>
+								<Card className="hover:shadow-xl transition-all border-none bg-white dark:bg-neutral-800 relative overflow-hidden group h-full">
+									<div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-600" />
+									<CardContent className="p-4">
+										<div className="aspect-video mb-4 rounded-xl overflow-hidden relative">
+											{course.thumbnail ? (
+												<img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+											) : (
+												<div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+													<Play className="size-10 text-white opacity-80" />
+												</div>
+											)}
+											<div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 duration-300">
+												<Play className="size-12 text-white fill-white" />
+											</div>
+										</div>
+										<h3 className="font-bold text-gray-900 dark:text-white line-clamp-1 mb-1" title={course.title}>{course.title}</h3>
+										<div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-neutral-700">
+											<span className={`text-[10px] uppercase font-bold tracking-wider ${getDifficultyColor(course.difficulty)}`}>{course.difficulty}</span>
+											<div className="flex items-center text-xs text-yellow-500 font-medium">
+												<Star className="size-3 fill-yellow-500 mr-1" />
+												{course.rating > 0 ? course.rating.toFixed(1) : 'New'}
+											</div>
+										</div>
+									</CardContent>
+								</Card>
+							</Link>
+						))}
+					</div>
+				</div>
+			)}
 
 			<div className="relative block overflow-x-auto shadow-md sm:rounded-lg">
 				<table className="w-full text-left text-sm text-gray-500 rtl:text-right dark:text-gray-400">

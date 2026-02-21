@@ -1,5 +1,5 @@
 export const delayMiddleware = (req, res, next) => {
-	setTimeout(next, 2000);
+	setTimeout(next, 200);
 };
 
 /*

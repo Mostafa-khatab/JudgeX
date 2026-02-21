@@ -90,6 +90,16 @@ const courseService = {
 			throw new Error(error.response?.data?.msg || 'Failed to rate course');
 		}
 	},
+
+	// Get personalized recommendations
+	getRecommendations: async () => {
+		try {
+			const response = await httpRequest.get(`/course/recommendations`);
+			return response.data;
+		} catch (error) {
+			throw new Error(error.response?.data?.msg || 'Failed to fetch recommendations');
+		}
+	},
 };
 
 export default courseService;

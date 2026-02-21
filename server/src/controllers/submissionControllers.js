@@ -4,6 +4,7 @@ import User from '../models/user.js';
 import Submission from '../models/submission.js';
 import Problem from '../models/problem.js';
 import Contest from '../models/contest.js';
+import DailyChallenge from '../models/dailyChallenge.js';
 
 const submissionControllers = {
 	//[GET] /submission
@@ -75,7 +76,7 @@ const submissionControllers = {
 
 			if (minimal) {
 				data = data.map((item) => {
-					item._id;
+					return item._id;
 				});
 			}
 
@@ -155,24 +156,33 @@ const submissionControllers = {
 				}
 			}
 
-			// Create submission with PENDING status (async judging)
+			// Create submission with JUDGING status
 			const submission = new Submission({
 				author: user.name,
 				src,
 				forProblem: id,
 				forContest: contestId,
 				language,
-				status: 'PENDING',
-				queuedAt: new Date(),
+				status: 'JUDGING',
+				startedAt: new Date(),
 			});
 
 			await submission.save();
 
-			// Add job to queue for async processing
+			// Respond immediately so the client can poll for results
+			res.status(201).json({
+				success: true,
+				data: {
+					_id: submission._id,
+					status: submission.status,
+				},
+				message: 'Submission is being judged',
+			});
+
+			// Send directly to judger HTTP service (no Redis/BullMQ needed)
 			try {
-				const { addSubmissionJob } = await import('../queue/index.js');
-				const job = await addSubmissionJob({
-					submissionId: submission._id.toString(),
+				const JUDGER_URL = process.env.JUDGER_URL || 'http://localhost:8090';
+				const judgeRes = await axios.post(`${JUDGER_URL}/judge`, {
 					src,
 					language,
 					problem: {
@@ -182,77 +192,109 @@ const submissionControllers = {
 						memoryLimit: problem.memoryLimit,
 						point: problem.point,
 					},
-					userId: user._id.toString(),
-					contestId: contestId || null,
+				}, { timeout: 60000 }); // 60s max for judging
+
+				const result = judgeRes.data.data;
+
+				// Calculate points
+				const passedTests = result.testcase?.filter((t) => t.status === 'AC').length || 0;
+				const totalTests = result.testcase?.length || 1;
+				const point = passedTests === totalTests ? problem.point || 100 : 0;
+
+				// Update submission with results
+				await submission.updateOne({
+					status: result.status,
+					time: result.time,
+					memory: result.memory,
+					msg: result.msg,
+					testcase: result.testcase,
+					point,
+					completedAt: new Date(),
 				});
 
-				// Update submission with job ID
-				submission.jobId = job.id;
-				await submission.save();
-
-				console.log(`📥 Submission ${submission._id} queued as job ${job.id}`);
-			} catch (queueError) {
-				console.error('Queue error, falling back to sync:', queueError.message);
-				
-				// Fallback to synchronous judging if queue is unavailable
-				const response = await axios.post(`/judge`, { src, problem, language }, { 
-					baseURL: process.env.JUDGER_URL || 'http://localhost:8090' 
-				});
-
-				submission.status = response.data.data.status;
-				submission.time = response.data.data.time;
-				submission.memory = response.data.data.memory;
-				submission.point = response.data.data.point;
-				submission.testcase = response.data.data.testcase;
-				submission.msg = response.data.data.msg;
-				submission.completedAt = new Date();
-				await submission.save();
-
-				// Update user and problem stats for sync mode
-				problem.noOfSubm++;
-				const alreadyAC = await Submission.filter({ status: 'AC', author: user.name, problem: id });
-				if (alreadyAC.length === 0 && submission.status === 'AC') {
-					problem.noOfSuccess++;
-					user.totalAC++;
+				// Update problem stats
+				problem.noOfSubm = (problem.noOfSubm || 0) + 1;
+				if (result.status === 'AC') {
+					problem.noOfSuccess = (problem.noOfSuccess || 0) + 1;
 				}
-
-				const lastSubmissions = await Submission.filter({ author: user.name, problem: id });
-				const bestLastSubmit = lastSubmissions.reduce((acc, val) => Math.max(acc, val.point), 0);
-				user.totalScore -= bestLastSubmit;
-				user.totalScore += Math.max(bestLastSubmit, submission.point);
-
-				if (lastSubmissions.length <= 1) {
-					user.totalAttempt++;
-				}
-
 				await problem.save();
+
+				// Update user stats
+				user.totalAttempt = (user.totalAttempt || 0) + 1;
+				if (result.status === 'AC') {
+					const prevAC = await Submission.findOne({ author: user.name, forProblem: id, status: 'AC', _id: { $ne: submission._id } });
+					if (!prevAC) {
+						user.totalAC = (user.totalAC || 0) + 1;
+						user.totalScore = (user.totalScore || 0) + point;
+					}
+				}
 				await user.save();
+
+				// Update contest standing if applicable
+				if (contest) {
+					const userStanding = contest.standing.find((s) => s.user === user.name);
+					if (userStanding) {
+						const idx = contest.problems.indexOf(problem.id);
+						if (idx !== -1 && result.status === 'AC') {
+							userStanding.score[idx] = point;
+							userStanding.status[idx] = 'AC';
+						}
+					}
+					await contest.save();
+				}
+
+				console.log(`✅ Submission ${submission._id} judged: ${result.status} (${point} pts)`);
+
+				// Auto-complete daily challenge if this problem matches today's challenge
+				if (result.status === 'AC') {
+					try {
+						const today = new Date();
+						today.setHours(0, 0, 0, 0);
+						const dailyChallenge = await DailyChallenge.findOne({
+							userId: user._id,
+							problemId: problem.id,
+							date: today,
+							completed: false,
+						});
+						if (dailyChallenge) {
+							dailyChallenge.completed = true;
+							dailyChallenge.completedAt = new Date();
+							await dailyChallenge.save();
+
+							// Update streak
+							const yesterday = new Date(today);
+							yesterday.setDate(yesterday.getDate() - 1);
+							const lastDate = user.lastChallengeDate
+								? new Date(user.lastChallengeDate).setHours(0, 0, 0, 0)
+								: null;
+							if (lastDate && lastDate === yesterday.getTime()) {
+								user.streak = (user.streak || 0) + 1;
+							} else if (!lastDate || lastDate < yesterday.getTime()) {
+								user.streak = 1;
+							}
+							if ((user.streak || 0) > (user.longestStreak || 0)) {
+								user.longestStreak = user.streak;
+							}
+							user.lastChallengeDate = today;
+							await user.save();
+							console.log(`🎯 Daily challenge auto-completed for user ${user.name}`);
+						}
+					} catch (dailyErr) {
+						console.warn('Could not auto-complete daily challenge:', dailyErr.message);
+					}
+				}
+			} catch (judgeError) {
+				console.error('Judger HTTP error:', judgeError.message);
+				await submission.updateOne({ status: 'IE', msg: { server: 'Judger unavailable: ' + judgeError.message }, completedAt: new Date() });
 			}
 
-			// Update problem attempt count
-			problem.noOfSubm++;
-			await problem.save();
-
-			res.status(201).json({ 
-				success: true, 
-				data: {
-					_id: submission._id,
-					status: submission.status,
-					jobId: submission.jobId,
-					queuedAt: submission.queuedAt,
-				},
-				message: submission.status === 'PENDING' 
-					? 'Submission queued for judging' 
-					: 'Submission judged'
-			});
-
-			console.log('Submit code successfull');
+			console.log('Submit code successful');
 		} catch (err) {
 			res.status(400).json({ success: false, msg: err.message });
-
 			console.error(`Error in submit: ${err.message}`);
 		}
 	},
+
 
 	//[DELETE] /submission/delete/:id
 	async deleteSubm(req, res, next) {

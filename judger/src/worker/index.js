@@ -2,6 +2,7 @@ import { Worker } from 'bullmq';
 import mongoose from 'mongoose';
 import { createRedisConnection, workerConfig } from './config.js';
 import DockerExecutor from './dockerExecutor.js';
+import NativeExecutor from './nativeExecutor.js';
 
 // MongoDB connection for updating submission results
 const connectDB = async () => {
@@ -33,8 +34,10 @@ const submissionSchema = new mongoose.Schema({
 
 const Submission = mongoose.model('Submission', submissionSchema);
 
-// Initialize Docker executor
-const executor = new DockerExecutor();
+// Initialize executor based on configuration
+const useNative = process.env.JUDGER_EXECUTOR === 'native';
+console.log(`🔧 Initializing Executor: ${useNative ? 'Native (Local)' : 'Docker'}`);
+const executor = useNative ? new NativeExecutor() : new DockerExecutor();
 
 /**
  * Process a submission job

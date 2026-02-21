@@ -6,11 +6,12 @@ import { Skeleton } from '~/components/ui/skeleton';
 import { useTranslation } from 'react-i18next';
 import Markdown from 'react-markdown';
 import { Link } from 'react-router';
-import { Check } from 'lucide-react';
+import { Check, TrendingUp } from 'lucide-react';
 import { useSearchParams } from 'react-router';
 
 import { getUser } from '~/services/user';
 import UserAvatar from '~/components/UserAvatar';
+import SkillGap from '~/components/SkillGap/SkillGap';
 import ProblemImg from '~/assets/images/list.png';
 import SubmissionImg from '~/assets/images/answer.png';
 import ContestImg from '~/assets/images/contest.png';
@@ -181,6 +182,15 @@ const User = () => {
 									<span className="text-sm font-medium capitalize">{t('contests')}</span>
 								</div>
 							</TabsTrigger>
+							<TabsTrigger
+								className="h-10 rounded-lg px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-600"
+								value="5"
+							>
+								<div className="flex items-center gap-2">
+									<TrendingUp className="size-5 text-purple-500" />
+									<span className="text-sm font-medium capitalize">{t('skill-gap') || 'Skill Gap'}</span>
+								</div>
+							</TabsTrigger>
 						</TabsList>
 
 						<TabsContent value="1" className="mt-0">
@@ -290,6 +300,10 @@ const User = () => {
 									</div>
 								)}
 							</div>
+						</TabsContent>
+
+						<TabsContent value="5" className="mt-0">
+							<SkillGap username={name} />
 						</TabsContent>
 					</Tabs>
 				</div>

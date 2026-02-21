@@ -48,10 +48,10 @@ export const runCode = async (req, res) => {
 			switch (language) {
 				case 'python3':
 				case 'python2': {
-                     // Ensure temp dir exists and has loose permissions for sharing
-	if (!fs.existsSync(tempDir)) { // fs.existsSync is sync, but user requested it. fs.mkdir above is async.
-		await fs.mkdir(tempDir, { recursive: true });
-	}
+                     // Ensure temp dir exists with correct permissions
+					try {
+						await fs.mkdir(tempDir, { recursive: true });
+					} catch (_) {}
     // Always chmod to ensure volume mount is writable by sandbox user
     await fs.chmod(tempDir, 0o777);
 
@@ -210,7 +210,6 @@ export const runCode = async (req, res) => {
                 'run', '--rm',
                 '--network', 'none',
                 '--memory', '256m',
-                '--cpus', '0.5',
                 '--cpus', '0.5',
                 '-v', `${hostMountPath}:/sandbox`,
                 dockerImage,

@@ -9,7 +9,7 @@ import { startWorker } from './worker/index.js';
 const app = express();
 
 // Check if running in worker mode
-const isWorkerMode = process.argv.includes('--worker') || process.env.JUDGER_MODE === 'worker';
+const isWorkerMode = false; // HTTP mode: server calls /judge directly (no Redis needed)
 
 app.use(
 	express.urlencoded({

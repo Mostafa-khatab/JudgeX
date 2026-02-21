@@ -10,6 +10,9 @@ const GoogleButton = () => {
 	const { t } = useTranslation('auth');
 	const { setUser, setIsAuth } = useAuthStore();
 
+	// Don't render if Google OAuth is not configured
+	if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) return null;
+
 	const login = useGoogleLogin({
 		onSuccess: async (tokenResponse) => {
 			try {

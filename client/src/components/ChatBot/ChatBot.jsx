@@ -7,7 +7,7 @@ import Markdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-const ChatBot = ({ problemId, code, language, isOpen = false, onClose = () => {} }) => {
+const ChatBot = ({ problemId, courseId, code, language, isOpen = false, onClose = () => {} }) => {
 	const [messages, setMessages] = useState([]);
 	const [input, setInput] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
@@ -31,6 +31,7 @@ const ChatBot = ({ problemId, code, language, isOpen = false, onClose = () => {}
 			const response = await sendChatMessage({
 				message: input,
 				problemId,
+				courseId,
 				code,
 				language,
 				history: messages,
@@ -88,7 +89,9 @@ const ChatBot = ({ problemId, code, language, isOpen = false, onClose = () => {}
 				{messages.length === 0 && (
 					<div className="flex h-full flex-col items-center justify-center text-center">
 						<Bot className="mb-4 h-12 w-12 text-gray-400 dark:text-gray-600" />
-						<p className="text-sm text-gray-500 dark:text-gray-400">اسأل عن المسألة أو شارك كودك — سأساعدك خطوة بخطوة.</p>
+						<p className="text-sm text-gray-500 dark:text-gray-400">
+							{courseId ? "اسأل أي سؤال عن محتوى الكورس — سأساعدك في فهم الدروس." : "اسأل عن المسألة أو شارك كودك — سأساعدك خطوة بخطوة."}
+						</p>
 					</div>
 				)}
 

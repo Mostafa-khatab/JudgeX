@@ -13,7 +13,7 @@ const router = express.Router();
 router.get('/stats', authMiddleware, async (req, res) => {
 	try {
 		// Check admin permission
-		if (req.userPermission !== 'Admin') {
+		if (req.userPermission !== 'admin') {
 			return res.status(403).json({ 
 				success: false, 
 				message: 'Admin access required' 

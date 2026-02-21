@@ -58,6 +58,18 @@ const userSchema = new mongoose.Schema(
 			type: String,
 			default: 'c++17',
 		},
+		streak: {
+			type: Number,
+			default: 0,
+		},
+		longestStreak: {
+			type: Number,
+			default: 0,
+		},
+		lastChallengeDate: {
+			type: Date,
+			default: null,
+		},
 		avatar: String,
 		resetPasswordToken: String,
 		resetPasswordExpiresAt: Date,

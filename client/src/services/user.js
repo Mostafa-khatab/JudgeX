@@ -46,3 +46,13 @@ export const changeAvatar = async (img) => {
 		throw err;
 	}
 };
+
+export const getSkillGap = async (name) => {
+	try {
+		const res = await httpRequest.get(`/user/skill-gap/${name}`);
+		return res.data;
+	} catch (err) {
+		console.error(err);
+		throw err;
+	}
+};

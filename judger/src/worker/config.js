@@ -5,10 +5,15 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
 // Create Redis connection for BullMQ
 export const createRedisConnection = () => {
-	return new Redis(REDIS_URL, {
+	const redis = new Redis(REDIS_URL, {
 		maxRetriesPerRequest: null,
 		enableReadyCheck: false,
 	});
+	// Prevent unhandled-error crashes if Redis is not running
+	redis.on('error', (err) => {
+		console.warn('[Redis] Connection error (suppressed):', err.message);
+	});
+	return redis;
 };
 
 // Worker configuration

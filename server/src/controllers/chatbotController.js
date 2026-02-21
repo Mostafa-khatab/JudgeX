@@ -30,11 +30,55 @@ export const sendMessage = async (req, res) => {
     }
 
     // Build prompt
-    let prompt = 'You are an expert programming tutor helping students solve coding problems. Be helpful and concise.\n\n';
+    let prompt = `You are an expert programming tutor helping students solve coding problems on the JudgeX platform. 
+Your goal is to be a supportive mentor. Provide hints, conceptual explanations, and guidance rather than direct solutions.
+Respond using Markdown with clear headings and code blocks where appropriate.
+
+USER PERFORMANCE CONTEXT:
+`;
+
+    // Add Skill Gap Context
+    try {
+      const { calculateUserSkillGap } = await import('../services/skillGapService.js');
+      const skillGap = await calculateUserSkillGap(req.user.name);
+      
+      if (skillGap.summary.totalSubmissions > 0) {
+        prompt += `- Strong Topics: ${skillGap.summary.strongTopics.join(', ') || 'N/A'}\n`;
+        prompt += `- Weak Topics: ${skillGap.summary.weakTopics.join(', ') || 'N/A'}\n`;
+        prompt += `- Top Mastery: ${skillGap.summary.topTopic}\n`;
+        prompt += 'Use this info to tailor your advice. If they are weak in a topic related to the current problem, be more patient. If they are strong, challenge them more.\n\n';
+      } else {
+        prompt += '- User is new/has no submissions yet.\n\n';
+      }
+    } catch (err) {
+      console.warn('Could not fetch skill gap for chatbot context:', err.message);
+    }
+
+    // Add Course Context if present
+    if (req.body.courseId) {
+      try {
+        const Course = (await import('../models/course.js')).default;
+        const targetCourse = await Course.findById(req.body.courseId);
+        if (targetCourse) {
+          prompt += `COURSE CONTEXT:
+- Title: ${targetCourse.title}
+- Instructor: ${targetCourse.instructor}
+- Description: ${targetCourse.description}
+- Modules/Videos: ${targetCourse.videos?.map(v => v.title).join(', ')}
+You are actings as a tutor for THIS SPECIFIC COURSE. Use the module list to explain where the student is in their learning journey if they ask.\n\n`;
+        }
+      } catch (err) {
+        console.warn('Could not fetch course context for chatbot:', err.message);
+      }
+    }
 
     if (problem) {
       const task = (problem.task || '').replace(/<[^>]*>/g, '').substring(0, 2000);
-      prompt += `Problem: ${problem.name}\nDifficulty: ${problem.difficulty}\nTime Limit: ${problem.timeLimit}ms\nMemory Limit: ${problem.memoryLimit}MB\nDescription: ${task}\n\n`;
+      prompt += `CURRENT PROBLEM:
+- Name: ${problem.name}
+- Difficulty: ${problem.difficulty}
+- Tags: ${problem.tags?.join(', ')}
+- Task: ${task}\n\n`;
 
       if (problem.examples && problem.examples[0]) {
         prompt += `Example:\nInput: ${problem.examples[0].input}\nOutput: ${problem.examples[0].output}\n\n`;
@@ -42,22 +86,27 @@ export const sendMessage = async (req, res) => {
     }
 
     if (code && code.trim()) {
-      prompt += `Student's code (${language}):\n\`\`\`${language}\n${code}\n\`\`\`\n\n`;
+      prompt += `STUDENT'S CURRENT CODE (${language}):
+\`\`\`${language}
+${code}
+\`\`\`\n\n`;
     }
 
     if (history && history.length) {
-      prompt += 'Previous conversation:\n';
+      prompt += 'CONVERSATION HISTORY:\n';
       history.slice(-3).forEach(m => {
         prompt += `${m.role === 'user' ? 'Student' : 'Tutor'}: ${m.content}\n`;
       });
       prompt += '\n';
     }
 
-    prompt += `Question: ${message}\n\n`;
-    prompt += allowFullSolution
-      ? 'Provide full step-by-step solution and code.\n'
-      : 'Provide only hints or guidance. Do not give full code.\n';
-    prompt += 'Respond with markdown and code blocks when needed.';
+    prompt += `STUDENT'S QUESTION: ${message}\n\n`;
+    
+    if (allowFullSolution) {
+      prompt += 'Provide a full step-by-step solution and completed code.\n';
+    } else {
+      prompt += 'Provide only strategic hints or conceptual guidance. DO NOT give the full completed code unless explicitly unlocked by allowFullSolution.\n';
+    }
 
     // Call Gemini
     const modelName = 'gemini-2.5-flash'; // أو gemini-2.5-pro

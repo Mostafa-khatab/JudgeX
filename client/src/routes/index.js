@@ -27,6 +27,7 @@ import Course from '~/pages/Course/Course';
 import InterviewIndex from '~/pages/Interview/index';
 import InterviewRoom from '~/pages/Interview/Room';
 import InterviewResults from '~/pages/Interview/Results';
+import BlogDetail from '~/pages/BlogDetail/BlogDetail';
 
 const routes = [
 	{
@@ -171,6 +172,11 @@ const routes = [
 		page: InterviewResults,
 		layout: null,
 	},
+    {
+        path: routesConfig.blogDetail,
+        page: BlogDetail,
+        layout: DefaultLayoutWithFooter,
+    },
 ];
 
 export default routes;

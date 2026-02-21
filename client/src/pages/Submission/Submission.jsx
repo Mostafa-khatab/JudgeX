@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Skeleton } from '~/components/ui/skeleton';
 import { Tooltip, TooltipTrigger, TooltipContent } from '~/components/ui/tooltip';
-import { ChevronRight, FileCode, AlertTriangle, Server, Bug, CheckCircle, Clock, ArrowLeftCircle } from 'lucide-react';
+import { ChevronRight, FileCode, AlertTriangle, Server, Bug, CheckCircle, Clock, ArrowLeftCircle, Loader2 } from 'lucide-react';
 
 import editorConfig from '~/config/editor';
 import { getSubmission } from '~/services/submission';
@@ -25,6 +25,8 @@ const Submission = () => {
 	const [submission, setSubmission] = useState(null);
 	const [loading, setLoading] = useState(false);
 
+	const FINAL_STATUSES = ['AC', 'WA', 'TLE', 'MLE', 'RTE', 'CE', 'IE'];
+
 	useEffect(() => {
 		setLoading(true);
 		getSubmission(id)
@@ -36,6 +38,26 @@ const Submission = () => {
 			})
 			.finally(() => setLoading(false));
 	}, [id]);
+
+	// Poll every 2s while submission is still being judged
+	useEffect(() => {
+		if (!submission) return;
+		if (FINAL_STATUSES.includes(submission.status)) return;
+
+		const interval = setInterval(() => {
+			getSubmission(id)
+				.then((res) => {
+					setSubmission(res.data);
+					if (FINAL_STATUSES.includes(res.data.status)) {
+						clearInterval(interval);
+					}
+				})
+				.catch(() => clearInterval(interval));
+		}, 2000);
+
+		return () => clearInterval(interval);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [submission?.status, id]);
 
 	const languageValue = { c: 'c', c11: 'c', 'c++11': 'cpp', 'c++14': 'cpp', 'c++17': 'cpp', 'c++20': 'cpp', python2: 'python', python3: 'python' };
 
@@ -87,7 +109,18 @@ const Submission = () => {
 				</div>
 
 				{/* Submission Status Banner */}
-				{!loading && submission && (
+				{!loading && submission && !FINAL_STATUSES.includes(submission.status) && (
+					<div className="mb-6 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
+						<div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-800/30">
+							<Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400" />
+						</div>
+						<div>
+							<h2 className="text-lg font-semibold text-blue-700 dark:text-blue-400">{t('judging') || 'Judging...'}</h2>
+							<p className="text-sm text-gray-500 dark:text-gray-400">{t('judging-msg') || 'Your submission is being evaluated. This page updates automatically.'}</p>
+						</div>
+					</div>
+				)}
+				{!loading && submission && FINAL_STATUSES.includes(submission.status) && (
 					<div
 						data-status={submission?.status?.toLowerCase()}
 						className={`mb-6 flex items-center rounded-xl border border-amber-200 bg-amber-50 p-4 capitalize data-[status=ac]:border-green-200 data-[status=ac]:bg-green-50 dark:border-amber-800 dark:bg-amber-900/20 data-[status=ac]:dark:border-green-800 data-[status=ac]:dark:bg-green-900/20`}
@@ -331,7 +364,7 @@ const Submission = () => {
 											<Skeleton className="h-4 w-4/6 rounded-md dark:bg-neutral-700" />
 										</div>
 									) : (
-										submission?.msg?.compiler || (
+										(submission?.msg?.compiler && submission.msg.compiler !== 'Compile code successful' ? submission.msg.compiler : null) || (
 											<div className="flex items-center justify-center p-8 text-gray-500 dark:text-gray-400">
 												<AlertTriangle className="mr-2 h-5 w-5 opacity-70" />
 												<span className="capitalize">{t('nothing-here')}</span>
