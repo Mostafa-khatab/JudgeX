@@ -19,15 +19,13 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
 	cors: {
 		origin: (origin, callback) => {
-			const allowedOrigins = [process.env.CLIENT_URL || 'http://localhost:5173', process.env.ADMIN_URL || 'http://localhost:5174'];
-			if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://localhost:')) {
-				callback(null, true);
-			} else {
-				callback(new Error('Not allowed by CORS'));
-			}
+			callback(null, origin || true);
 		},
 		credentials: true,
 	},
+	transports: ['websocket', 'polling'],
+	pingTimeout: 60000,
+	pingInterval: 25000,
 });
 
 // Export io for use in controllers
@@ -46,12 +44,7 @@ app.use(
 app.use(
 	cors({
 		origin: (origin, callback) => {
-			const allowedOrigins = [process.env.CLIENT_URL || 'http://localhost:5173', process.env.ADMIN_URL || 'http://localhost:5174'];
-			if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://localhost:')) {
-				callback(null, true);
-			} else {
-				callback(new Error('Not allowed by CORS'));
-			}
+			callback(null, origin || true);
 		},
 		credentials: true,
 	}),
@@ -78,16 +71,19 @@ io.on('connection', (socket) => {
 	});
 
 	// Interview specific events
-	socket.on('join-interview', ({ interviewId, role, name }) => {
+	socket.on('join-interview', ({ interviewId, role, name, avatar }) => {
 		const room = `interview:${interviewId}`;
 		socket.join(room);
+		socket.interviewRoom = room;
+		socket.role = role;
 		console.log(`${role} ${name || socket.id} joined interview ${interviewId}`);
-		socket.to(room).emit('participant-joined', { role, name, socketId: socket.id });
+		socket.to(room).emit('participant-joined', { role, name, avatar, socketId: socket.id });
 	});
 
 	socket.on('leave-interview', ({ interviewId }) => {
 		const room = `interview:${interviewId}`;
 		socket.leave(room);
+		socket.interviewRoom = null;
 		socket.to(room).emit('participant-left', { socketId: socket.id });
 	});
 
@@ -182,14 +178,31 @@ io.on('connection', (socket) => {
 			const problem = await Problem.findById(problemId);
 			if (!problem) return;
 			
-			const starterCode = problem.starterCode?.[language] || '// Start coding...';
+			const langMap = {
+				'c': 'c',
+				'cpp': 'cpp',
+				'c++': 'cpp',
+				'c++11': 'cpp',
+				'c++14': 'cpp',
+				'c++17': 'cpp',
+				'c++20': 'cpp',
+				'python': 'python',
+				'python2': 'python',
+				'python3': 'python',
+				'javascript': 'javascript',
+				'node': 'javascript',
+				'java': 'java'
+			};
+
+			const key = langMap[language?.toLowerCase()] || 'cpp';
+			const starterCode = problem.starterCode?.[key] || problem.starterCode?.['cpp'] || '// Start coding...';
 			
 			// Update interview state
 			await Interview.findByIdAndUpdate(interviewId, {
 				'state.activeProblemId': problemId,
-				'state.code': starterCode
+				'state.code': starterCode,
+				'state.language': language
 			});
-			
 			// Broadcast to room
 			io.to(room).emit('problem-switched', {
 				problemId,
@@ -232,6 +245,43 @@ io.on('connection', (socket) => {
 		socket.to(room).emit('webrtc-reconnect-request', { 
 			from: socket.id,
 			timestamp: new Date()
+		});
+	});
+
+	// ===== Screen Share =====
+	socket.on('interview-screen-offer', ({ interviewId, offer }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('screen-offer', { offer, from: socket.id });
+	});
+
+	socket.on('interview-screen-answer', ({ interviewId, answer }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('screen-answer', { answer, from: socket.id });
+	});
+
+	socket.on('interview-screen-ice', ({ interviewId, candidate }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('screen-ice', { candidate, from: socket.id });
+	});
+
+	socket.on('interview-screen-stopped', ({ interviewId }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('screen-stopped', { from: socket.id });
+	});
+
+	// ===== Participant Presence Signaling =====
+	socket.on('participant-request', ({ interviewId }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('participant-query', { from: socket.id });
+	});
+
+	socket.on('participant-response', (data) => {
+		const room = `interview:${data.interviewId}`;
+		socket.to(room).emit('participant-info', {
+			role: data.role,
+			name: data.name,
+			avatar: data.avatar,
+			socketId: socket.id
 		});
 	});
 
@@ -291,6 +341,12 @@ io.on('connection', (socket) => {
 
 	socket.on('disconnect', () => {
 		console.log('User disconnected:', socket.id);
+		if (socket.interviewRoom) {
+			socket.to(socket.interviewRoom).emit('participant-left', { 
+				socketId: socket.id,
+				role: socket.role 
+			});
+		}
 	});
 });
 

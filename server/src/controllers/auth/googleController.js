@@ -24,22 +24,29 @@ const googleLogin = async (req, res) => {
 				idToken: credential,
 				audience: process.env.GOOGLE_CLIENT_ID,
 			});
+			ticket = { 
+				payload: ticket.getPayload()
+			};
 		} catch (error) {
-			console.error('Failed to verify ID token:', error);
+			console.log('Not an ID Token, trying as Access Token...');
 			try {
 				// If ID token fails, try as access token
 				const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
 					headers: { Authorization: `Bearer ${credential}` },
 				});
+				if (!response.ok) throw new Error('Failed to fetch userinfo');
 				const payload = await response.json();
-				ticket = { getPayload: () => payload };
+				ticket = { payload };
 			} catch (error2) {
-				console.error('Failed to verify access token:', error2);
-				throw new Error('Invalid Google credential');
+				console.error('Failed to verify Google credential:', error2);
+				return res.status(401).json({
+					success: false,
+					msg: 'Invalid Google credential',
+				});
 			}
 		}
 
-		const { email, name, picture } = ticket.getPayload();
+		const { email, name, picture } = ticket.payload;
 
 		// Find or create user
 		let user = await User.findOne({ email });
@@ -73,8 +80,8 @@ const googleLogin = async (req, res) => {
 		// Set cookie
 		res.cookie('token', token, {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
-			sameSite: 'lax',
+			secure: true,
+			sameSite: 'none',
 			maxAge: (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000,
 		});
 

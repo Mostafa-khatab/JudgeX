@@ -24,6 +24,31 @@ import useWebRTC from './hooks/useWebRTC';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+  ]
+};
+
 // ============ API ============
 const api = {
   getInterview: async (id, candidateToken) => {
@@ -106,6 +131,19 @@ const api = {
   getProblemForInterview: async (id, role) => {
     const res = await fetch(`${API_URL}/problem/${id}/for-interview?role=${role}`, { credentials: 'include' });
     return res.json();
+  },
+  runCode: async (code, language, input, candidateToken) => {
+    const headers = { 
+      'Content-Type': 'application/json',
+      ...(candidateToken ? { 'x-candidate-token': candidateToken } : {})
+    };
+    const res = await fetch(`${API_URL}/code/interview-run`, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+      body: JSON.stringify({ code, language, input })
+    });
+    return res.json();
   }
 };
 
@@ -115,6 +153,7 @@ const InterviewRoom = () => {
   const navigate = useNavigate();
   const interviewId = id || null;
   const inviteToken = token || null;
+  const interviewIdRef = useRef(interviewId);
   
   const [interview, setInterview] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -166,6 +205,7 @@ const InterviewRoom = () => {
   // Video refs
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const screenVideoRef = useRef(null);
   
   // Socket
   const socketRef = useRef(null);
@@ -183,12 +223,25 @@ const InterviewRoom = () => {
   // Remote media state
   const [remoteMediaState, setRemoteMediaState] = useState({ audio: true, video: true });
   
-  const ICE_SERVERS = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' }
-    ]
-  };
+  // Screen share state
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [screenStream, setScreenStream] = useState(null);
+  const [remoteScreenStream, setRemoteScreenStream] = useState(null);
+  const screenPeerRef = useRef(null);
+
+  // Participant presence & info
+  const [peerInfo, setPeerInfo] = useState({
+    isConnected: false,
+    role: null,
+    name: null,
+    avatar: null
+  });
+  
+  // ICE Candidate Queues (to handle candidates before remote description is set)
+  const iceQueue = useRef([]);
+  const screenIceQueue = useRef([]);
+  const isRemoteDescriptionSet = useRef(false);
+  const isScreenRemoteDescriptionSet = useRef(false);
 
   // Start video call
   const startVideoCall = async () => {
@@ -204,11 +257,22 @@ const InterviewRoom = () => {
       const pc = new RTCPeerConnection(ICE_SERVERS);
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
       
-      pc.ontrack = (event) => {
-        setRemoteStream(event.streams[0]);
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = event.streams[0];
+      pc.oniceconnectionstatechange = () => {
+        console.log(`Video ICE State: ${pc.iceConnectionState}`);
+        if (pc.iceConnectionState === 'failed') {
+          toast.error('Video connection failed. Trying to reconnect...');
+          socketRef.current?.emit('interview-webrtc-reconnect', { interviewId: interview._id });
         }
+      };
+
+      pc.onconnectionstatechange = () => {
+        console.log(`Video Connection State: ${pc.connectionState}`);
+        setIsConnected(pc.connectionState === 'connected');
+      };
+
+      pc.ontrack = (event) => {
+        console.log('Video: Received remote track');
+        setRemoteStream(event.streams[0]);
       };
       
       pc.onicecandidate = (event) => {
@@ -244,28 +308,67 @@ const InterviewRoom = () => {
   };
 
   const handleWebRTCOffer = async (offer) => {
-    if (!peerConnectionRef.current) {
-      await startVideoCall();
+    try {
+      if (!peerConnectionRef.current) {
+        await startVideoCall();
+      }
+      const pc = peerConnectionRef.current;
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      isRemoteDescriptionSet.current = true;
+      console.log('Video: Remote description (offer) set');
+
+      // Flush ICE queue
+      while (iceQueue.current.length > 0) {
+        const candidate = iceQueue.current.shift();
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          console.log('Video: Queued ICE candidate added');
+        } catch (e) { console.warn('Video: Failed to add queued ICE', e); }
+      }
+
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      socketRef.current?.emit('interview-webrtc-answer', {
+        interviewId: interview._id,
+        answer
+      });
+    } catch (err) {
+      console.error('Handle WebRTC offer error:', err);
     }
-    const pc = peerConnectionRef.current;
-    await pc.setRemoteDescription(new RTCSessionDescription(offer));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    socketRef.current?.emit('interview-webrtc-answer', {
-      interviewId: interview._id,
-      answer
-    });
   };
 
   const handleWebRTCAnswer = async (answer) => {
-    if (peerConnectionRef.current) {
-      await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+    try {
+      if (peerConnectionRef.current) {
+        await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+        isRemoteDescriptionSet.current = true;
+        console.log('Video: Remote description (answer) set');
+
+        // Flush ICE queue
+        while (iceQueue.current.length > 0) {
+          const candidate = iceQueue.current.shift();
+          try {
+            await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+            console.log('Video: Queued ICE candidate added');
+          } catch (e) { console.warn('Video: Failed to add queued ICE', e); }
+        }
+      }
+    } catch (err) {
+      console.error('Handle WebRTC answer error:', err);
     }
   };
 
   const handleWebRTCIce = async (candidate) => {
-    if (peerConnectionRef.current) {
-      await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+    try {
+      if (peerConnectionRef.current && isRemoteDescriptionSet.current) {
+        await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        console.log('Video: ICE candidate added directly');
+      } else {
+        iceQueue.current.push(candidate);
+        console.log('Video: ICE candidate queued');
+      }
+    } catch (err) {
+      console.error('Handle WebRTC ICE error:', err);
     }
   };
 
@@ -315,6 +418,178 @@ const InterviewRoom = () => {
     setIsVideoReady(false);
   };
 
+  // ============ Screen Share ============
+  const startScreenShare = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        toast.error('Screen sharing is not supported on this browser/device');
+        return;
+      }
+      const stream = await navigator.mediaDevices.getDisplayMedia({ 
+        video: true, 
+        audio: false 
+      });
+      
+      console.log('Screen: Local tracks gathered', stream.getTracks().map(t => t.label));
+      setScreenStream(stream);
+      setIsScreenSharing(true);
+      
+      const pc = new RTCPeerConnection(ICE_SERVERS);
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+      
+      pc.oniceconnectionstatechange = () => {
+        console.log(`Screen ICE State: ${pc.iceConnectionState}`);
+        if (pc.iceConnectionState === 'failed') {
+          toast.error('Screen share connection failed.');
+        }
+      };
+
+      pc.onconnectionstatechange = () => {
+        console.log(`Screen Connection State: ${pc.connectionState}`);
+      };
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate && socketRef.current) {
+          socketRef.current.emit('interview-screen-ice', {
+            interviewId: interview._id,
+            candidate: event.candidate
+          });
+        }
+      };
+      
+      screenPeerRef.current = pc;
+      
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socketRef.current?.emit('interview-screen-offer', {
+        interviewId: interview._id,
+        offer
+      });
+      
+      stream.getVideoTracks()[0].onended = () => {
+        stopScreenShare();
+      };
+      
+      toast.success('Screen sharing started!');
+    } catch (err) {
+      setIsScreenSharing(false);
+      if (err.name !== 'NotAllowedError') {
+        console.error('Screen share error:', err);
+        toast.error('Failed to share screen: ' + err.message);
+      }
+    }
+  };
+
+  const stopScreenShare = () => {
+    if (screenStream) {
+      screenStream.getTracks().forEach(track => track.stop());
+      setScreenStream(null);
+    }
+    if (screenPeerRef.current) {
+      screenPeerRef.current.close();
+      screenPeerRef.current = null;
+    }
+    setIsScreenSharing(false);
+    isScreenRemoteDescriptionSet.current = false;
+    screenIceQueue.current = [];
+    socketRef.current?.emit('interview-screen-stopped', { 
+      interviewId: interview._id 
+    });
+  };
+
+  const handleScreenOffer = async (offer) => {
+    try {
+      const pc = new RTCPeerConnection(ICE_SERVERS);
+      
+      pc.oniceconnectionstatechange = () => {
+        console.log(`Screen ICE State (Receiver): ${pc.iceConnectionState}`);
+      };
+
+      pc.ontrack = (event) => {
+        console.log('Screen: Received remote track', {
+          streams: event.streams.length,
+          tracks: event.streams[0]?.getTracks().map(t => ({ kind: t.kind, label: t.label, enabled: t.enabled }))
+        });
+        if (event.streams && event.streams[0]) {
+          setRemoteScreenStream(event.streams[0]);
+        }
+      };
+      
+      pc.onicecandidate = (event) => {
+        if (event.candidate && socketRef.current) {
+          socketRef.current.emit('interview-screen-ice', {
+            interviewId: interview._id,
+            candidate: event.candidate
+          });
+        }
+      };
+      
+      screenPeerRef.current = pc;
+      
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      isScreenRemoteDescriptionSet.current = true;
+      console.log('Screen: Remote description (offer) set');
+
+      // Flush queue
+      while (screenIceQueue.current.length > 0) {
+        const candidate = screenIceQueue.current.shift();
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          console.log('Screen: Queued ICE candidate added');
+        } catch (e) { console.warn('Screen: Failed to add queued ICE', e); }
+      }
+
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      
+      socketRef.current?.emit('interview-screen-answer', {
+        interviewId: interview._id,
+        answer
+      });
+      
+      console.log('Screen share answer sent');
+      toast.info('Peer started sharing their screen');
+    } catch (err) {
+      console.error('Handle screen offer error:', err);
+      toast.error('WebRTC: Failed to receive screen share');
+    }
+  };
+
+  const handleScreenAnswer = async (answer) => {
+    try {
+      if (screenPeerRef.current) {
+        await screenPeerRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+        isScreenRemoteDescriptionSet.current = true;
+        console.log('Screen: Remote description (answer) set');
+
+        // Flush queue
+        while (screenIceQueue.current.length > 0) {
+          const candidate = screenIceQueue.current.shift();
+          try {
+            await screenPeerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+            console.log('Screen: Queued ICE candidate added');
+          } catch (e) { console.warn('Screen: Failed to add queued ICE', e); }
+        }
+      }
+    } catch (err) {
+      console.error('Handle screen answer error:', err);
+    }
+  };
+
+  const handleScreenIce = async (candidate) => {
+    try {
+      if (screenPeerRef.current && isScreenRemoteDescriptionSet.current) {
+        await screenPeerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        console.log('Screen: ICE candidate added directly');
+      } else {
+        screenIceQueue.current.push(candidate);
+        console.log('Screen: ICE candidate queued');
+      }
+    } catch (err) {
+      console.error('Handle screen ICE error:', err);
+    }
+  };
+
   // ============ Effects ============
   useEffect(() => {
     if (inviteToken && !candidateToken) {
@@ -350,14 +625,53 @@ const InterviewRoom = () => {
     }
   }, [interviewId, inviteToken, candidateToken]);
 
+  // Handle Auto-start Camera
+  useEffect(() => {
+    if (interview && !showJoinForm && !isVideoReady && !loading) {
+      startVideoCall();
+    }
+  }, [interview?._id, showJoinForm, isVideoReady, loading]);
+
   useEffect(() => {
     if (interview && !showJoinForm) {
+      // Keep ref in sync with the actual interview ID
+      interviewIdRef.current = interview._id;
       setupSocket();
-      setupTabTracking();
+      const cleanupTabTracking = setupTabTracking();
+      
+      return () => {
+        // Cleanup socket listeners before disconnecting
+        if (socketRef.current) {
+          socketRef.current.off('code-updated');
+          socketRef.current.off('language-changed');
+          socketRef.current.off('chat-message');
+          socketRef.current.off('status-updated');
+          socketRef.current.off('interview-finished');
+          socketRef.current.off('problem-updated');
+          socketRef.current.off('tab-switch-detected');
+          socketRef.current.off('participant-joined');
+          socketRef.current.off('problem-switched');
+          socketRef.current.off('webrtc-offer');
+          socketRef.current.off('webrtc-answer');
+          socketRef.current.off('webrtc-ice');
+          socketRef.current.off('media-state-updated');
+          socketRef.current.off('webrtc-reconnect-request');
+          socketRef.current.off('participant-rejoined');
+          socketRef.current.off('screen-offer');
+          socketRef.current.off('screen-answer');
+          socketRef.current.off('screen-ice');
+          socketRef.current.off('screen-stopped');
+          socketRef.current.disconnect();
+        }
+        // Cleanup screen sharing
+        if (screenPeerRef.current) {
+          screenPeerRef.current.close();
+          screenPeerRef.current = null;
+        }
+        // Cleanup tab tracking
+        if (cleanupTabTracking) cleanupTabTracking();
+      };
     }
-    return () => {
-      socketRef.current?.disconnect();
-    };
   }, [interview?._id, showJoinForm]);
 
   useEffect(() => {
@@ -372,10 +686,41 @@ const InterviewRoom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Handle Remote Video Stream Assignment
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+      remoteVideoRef.current.play().catch(e => console.warn('Video: Playback failed', e));
+    }
+  }, [remoteStream]);
+
+  // Handle Remote Screen Stream Assignment
+  useEffect(() => {
+    if (screenVideoRef.current && remoteScreenStream) {
+      screenVideoRef.current.srcObject = remoteScreenStream;
+      screenVideoRef.current.play().catch(e => console.warn('Screen: Playback failed', e));
+    }
+  }, [remoteScreenStream]);
+
+  // Handle Local Video Stream Assignment
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(e => console.warn('Local Video: Playback failed', e));
+    }
+  }, [localStream]);
+
   // ============ Functions ============
   const loadInterview = async () => {
+    // Use ref to get the correct interview ID (works for both interviewer and candidate)
+    const effectiveId = interviewIdRef.current || interviewId;
+    if (!effectiveId) {
+      console.warn('loadInterview called but no interview ID available');
+      setLoading(false);
+      return;
+    }
     try {
-      const res = await api.getInterview(interviewId, candidateToken);
+      const res = await api.getInterview(effectiveId, candidateToken);
       if (res.success) {
         setInterview(res.data);
         setRole(res.role);
@@ -434,14 +779,21 @@ const InterviewRoom = () => {
   };
 
   const setupSocket = () => {
-    socketRef.current = io(API_URL, { withCredentials: true });
+    socketRef.current = io(API_URL, { 
+      withCredentials: true,
+      transports: ['websocket']
+    });
     
     socketRef.current.on('connect', () => {
-      socketRef.current.emit('join-interview', {
+      const myInfo = {
         interviewId: interview._id,
         role,
-        name: role === 'interviewer' ? 'Interviewer' : interview?.candidate?.name || 'Candidate'
-      });
+        name: role === 'interviewer' ? interview?.instructor?.username || 'Interviewer' : interview?.candidate?.name || 'Candidate',
+        avatar: role === 'interviewer' ? interview?.instructor?.avatar : null
+      };
+      socketRef.current.emit('join-interview', myInfo);
+      // Ask if anyone is already here
+      socketRef.current.emit('participant-request', { interviewId: interview._id });
     });
 
     socketRef.current.on('code-updated', (data) => {
@@ -470,8 +822,10 @@ const InterviewRoom = () => {
     });
 
     socketRef.current.on('problem-updated', (data) => {
-      // Refresh interview data when problem changes
-      loadInterview();
+      // Only update if we have a valid problem ID in the event
+      if (data?.problemId) {
+        toast.info('Problem list updated');
+      }
     });
 
     socketRef.current.on('tab-switch-detected', () => {
@@ -479,16 +833,62 @@ const InterviewRoom = () => {
       toast.warning('Candidate switched tabs!', { toastId: 'tab-switch' });
     });
 
-    socketRef.current.on('participant-joined', ({ role: joinedRole, name }) => {
-      toast.info(`${name || joinedRole} joined the interview`);
+    socketRef.current.on('participant-joined', (data) => {
+      setPeerInfo({
+        isConnected: true,
+        role: data.role,
+        name: data.name,
+        avatar: data.avatar
+      });
+      toast.info(`${data.name || data.role} joined the interview`);
+      
+      // Send my info back to them
+      socketRef.current.emit('participant-response', {
+        interviewId: interview._id,
+        role,
+        name: role === 'interviewer' ? interview?.instructor?.username || 'Interviewer' : interview?.candidate?.name || 'Candidate',
+        avatar: role === 'interviewer' ? interview?.instructor?.avatar : null
+      });
+    });
+
+    socketRef.current.on('participant-left', () => {
+      setPeerInfo(prev => ({ ...prev, isConnected: false }));
+      toast.info('Participant left the interview');
+    });
+
+    socketRef.current.on('participant-info', (data) => {
+      setPeerInfo({
+        isConnected: true,
+        role: data.role,
+        name: data.name,
+        avatar: data.avatar
+      });
+    });
+
+    socketRef.current.on('participant-query', () => {
+      socketRef.current.emit('participant-response', {
+        interviewId: interview._id,
+        role,
+        name: role === 'interviewer' ? interview?.instructor?.username || 'Interviewer' : interview?.candidate?.name || 'Candidate',
+        avatar: role === 'interviewer' ? interview?.instructor?.avatar : null
+      });
     });
     
-    // Problem switch with starter code
-    socketRef.current.on('problem-switched', ({ problem, starterCode }) => {
-      loadInterview(); // Refresh interview data
+    // Problem switch with starter code — use socket data directly (NO loadInterview!)
+    socketRef.current.on('problem-switched', async ({ problem, starterCode }) => {
       setCurrentProblem(problem);
-      setCode(starterCode); // Update code editor
+      setCode(starterCode);
       toast.info(`Problem switched to: ${problem.name}`);
+      
+      // Interviewer needs full problem data including hidden test cases
+      if (role === 'interviewer' && problem?._id) {
+        try {
+          const probRes = await api.getProblemForInterview(problem._id, 'interviewer');
+          if (probRes.success) setCurrentProblem(probRes.data);
+        } catch (e) {
+          console.error('Failed to load full problem data', e);
+        }
+      }
     });
     
     // WebRTC signaling
@@ -526,6 +926,28 @@ const InterviewRoom = () => {
     // Participant rejoined
     socketRef.current.on('participant-rejoined', ({ role: rejoinedRole, name }) => {
       toast.success(`${name || rejoinedRole} reconnected!`);
+    });
+    
+    // Screen share signaling
+    socketRef.current.on('screen-offer', async ({ offer }) => {
+      await handleScreenOffer(offer);
+    });
+    
+    socketRef.current.on('screen-answer', async ({ answer }) => {
+      await handleScreenAnswer(answer);
+    });
+    
+    socketRef.current.on('screen-ice', async ({ candidate }) => {
+      await handleScreenIce(candidate);
+    });
+    
+    socketRef.current.on('screen-stopped', () => {
+      if (screenPeerRef.current) {
+        screenPeerRef.current.close();
+        screenPeerRef.current = null;
+      }
+      setRemoteScreenStream(null);
+      toast.info('Screen sharing stopped');
     });
   };
 
@@ -570,15 +992,57 @@ const InterviewRoom = () => {
     api.updateState(interview._id, { language: newLang }, candidateToken);
   };
 
-  const handleRunCode = () => {
+  const handleRunCode = async () => {
     setIsRunning(true);
     setShowOutput(true);
     setOutput('Running...');
     
-    setTimeout(() => {
-      setOutput('✓ Code executed successfully\n\nOutput:\nHello World!');
+    let input = '';
+    
+    try {
+      const res = await api.runCode(code, language, input, candidateToken);
+      if (res.success) {
+        setOutput(`Execution Time: ${res.executionTime}ms\n\nOutput:\n${res.output || 'No output'}${res.error ? `\nError:\n${res.error}` : ''}`);
+      } else {
+        setOutput(`Execution Error:\n${res.msg}\n${res.error || ''}`);
+      }
+    } catch (err) {
+      console.error(err);
+      setOutput(`Failed to connect to code runner: ${err.message}`);
+    } finally {
       setIsRunning(false);
-    }, 1500);
+    }
+  };
+
+  const handleSubmitCode = async () => {
+    setIsRunning(true);
+    setShowOutput(true);
+    setOutput('Submitting...');
+    
+    // Attempt to run code
+    try {
+      const res = await api.runCode(code, language, '', candidateToken);
+      if (res.success) {
+        setOutput(`Execution Time: ${res.executionTime}ms\n\nOutput:\n${res.output || 'No output'}${res.error ? `\nError:\n${res.error}` : ''}`);
+        
+        // Take an automatic snapshot on submit (if allowed)
+        try {
+          await api.takeSnapshot(interview._id, `Code submitted by ${role === 'candidate' ? 'Candidate' : 'Interviewer'}`);
+          toast.success('Code submitted and snapshot saved!');
+        } catch(e) {
+          toast.success('Code submitted successfully!');
+        }
+      } else {
+        setOutput(`Execution Error:\n${res.msg}\n${res.error || ''}`);
+        toast.error('Submission failed due to execution error.');
+      }
+    } catch (err) {
+      console.error(err);
+      setOutput(`Failed to connect: ${err.message}`);
+      toast.error('Submission failed');
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   const handleSendMessage = async () => {
@@ -954,19 +1418,6 @@ const InterviewRoom = () => {
                         {currentProblem.task}
                       </ReactMarkdown>
                     </div>
-                    
-                    {/* Interviewer Extras */}
-                    {role === 'interviewer' && currentProblem.testcase && (
-                      <div className="mt-8 pt-4 border-t border-neutral-700">
-                        <h3 className="font-bold mb-2 text-yellow-500 flex items-center gap-2">
-                          <EyeOff className="h-4 w-4" />
-                          Hidden Test Cases (You Only)
-                        </h3>
-                        <pre className="bg-neutral-950 p-3 rounded text-xs font-mono text-neutral-400 overflow-auto border border-neutral-800">
-                          {JSON.stringify(currentProblem.testcase, null, 2)}
-                        </pre>
-                      </div>
-                    )}
                   </div>
                 ) : interview?.questions?.length > 0 ? (
                   interview.questions.map((q, i) => (
@@ -1099,8 +1550,8 @@ const InterviewRoom = () => {
                 onChange={e => handleLanguageChange(e.target.value)}
                 className="bg-neutral-800 border-neutral-700 rounded-lg px-3 py-1.5 text-xs"
               >
-                {(interview?.allowedLanguages || ['cpp', 'python', 'javascript', 'java']).map(lang => (
-                  <option key={lang} value={lang}>{lang.toUpperCase()}</option>
+                {(interview?.allowedLanguages || ['c', 'cpp', 'python', 'javascript', 'java']).map(lang => (
+                  <option key={lang} value={lang}>{lang === 'cpp' ? 'C++' : lang.toUpperCase()}</option>
                 ))}
               </select>
             </div>
@@ -1116,7 +1567,12 @@ const InterviewRoom = () => {
                 {isRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Play className="h-3.5 w-3.5 mr-1" />}
                 Run
               </Button>
-              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-xs">
+              <Button 
+                size="sm" 
+                className="bg-green-600 hover:bg-green-700 text-xs"
+                onClick={handleSubmitCode}
+                disabled={isRunning}
+              >
                 <Send className="h-3.5 w-3.5 mr-1" />
                 Submit
               </Button>
@@ -1166,38 +1622,87 @@ const InterviewRoom = () => {
               </button>
             </div>
             
-            {/* Remote Video */}
-            <div className="relative bg-neutral-900 aspect-video">
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-              {!remoteStream && (
-                <div className="absolute inset-0 flex items-center justify-center text-neutral-600">
-                  <Users className="h-12 w-12" />
+            {/* Screen Share Display */}
+            {remoteScreenStream && (
+              <div className="relative bg-black border-b border-neutral-800">
+                <video
+                  ref={screenVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full"
+                  style={{ maxHeight: '300px' }}
+                />
+                <div className="absolute top-2 left-2 px-2 py-0.5 bg-green-600/90 rounded text-[10px] flex items-center gap-1">
+                  <Monitor className="h-3 w-3" />
+                  Screen Share
                 </div>
-              )}
-              
-              {/* Remote video off overlay */}
-              {remoteStream && !remoteMediaState.video && (
-                <div className="absolute inset-0 bg-neutral-900 flex items-center justify-center">
-                  <VideoOff className="h-12 w-12 text-neutral-500" />
-                </div>
-              )}
-              
-              {/* Remote mute indicator */}
-              {!remoteMediaState.audio && (
-                <div className="absolute top-2 right-2 bg-red-500 rounded-full p-1.5">
-                  <MicOff className="h-3 w-3 text-white" />
-                </div>
-              )}
-              
-              <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 rounded text-[10px]">
-                {role === 'interviewer' ? 'Candidate' : 'Interviewer'}
               </div>
-            </div>
+            )}
+            
+            {/* Local screen sharing indicator */}
+            {isScreenSharing && !remoteScreenStream && (
+              <div className="px-3 py-2 bg-green-600/20 border-b border-green-500/30 text-center">
+                <span className="text-[10px] text-green-400 flex items-center justify-center gap-1.5">
+                  <Monitor className="h-3 w-3" />
+                  You are sharing your screen
+                </span>
+              </div>
+            )}
+
+            {/* Remote Video Container - Only show if peer is connected */}
+            {peerInfo.isConnected ? (
+              <div className="relative bg-neutral-900 aspect-video">
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                {!remoteStream && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-900">
+                    {peerInfo.avatar ? (
+                      <img 
+                        src={peerInfo.avatar} 
+                        className="h-20 w-20 rounded-full border-2 border-neutral-700 object-cover mb-2" 
+                        alt={peerInfo.name} 
+                      />
+                    ) : (
+                      <div className="h-20 w-20 rounded-full bg-neutral-800 flex items-center justify-center mb-2">
+                        <Users className="h-10 w-10 text-neutral-600" />
+                      </div>
+                    )}
+                    <span className="text-xs text-neutral-500 font-medium">{peerInfo.name}</span>
+                    <span className="text-[10px] text-neutral-600 mt-1">Camera Off</span>
+                  </div>
+                )}
+                
+                {/* Remote video off overlay */}
+                {remoteStream && !remoteMediaState.video && (
+                  <div className="absolute inset-0 bg-neutral-900 flex items-center justify-center">
+                    <VideoOff className="h-12 w-12 text-neutral-500" />
+                  </div>
+                )}
+                
+                {/* Remote mute indicator */}
+                {!remoteMediaState.audio && (
+                  <div className="absolute top-2 right-2 bg-red-500 rounded-full p-1.5">
+                    <MicOff className="h-3 w-3 text-white" />
+                  </div>
+                )}
+                
+                <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 rounded text-[10px]">
+                  {peerInfo.name || (peerInfo.role === 'interviewer' ? 'Interviewer' : 'Candidate')}
+                </div>
+              </div>
+            ) : (
+              <div className="aspect-video bg-neutral-950 flex flex-col items-center justify-center p-4 text-center border-b border-neutral-900">
+                <div className="h-12 w-12 rounded-full bg-neutral-900 flex items-center justify-center mb-2 opacity-20">
+                  <Users className="h-6 w-6 text-neutral-500" />
+                </div>
+                <p className="text-[10px] text-neutral-700">Waiting for {role === 'interviewer' ? 'candidate' : 'interviewer'} to join...</p>
+              </div>
+            )}
             
             {/* Local Video */}
             <div className="relative bg-neutral-950 aspect-video border-t border-neutral-800">
@@ -1209,54 +1714,81 @@ const InterviewRoom = () => {
                 className="absolute inset-0 w-full h-full object-cover transform scale-x-[-1]"
               />
               {!localStream && (
-                <div className="absolute inset-0 flex items-center justify-center text-neutral-700">
-                  <Video className="h-8 w-8" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-950">
+                   {role === 'interviewer' && interview?.instructor?.avatar ? (
+                      <img 
+                        src={interview.instructor.avatar} 
+                        className="h-16 w-16 rounded-full border border-neutral-800 object-cover mb-2 opacity-50" 
+                        alt="You" 
+                      />
+                    ) : (
+                      <div className="h-16 w-16 rounded-full bg-neutral-900 flex items-center justify-center mb-2 opacity-50">
+                        <Users className="h-8 w-8 text-neutral-700" />
+                      </div>
+                    )}
+                  <Video className="h-4 w-4 text-neutral-800" />
                 </div>
               )}
               <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-blue-600/80 rounded text-[10px]">
-                You
+                You ({role === 'interviewer' ? interview?.instructor?.username || 'Interviewer' : interview?.candidate?.name || 'Candidate'})
               </div>
             </div>
             
             {/* Video Controls */}
-            <div className="p-3 border-t border-neutral-800 flex items-center justify-center gap-2">
-              {!isVideoReady ? (
-                <Button 
-                  size="sm" 
-                  className="bg-green-600 hover:bg-green-700 text-xs"
-                  onClick={startVideoCall}
-                >
-                  <Video className="h-4 w-4 mr-1.5" />
-                  Start Camera
-                </Button>
-              ) : (
-                <>
-                  <Button 
-                    size="icon" 
-                    variant="outline" 
-                    className={`h-9 w-9 ${!isAudioEnabled ? 'bg-red-500/20 border-red-500 text-red-500' : 'border-neutral-700 hover:bg-neutral-800'}`}
-                    onClick={toggleAudio}
-                  >
-                    {isAudioEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-                  </Button>
-                  <Button 
-                    size="icon" 
-                    variant="outline" 
-                    className={`h-9 w-9 ${!isVideoEnabled ? 'bg-red-500/20 border-red-500 text-red-500' : 'border-neutral-700 hover:bg-neutral-800'}`}
-                    onClick={toggleVideo}
-                  >
-                    {isVideoEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
-                  </Button>
-                  <Button 
-                    size="icon" 
-                    variant="destructive" 
-                    className="h-9 w-9"
-                    onClick={endVideoCall}
-                  >
-                    <PhoneOff className="h-4 w-4" />
-                  </Button>
-                </>
-              )}
+            {/* Video & Screen Controls */}
+            <div className="p-3 border-t border-neutral-800 space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                {isVideoReady ? (
+                  <>
+                    <Button 
+                      size="icon" 
+                      variant="outline" 
+                      className={`h-9 w-9 ${!isAudioEnabled ? 'bg-red-500/20 border-red-500 text-red-500' : 'border-neutral-700 hover:bg-neutral-800'}`}
+                      onClick={toggleAudio}
+                    >
+                      {isAudioEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+                    </Button>
+                    <Button 
+                      size="icon" 
+                      variant="outline" 
+                      className={`h-9 w-9 ${!isVideoEnabled ? 'bg-red-500/20 border-red-500 text-red-500' : 'border-neutral-700 hover:bg-neutral-800'}`}
+                      onClick={toggleVideo}
+                    >
+                      {isVideoEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
+                    </Button>
+                    <Button 
+                      size="icon" 
+                      variant="destructive" 
+                      className="h-9 w-9"
+                      onClick={() => {
+                        localStream?.getTracks().forEach(t => t.stop());
+                        setIsVideoReady(false);
+                      }}
+                    >
+                      <PhoneOff className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 text-neutral-500 animate-pulse py-1">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-xs font-medium">Connecting...</span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Screen Share Button */}
+              <Button 
+                size="sm" 
+                variant="outline"
+                className={`w-full text-xs ${isScreenSharing 
+                  ? 'bg-green-500/20 border-green-500 text-green-400 hover:bg-green-500/30' 
+                  : 'border-neutral-700 text-neutral-400 hover:bg-neutral-800'}`}
+                onClick={isScreenSharing ? stopScreenShare : startScreenShare}
+                disabled={remoteScreenStream}
+              >
+                <Monitor className="h-4 w-4 mr-1.5" />
+                {isScreenSharing ? 'Stop Sharing' : 'Share Screen'}
+              </Button>
             </div>
             
             {/* Connection Status */}

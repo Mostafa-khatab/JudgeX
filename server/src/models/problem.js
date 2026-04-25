@@ -22,58 +22,25 @@ const problemSchema = new mongoose.Schema(
     ],
     // ===== Starter Code Templates for Interview =====
     starterCode: {
+      c: {
+        type: String,
+        default: `#include <stdio.h>\n\nint main() {\n    // Write your solution here\n    return 0;\n}`
+      },
       cpp: {
         type: String,
-        default: `#include <bits/stdc++.h>
-using namespace std;
-
-class Solution {
-public:
-    void solve() {
-        // Write your solution here
-    }
-};
-
-int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-    Solution().solve();
-    return 0;
-}`
+        default: `#include <iostream>\n#include <vector>\n#include <algorithm>\n\nusing namespace std;\n\nclass Solution {\npublic:\n    void solve() {\n        // Write your solution here\n    }\n};\n\nint main() {\n    ios_base::sync_with_stdio(false);\n    cin.tie(NULL);\n    \n    Solution sol;\n    sol.solve();\n    \n    return 0;\n}`
       },
       python: {
         type: String,
-        default: `class Solution:
-    def solve(self):
-        # Write your solution here
-        pass
-
-if __name__ == "__main__":
-    Solution().solve()`
+        default: `import sys\n\nclass Solution:\n    def solve(self):\n        # Write your solution here\n        pass\n\nif __name__ == "__main__":\n    sol = Solution()\n    sol.solve()`
       },
       javascript: {
         type: String,
-        default: `class Solution {
-    solve() {
-        // Write your solution here
-    }
-}
-
-new Solution().solve();`
+        default: `class Solution {\n    solve() {\n        // Write your solution here\n    }\n}\n\nconst sol = new Solution();\nsol.solve();`
       },
       java: {
         type: String,
-        default: `import java.util.*;
-
-public class Solution {
-    public void solve() {
-        // Write your solution here
-    }
-    
-    public static void main(String[] args) {
-        new Solution().solve();
-    }
-}`
+        default: `import java.util.*;\n\npublic class Solution {\n    public void solve() {\n        // Write your solution here\n    }\n\n    public static void main(String[] args) {\n        Solution sol = new Solution();\n        sol.solve();\n    }\n}`
       }
     },
   },

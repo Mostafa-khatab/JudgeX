@@ -3,13 +3,7 @@ import authMiddlewares from '../middlewares/authMiddlewares.js';
 
 const { isAuth } = authMiddlewares;
 
-// isInstructor middleware (check if user is instructor or admin)
-const isInstructor = (req, res, next) => {
-  if (!req.userPermission || !['instructor', 'admin'].includes(req.userPermission)) {
-    return res.status(403).json({ success: false, message: 'Instructor permission required' });
-  }
-  next();
-};
+// Anyone can create an interview now, removed isInstructor middleware
 import {
   createInterview,
   getInterviews,
@@ -47,7 +41,7 @@ router.get('/join/:token', joinInterview);
 
 // ==================== PROTECTED (Auth required) ====================
 // CRUD
-router.post('/', isAuth, isInstructor, createInterview);
+router.post('/', isAuth, createInterview);
 router.get('/', isAuth, getInterviews);
 router.get('/:id', isAuth, getInterview);
 router.delete('/:id', isAuth, deleteInterview);
