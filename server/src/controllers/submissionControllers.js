@@ -256,7 +256,26 @@ const submissionControllers = {
 					}
 				});
 
-				const testcaseResults = await Promise.all(judgingPromises);
+				// Wrap Promise.all with an 8.5s timeout to prevent Vercel 10s kill
+				const judgingTimeout = new Promise((resolve) => 
+					setTimeout(() => {
+						resolve([{
+							id: 1,
+							status: 'TLE',
+							time: 8500,
+							memory: 0,
+							input: 'System Timeout',
+							expectedOutput: '',
+							actualOutput: 'Execution took too long for the free tier.',
+							msg: 'Server execution timeout'
+						}]);
+					}, 8500)
+				);
+
+				const testcaseResults = await Promise.race([
+					Promise.all(judgingPromises),
+					judgingTimeout
+				]);
 
 
 				// Determine overall status
