@@ -179,8 +179,8 @@ const submissionControllers = {
 				message: 'Submission is being judged',
 			});
 
-			// Send directly to Piston API for judging (No local judger needed)
-			try {
+			// Send to Wandbox API for judging (free, no auth needed)
+		try {
 			// Wandbox compiler mapping
 			const wandboxCompilers = {
 				'python3': 'cpython-3.12.7',
@@ -196,55 +196,62 @@ const submissionControllers = {
 				'node': 'nodejs-20.17.0'
 			};
 
-			const compiler = wandboxCompilers[language] || language;
+			const compiler = wandboxCompilers[language];
+			if (!compiler) {
+				await submission.updateOne({ status: 'IE', msg: { server: `Unsupported language: ${language}` }, completedAt: new Date() });
+				console.log('Submit code successful (unsupported lang)');
+				return;
+			}
+
 			const testcases = problem.testcase || [];
-			
-			// Run all testcases in parallel to speed up judging
-			const judgingPromises = testcases.map(async (tc, index) => {
+			const testcaseResults = [];
+
+			// Run testcases SEQUENTIALLY to avoid overwhelming the free API
+			for (let index = 0; index < testcases.length; index++) {
+				const tc = testcases[index];
 				try {
 					const startTime = Date.now();
 					const response = await axios.post('https://wandbox.org/api/compile.json', {
 						code: src,
 						compiler,
 						stdin: tc.input || '',
-						'save': false
-					}, { timeout: 15000 });
+						save: false
+					}, { timeout: 30000 });
 
 					const elapsed = Date.now() - startTime;
 					const data = response.data;
 					const actualOutput = (data.program_output || '').trim();
 					const expectedOutput = (tc.output || '').trim();
-					const hasError = data.compiler_error || data.program_error || (data.status !== '0' && data.status !== 0);
 
-					let status = 'AC';
+					let tcStatus = 'AC';
 					if (data.compiler_error) {
-						status = 'CE';
-					} else if (hasError) {
-						status = 'RTE';
+						tcStatus = 'CE';
+					} else if (data.program_error || (data.status !== '0' && data.status !== 0)) {
+						tcStatus = 'RTE';
 					} else if (actualOutput !== expectedOutput) {
-						status = 'WA';
+						tcStatus = 'WA';
 					}
 
-					return {
+					testcaseResults.push({
 						id: index + 1,
-						status,
+						status: tcStatus,
 						time: elapsed,
 						memory: 0,
 						input: tc.input,
 						expectedOutput: tc.output,
 						actualOutput: actualOutput
-					};
+					});
 				} catch (err) {
-					return {
+					const errDetail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+					testcaseResults.push({
 						id: index + 1,
 						status: 'IE',
 						time: 0,
-						msg: err.message
-					};
+						msg: errDetail
+					});
 				}
-			});
+			}
 
-				const testcaseResults = await Promise.all(judgingPromises);
 
 				// Determine overall status
 				let finalStatus = 'AC';
