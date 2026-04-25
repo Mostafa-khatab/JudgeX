@@ -210,11 +210,9 @@ const submissionControllers = {
 				}
 
 				const testcases = problem.testcase || [];
-				const testcaseResults = [];
-
-				// Run testcases sequentially
-				for (let index = 0; index < testcases.length; index++) {
-					const tc = testcases[index];
+				
+				// Run testcases concurrently to bypass Vercel's 10s timeout limit
+				const judgingPromises = testcases.map(async (tc, index) => {
 					try {
 						const startTime = Date.now();
 						const response = await axios.post('https://api.jdoodle.com/v1/execute', {
@@ -238,7 +236,7 @@ const submissionControllers = {
 							tcStatus = 'WA';
 						}
 
-						testcaseResults.push({
+						return {
 							id: index + 1,
 							status: tcStatus,
 							time: elapsed,
@@ -246,18 +244,19 @@ const submissionControllers = {
 							input: tc.input,
 							expectedOutput: tc.output,
 							actualOutput: actualOutput
-						});
+						};
 					} catch (err) {
 						const errDetail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
-						testcaseResults.push({
+						return {
 							id: index + 1,
 							status: 'IE',
 							time: 0,
 							msg: errDetail
-						});
+						};
 					}
-				}
+				});
 
+				const testcaseResults = await Promise.all(judgingPromises);
 
 
 				// Determine overall status
