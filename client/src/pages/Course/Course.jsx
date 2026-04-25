@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/com
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Play, ExternalLink, Clock, Star, Users, ArrowLeft, BookOpen, Link as LinkIcon, Bot, Sparkles, MessageSquare, X } from 'lucide-react';
-import ChatBot from '~/components/Chatbot/ChatBot';
+import ChatBot from '~/components/ChatBot/ChatBot';
 import courseService from '~/services/courseService';
 import { toast } from 'react-toastify';
 import useAuthStore from '~/stores/authStore';
