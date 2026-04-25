@@ -181,68 +181,68 @@ const submissionControllers = {
 
 			// Send directly to Piston API for judging (No local judger needed)
 			try {
-				const pistonLanguages = {
-					'python3': 'python',
-					'python2': 'python',
-					'c': 'c',
-					'c11': 'c',
-					'c++11': 'cpp',
-					'c++14': 'cpp',
-					'c++17': 'cpp',
-					'c++20': 'cpp',
-					'java': 'java',
-					'javascript': 'node',
-					'node': 'node'
-				};
+			// Wandbox compiler mapping
+			const wandboxCompilers = {
+				'python3': 'cpython-3.12.7',
+				'python2': 'cpython-2.7.18',
+				'c': 'gcc-13.2.0-c',
+				'c11': 'gcc-13.2.0-c',
+				'c++11': 'gcc-13.2.0',
+				'c++14': 'gcc-13.2.0',
+				'c++17': 'gcc-13.2.0',
+				'c++20': 'gcc-13.2.0',
+				'java': 'openjdk-jdk-22+36',
+				'javascript': 'nodejs-20.17.0',
+				'node': 'nodejs-20.17.0'
+			};
 
-				const lang = pistonLanguages[language] || language;
-				const testcases = problem.testcase || [];
-				
-				// Run all testcases in parallel to speed up judging
-				const judgingPromises = testcases.map(async (tc, index) => {
-					try {
-						const response = await axios.post('https://piston.riddle.com/api/v2/execute', {
-							language: lang,
-							version: '*',
-							files: [{ content: src }],
-							stdin: tc.input || ''
-						}, { 
-							timeout: 10000,
-							headers: {
-								'Authorization': undefined, // Explicitly clear any inherited auth
-								'Content-Type': 'application/json'
-							}
-						});
+			const compiler = wandboxCompilers[language] || language;
+			const testcases = problem.testcase || [];
+			
+			// Run all testcases in parallel to speed up judging
+			const judgingPromises = testcases.map(async (tc, index) => {
+				try {
+					const startTime = Date.now();
+					const response = await axios.post('https://wandbox.org/api/compile.json', {
+						code: src,
+						compiler,
+						stdin: tc.input || '',
+						'save': false
+					}, { timeout: 15000 });
 
-						const run = response.data.run;
-						const actualOutput = (run.stdout || '').trim();
-						const expectedOutput = (tc.output || '').trim();
+					const elapsed = Date.now() - startTime;
+					const data = response.data;
+					const actualOutput = (data.program_output || '').trim();
+					const expectedOutput = (tc.output || '').trim();
+					const hasError = data.compiler_error || data.program_error || (data.status !== '0' && data.status !== 0);
 
-						let status = 'AC';
-						if (run.stderr || run.code !== 0) {
-							status = 'RTE';
-						} else if (actualOutput !== expectedOutput) {
-							status = 'WA';
-						}
-
-						return {
-							id: index + 1,
-							status,
-							time: Number(run.time) || 0,
-							memory: 0, // Piston doesn't easily provide memory usage
-							input: tc.input,
-							expectedOutput: tc.output,
-							actualOutput: actualOutput
-						};
-					} catch (err) {
-						return {
-							id: index + 1,
-							status: 'IE',
-							time: 0,
-							msg: err.message
-						};
+					let status = 'AC';
+					if (data.compiler_error) {
+						status = 'CE';
+					} else if (hasError) {
+						status = 'RTE';
+					} else if (actualOutput !== expectedOutput) {
+						status = 'WA';
 					}
-				});
+
+					return {
+						id: index + 1,
+						status,
+						time: elapsed,
+						memory: 0,
+						input: tc.input,
+						expectedOutput: tc.output,
+						actualOutput: actualOutput
+					};
+				} catch (err) {
+					return {
+						id: index + 1,
+						status: 'IE',
+						time: 0,
+						msg: err.message
+					};
+				}
+			});
 
 				const testcaseResults = await Promise.all(judgingPromises);
 
