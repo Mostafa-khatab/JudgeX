@@ -43,9 +43,7 @@ app.use(
 
 app.use(
 	cors({
-		origin: (origin, callback) => {
-			callback(null, origin || true);
-		},
+		origin: true,
 		credentials: true,
 	}),
 );
