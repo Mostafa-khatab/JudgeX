@@ -169,16 +169,6 @@ const submissionControllers = {
 
 			await submission.save();
 
-			// Respond immediately so the client can poll for results
-			res.status(201).json({
-				success: true,
-				data: {
-					_id: submission._id,
-					status: submission.status,
-				},
-				message: 'Submission is being judged',
-			});
-
 			// Send to JDoodle API for judging (free, 200 credits/day)
 			try {
 				const jdoodleLangs = {
@@ -381,6 +371,17 @@ const submissionControllers = {
 				console.error('Remote Judger error:', judgeError.message);
 				await submission.updateOne({ status: 'IE', msg: { server: 'Remote Judger unavailable: ' + judgeError.message }, completedAt: new Date() });
 			}
+			
+			// Respond to client ONLY after judging is fully complete
+			// This prevents Vercel from freezing the background task and falsely triggering the 8.5s timeout!
+			res.status(201).json({
+				success: true,
+				data: {
+					_id: submission._id,
+					status: submission.status,
+				},
+				message: 'Submission completed',
+			});
 
 			console.log('Submit code successful');
 		} catch (err) {
