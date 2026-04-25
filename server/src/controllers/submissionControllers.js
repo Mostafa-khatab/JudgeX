@@ -179,78 +179,85 @@ const submissionControllers = {
 				message: 'Submission is being judged',
 			});
 
-			// Send to Wandbox API for judging (free, no auth needed)
-		try {
-			// Wandbox compiler mapping
-			const wandboxCompilers = {
-				'python3': 'cpython-3.12.7',
-				'python2': 'cpython-2.7.18',
-				'c': 'gcc-13.2.0-c',
-				'c11': 'gcc-13.2.0-c',
-				'c++11': 'gcc-13.2.0',
-				'c++14': 'gcc-13.2.0',
-				'c++17': 'gcc-13.2.0',
-				'c++20': 'gcc-13.2.0',
-				'java': 'openjdk-jdk-22+36',
-				'javascript': 'nodejs-20.17.0',
-				'node': 'nodejs-20.17.0'
-			};
+			// Send to JDoodle API for judging (free, 200 credits/day)
+			try {
+				const jdoodleLangs = {
+					'python3': { language: 'python3', versionIndex: '5' },
+					'python2': { language: 'python2', versionIndex: '0' },
+					'c': { language: 'c', versionIndex: '5' },
+					'c11': { language: 'c', versionIndex: '5' },
+					'c++11': { language: 'cpp14', versionIndex: '4' },
+					'c++14': { language: 'cpp14', versionIndex: '4' },
+					'c++17': { language: 'cpp17', versionIndex: '1' },
+					'c++20': { language: 'cpp17', versionIndex: '1' },
+					'java': { language: 'java', versionIndex: '4' },
+					'javascript': { language: 'nodejs', versionIndex: '4' },
+					'node': { language: 'nodejs', versionIndex: '4' }
+				};
 
-			const compiler = wandboxCompilers[language];
-			if (!compiler) {
-				await submission.updateOne({ status: 'IE', msg: { server: `Unsupported language: ${language}` }, completedAt: new Date() });
-				console.log('Submit code successful (unsupported lang)');
-				return;
-			}
-
-			const testcases = problem.testcase || [];
-			const testcaseResults = [];
-
-			// Run testcases SEQUENTIALLY to avoid overwhelming the free API
-			for (let index = 0; index < testcases.length; index++) {
-				const tc = testcases[index];
-				try {
-					const startTime = Date.now();
-					const response = await axios.post('https://wandbox.org/api/compile.json', {
-						code: src,
-						compiler,
-						stdin: tc.input || '',
-						save: false
-					}, { timeout: 30000 });
-
-					const elapsed = Date.now() - startTime;
-					const data = response.data;
-					const actualOutput = (data.program_output || '').trim();
-					const expectedOutput = (tc.output || '').trim();
-
-					let tcStatus = 'AC';
-					if (data.compiler_error) {
-						tcStatus = 'CE';
-					} else if (data.program_error || (data.status !== '0' && data.status !== 0)) {
-						tcStatus = 'RTE';
-					} else if (actualOutput !== expectedOutput) {
-						tcStatus = 'WA';
-					}
-
-					testcaseResults.push({
-						id: index + 1,
-						status: tcStatus,
-						time: elapsed,
-						memory: 0,
-						input: tc.input,
-						expectedOutput: tc.output,
-						actualOutput: actualOutput
-					});
-				} catch (err) {
-					const errDetail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
-					testcaseResults.push({
-						id: index + 1,
-						status: 'IE',
-						time: 0,
-						msg: errDetail
-					});
+				const langConfig = jdoodleLangs[language];
+				if (!langConfig) {
+					await submission.updateOne({ status: 'IE', msg: { server: `Unsupported language: ${language}` }, completedAt: new Date() });
+					return;
 				}
-			}
+
+				const clientId = process.env.JDOODLE_CLIENT_ID;
+				const clientSecret = process.env.JDOODLE_CLIENT_SECRET;
+
+				if (!clientId || !clientSecret) {
+					await submission.updateOne({ status: 'IE', msg: { server: 'JDoodle API not configured' }, completedAt: new Date() });
+					return;
+				}
+
+				const testcases = problem.testcase || [];
+				const testcaseResults = [];
+
+				// Run testcases sequentially
+				for (let index = 0; index < testcases.length; index++) {
+					const tc = testcases[index];
+					try {
+						const startTime = Date.now();
+						const response = await axios.post('https://api.jdoodle.com/v1/execute', {
+							clientId,
+							clientSecret,
+							script: src,
+							language: langConfig.language,
+							versionIndex: langConfig.versionIndex,
+							stdin: tc.input || ''
+						}, { timeout: 15000 });
+
+						const elapsed = Date.now() - startTime;
+						const data = response.data;
+						const actualOutput = (data.output || '').trim();
+						const expectedOutput = (tc.output || '').trim();
+
+						let tcStatus = 'AC';
+						if (data.statusCode !== 200) {
+							tcStatus = data.output?.includes('compilation') ? 'CE' : 'RTE';
+						} else if (actualOutput !== expectedOutput) {
+							tcStatus = 'WA';
+						}
+
+						testcaseResults.push({
+							id: index + 1,
+							status: tcStatus,
+							time: elapsed,
+							memory: Number(data.memory) || 0,
+							input: tc.input,
+							expectedOutput: tc.output,
+							actualOutput: actualOutput
+						});
+					} catch (err) {
+						const errDetail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+						testcaseResults.push({
+							id: index + 1,
+							status: 'IE',
+							time: 0,
+							msg: errDetail
+						});
+					}
+				}
+
 
 
 				// Determine overall status
