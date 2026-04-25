@@ -232,6 +232,7 @@ const submissionControllers = {
 						return {
 							id: index + 1,
 							status: 'IE',
+							time: 0,
 							msg: err.message
 						};
 					}
@@ -250,7 +251,10 @@ const submissionControllers = {
 					}
 				});
 
-				const totalTime = testcaseResults.reduce((acc, curr) => Math.max(acc, curr.time), 0);
+				const totalTime = testcaseResults.reduce((acc, curr) => {
+					const t = Number(curr.time) || 0;
+					return Math.max(acc, t);
+				}, 0);
 				const point = finalStatus === 'AC' ? (problem.point || 100) : 0;
 
 				// Update submission with results
