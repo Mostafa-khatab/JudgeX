@@ -353,3 +353,7 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 8080;
 httpServer.listen(PORT, () => console.log(`Server listening on port ${PORT} ${process.env.PORT ? '' : '(default)'}`));
 
+// Export for Vercel
+export default app;
+
+
