@@ -201,7 +201,7 @@ const submissionControllers = {
 				// Run all testcases in parallel to speed up judging
 				const judgingPromises = testcases.map(async (tc, index) => {
 					try {
-						const response = await axios.post('https://piston.engineering/api/v2/execute', {
+						const response = await axios.post('https://emkc.org/api/v2/piston/execute', {
 							language: lang,
 							version: '*',
 							files: [{ content: src }],
@@ -209,7 +209,9 @@ const submissionControllers = {
 						}, { 
 							timeout: 10000,
 							headers: {
-								'User-Agent': 'JudgeX-App'
+								'Content-Type': 'application/json',
+								'Accept': 'application/json',
+								'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 							}
 						});
 

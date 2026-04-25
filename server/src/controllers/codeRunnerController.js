@@ -30,8 +30,8 @@ export const runCode = async (req, res) => {
 		const lang = pistonLanguages[language] || language;
 
 		try {
-			// Execute using Piston API (Using the reliable engineering endpoint)
-			const response = await axios.post('https://piston.engineering/api/v2/execute', {
+			// Execute using Piston API (With browser-like headers to avoid WAF issues)
+			const response = await axios.post('https://emkc.org/api/v2/piston/execute', {
 				language: lang,
 				version: '*',
 				files: [
@@ -43,7 +43,9 @@ export const runCode = async (req, res) => {
 			}, { 
 				timeout: 15000,
 				headers: {
-					'User-Agent': 'JudgeX-App'
+					'Content-Type': 'application/json',
+					'Accept': 'application/json',
+					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 				}
 			});
 
