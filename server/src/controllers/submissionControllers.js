@@ -179,49 +179,101 @@ const submissionControllers = {
 				message: 'Submission is being judged',
 			});
 
-			// Send directly to judger HTTP service (no Redis/BullMQ needed)
+			// Send directly to Piston API for judging (No local judger needed)
 			try {
-				const JUDGER_URL = process.env.JUDGER_URL || 'http://localhost:8090';
-				const judgeRes = await axios.post(`${JUDGER_URL}/judge`, {
-					src,
-					language,
-					problem: {
-						id: problem.id,
-						testcase: problem.testcase,
-						timeLimit: problem.timeLimit,
-						memoryLimit: problem.memoryLimit,
-						point: problem.point,
-					},
-				}, { timeout: 60000 }); // 60s max for judging
+				const pistonLanguages = {
+					'python3': 'python',
+					'python2': 'python',
+					'c': 'c',
+					'c11': 'c',
+					'c++11': 'cpp',
+					'c++14': 'cpp',
+					'c++17': 'cpp',
+					'c++20': 'cpp',
+					'java': 'java',
+					'javascript': 'node',
+					'node': 'node'
+				};
 
-				const result = judgeRes.data.data;
+				const lang = pistonLanguages[language] || language;
+				const testcases = problem.testcase || [];
+				
+				// Run all testcases in parallel to speed up judging
+				const judgingPromises = testcases.map(async (tc, index) => {
+					try {
+						const response = await axios.post('https://emkc.org/api/v2/piston/execute', {
+							language: lang,
+							version: '*',
+							files: [{ content: src }],
+							stdin: tc.input || ''
+						}, { timeout: 10000 });
 
-				// Calculate points
-				const passedTests = result.testcase?.filter((t) => t.status === 'AC').length || 0;
-				const totalTests = result.testcase?.length || 1;
-				const point = passedTests === totalTests ? problem.point || 100 : 0;
+						const run = response.data.run;
+						const actualOutput = (run.stdout || '').trim();
+						const expectedOutput = (tc.output || '').trim();
+
+						let status = 'AC';
+						if (run.stderr || run.code !== 0) {
+							status = 'RTE';
+						} else if (actualOutput !== expectedOutput) {
+							status = 'WA';
+						}
+
+						return {
+							id: index + 1,
+							status,
+							time: run.time || 0,
+							memory: 0, // Piston doesn't easily provide memory usage
+							input: tc.input,
+							expectedOutput: tc.output,
+							actualOutput: actualOutput
+						};
+					} catch (err) {
+						return {
+							id: index + 1,
+							status: 'IE',
+							msg: err.message
+						};
+					}
+				});
+
+				const testcaseResults = await Promise.all(judgingPromises);
+
+				// Determine overall status
+				let finalStatus = 'AC';
+				const priority = ['IE', 'RTE', 'MLE', 'TLE', 'WA', 'AC'];
+				
+				// Get the "worst" status among all testcases
+				testcaseResults.forEach(res => {
+					if (priority.indexOf(res.status) < priority.indexOf(finalStatus)) {
+						finalStatus = res.status;
+					}
+				});
+
+				const totalTime = testcaseResults.reduce((acc, curr) => Math.max(acc, curr.time), 0);
+				const point = finalStatus === 'AC' ? (problem.point || 100) : 0;
 
 				// Update submission with results
 				await submission.updateOne({
-					status: result.status,
-					time: result.time,
-					memory: result.memory,
-					msg: result.msg,
-					testcase: result.testcase,
+					status: finalStatus,
+					time: totalTime,
+					memory: 0,
+					msg: finalStatus !== 'AC' ? 'Judging completed' : null,
+					testcase: testcaseResults,
 					point,
 					completedAt: new Date(),
 				});
 
 				// Update problem stats
 				problem.noOfSubm = (problem.noOfSubm || 0) + 1;
-				if (result.status === 'AC') {
+				if (finalStatus === 'AC') {
 					problem.noOfSuccess = (problem.noOfSuccess || 0) + 1;
 				}
 				await problem.save();
 
 				// Update user stats
 				user.totalAttempt = (user.totalAttempt || 0) + 1;
-				if (result.status === 'AC') {
+				if (finalStatus === 'AC') {
 					const prevAC = await Submission.findOne({ author: user.name, forProblem: id, status: 'AC', _id: { $ne: submission._id } });
 					if (!prevAC) {
 						user.totalAC = (user.totalAC || 0) + 1;
@@ -235,7 +287,7 @@ const submissionControllers = {
 					const userStanding = contest.standing.find((s) => s.user === user.name);
 					if (userStanding) {
 						const idx = contest.problems.indexOf(problem.id);
-						if (idx !== -1 && result.status === 'AC') {
+						if (idx !== -1 && finalStatus === 'AC') {
 							userStanding.score[idx] = point;
 							userStanding.status[idx] = 'AC';
 						}
@@ -243,10 +295,10 @@ const submissionControllers = {
 					await contest.save();
 				}
 
-				console.log(`✅ Submission ${submission._id} judged: ${result.status} (${point} pts)`);
+				console.log(`✅ Submission ${submission._id} judged remotely: ${finalStatus} (${point} pts)`);
 
 				// Auto-complete daily challenge if this problem matches today's challenge
-				if (result.status === 'AC') {
+				if (finalStatus === 'AC') {
 					try {
 						const today = new Date();
 						today.setHours(0, 0, 0, 0);
@@ -284,8 +336,8 @@ const submissionControllers = {
 					}
 				}
 			} catch (judgeError) {
-				console.error('Judger HTTP error:', judgeError.message);
-				await submission.updateOne({ status: 'IE', msg: { server: 'Judger unavailable: ' + judgeError.message }, completedAt: new Date() });
+				console.error('Remote Judger error:', judgeError.message);
+				await submission.updateOne({ status: 'IE', msg: { server: 'Remote Judger unavailable: ' + judgeError.message }, completedAt: new Date() });
 			}
 
 			console.log('Submit code successful');
