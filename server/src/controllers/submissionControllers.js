@@ -201,12 +201,17 @@ const submissionControllers = {
 				// Run all testcases in parallel to speed up judging
 				const judgingPromises = testcases.map(async (tc, index) => {
 					try {
-						const response = await axios.post('https://emkc.org/api/v2/piston/execute', {
+						const response = await axios.post('https://piston.engineering/api/v2/execute', {
 							language: lang,
 							version: '*',
 							files: [{ content: src }],
 							stdin: tc.input || ''
-						}, { timeout: 10000 });
+						}, { 
+							timeout: 10000,
+							headers: {
+								'User-Agent': 'JudgeX-App'
+							}
+						});
 
 						const run = response.data.run;
 						const actualOutput = (run.stdout || '').trim();

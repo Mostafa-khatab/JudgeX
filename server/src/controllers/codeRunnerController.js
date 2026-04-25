@@ -30,8 +30,8 @@ export const runCode = async (req, res) => {
 		const lang = pistonLanguages[language] || language;
 
 		try {
-			// Execute using Piston API (No Docker needed!)
-			const response = await axios.post('https://emkc.org/api/v2/piston/execute', {
+			// Execute using Piston API (Using the reliable engineering endpoint)
+			const response = await axios.post('https://piston.engineering/api/v2/execute', {
 				language: lang,
 				version: '*',
 				files: [
@@ -40,7 +40,12 @@ export const runCode = async (req, res) => {
 					}
 				],
 				stdin: input || ''
-			}, { timeout: 15000 });
+			}, { 
+				timeout: 15000,
+				headers: {
+					'User-Agent': 'JudgeX-App'
+				}
+			});
 
 			const result = response.data.run;
 			
