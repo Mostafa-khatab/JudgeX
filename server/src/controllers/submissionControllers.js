@@ -262,7 +262,7 @@ const submissionControllers = {
 					status: finalStatus,
 					time: totalTime,
 					memory: 0,
-					msg: finalStatus !== 'AC' ? 'Judging completed' : null,
+					msg: finalStatus !== 'AC' ? (testcaseResults.find(r => r.status === 'IE')?.msg || 'Judging completed') : null,
 					testcase: testcaseResults,
 					point,
 					completedAt: new Date(),
