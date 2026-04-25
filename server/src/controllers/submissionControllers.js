@@ -222,7 +222,7 @@ const submissionControllers = {
 						return {
 							id: index + 1,
 							status,
-							time: run.time || 0,
+							time: Number(run.time) || 0,
 							memory: 0, // Piston doesn't easily provide memory usage
 							input: tc.input,
 							expectedOutput: tc.output,
