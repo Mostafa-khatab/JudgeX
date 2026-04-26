@@ -143,7 +143,9 @@ const ProblemSolve = () => {
 					const expectedOut = (tc.expectedOutput || '').replace(/\r/g, '').trim();
 
 					let status = 'AC';
-					if (data.error || (data.output && data.output.toLowerCase().includes('error') && data.statusCode !== 200)) {
+					if (data.error === 'Time Limit Exceeded') {
+						status = 'TLE';
+					} else if (data.error || (data.output && data.output.toLowerCase().includes('error') && data.statusCode !== 200)) {
 						status = 'RTE';
 					} else if (actualOut !== expectedOut) {
 						status = 'WA';
@@ -440,7 +442,7 @@ const ProblemSolve = () => {
 										>
 											Case {idx + 1}
 											{tc.status && tc.status !== 'Running...' && (
-												<span className={`h-2 w-2 rounded-full shadow-sm ${tc.status === 'AC' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+												<span className={`h-2 w-2 rounded-full shadow-sm ${tc.status === 'AC' ? 'bg-green-500' : tc.status === 'TLE' ? 'bg-yellow-500' : 'bg-red-500'}`}></span>
 											)}
 										</button>
 									))}
@@ -459,10 +461,12 @@ const ProblemSolve = () => {
 																? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
 																: testCases[activeTestCase].status === 'AC'
 																? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+																: testCases[activeTestCase].status === 'TLE'
+																? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
 																: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
 														}`}
 													>
-														{testCases[activeTestCase].status === 'AC' ? 'Accepted' : testCases[activeTestCase].status === 'WA' ? 'Wrong Answer' : testCases[activeTestCase].status}
+														{testCases[activeTestCase].status === 'AC' ? 'Accepted' : testCases[activeTestCase].status === 'WA' ? 'Wrong Answer' : testCases[activeTestCase].status === 'TLE' ? 'Time Limit Exceeded' : testCases[activeTestCase].status}
 													</span>
 												)}
 											</div>

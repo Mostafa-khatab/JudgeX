@@ -247,6 +247,10 @@ const submissionControllers = {
 					let tcStatus = 'AC';
 					if (data.statusCode !== 200) {
 						tcStatus = data.output?.includes('compilation') ? 'CE' : 'RTE';
+					} else if (data.cpuTime && Number(data.cpuTime) > (problem.timeLimit || 2)) {
+						tcStatus = 'TLE';
+					} else if (data.output && data.output.includes('Time Limit Exceeded')) {
+						tcStatus = 'TLE';
 					} else if (actualOutput !== expectedOutput) {
 						tcStatus = 'WA';
 					}
@@ -262,6 +266,17 @@ const submissionControllers = {
 					};
 				} catch (err) {
 					const errDetail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+					
+					// If the request timed out (e.g. infinite loop), mark it as TLE
+					if (err.message && err.message.toLowerCase().includes('timeout')) {
+						return {
+							id: index + 1,
+							status: 'TLE',
+							time: problem.timeLimit ? problem.timeLimit * 1000 : 15000,
+							msg: 'Time Limit Exceeded (Server Timeout)'
+						};
+					}
+
 					return {
 						id: index + 1,
 						status: 'IE',

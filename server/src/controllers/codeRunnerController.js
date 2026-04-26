@@ -79,6 +79,16 @@ export const runCode = async (req, res) => {
 
 		} catch (apiErr) {
 			console.error('JDoodle API Error:', apiErr.message);
+
+			if (apiErr.message && apiErr.message.toLowerCase().includes('timeout')) {
+				return res.status(200).json({
+					success: true,
+					output: '',
+					error: 'Time Limit Exceeded',
+					executionTime: 15000
+				});
+			}
+
 			return res.status(500).json({
 				success: false,
 				msg: 'Remote execution service unavailable',
