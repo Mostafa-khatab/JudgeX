@@ -1,5 +1,7 @@
 {
 	"scripts": {
+		"start": "cd server && npm start",
+		"postinstall": "cd server && npm install",
 		"dev": "concurrently \"npm run dev:server\" \"npm run dev:client\" \"npm run dev:admin\" \"npm run dev:judger\" \"npm run dev:ai\"",
 		"dev:server": "cd server && npm run dev",
 		"dev:client": "cd client && npm run dev",
