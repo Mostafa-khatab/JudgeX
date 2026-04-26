@@ -236,13 +236,13 @@ const submissionControllers = {
 						script: src,
 						language: langConfig.language,
 						versionIndex: langConfig.versionIndex,
-						stdin: tc.input || ''
+						stdin: tc.stdin || tc.input || ''
 					}, { timeout: 15000 });
 
 					const elapsed = Date.now() - startTime;
 					const data = response.data;
-					const actualOutput = (data.output || '').trim();
-					const expectedOutput = (tc.output || '').trim();
+					const actualOutput = (data.output || '').replace(/\r/g, '').trim();
+					const expectedOutput = (tc.stdout || tc.output || '').replace(/\r/g, '').trim();
 
 					let tcStatus = 'AC';
 					if (data.statusCode !== 200) {
@@ -256,8 +256,8 @@ const submissionControllers = {
 						status: tcStatus,
 						time: elapsed,
 						memory: Number(data.memory) || 0,
-						input: tc.input,
-						expectedOutput: tc.output,
+						input: tc.stdin || tc.input,
+						expectedOutput: tc.stdout || tc.output,
 						actualOutput: actualOutput
 					};
 				} catch (err) {
