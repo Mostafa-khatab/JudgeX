@@ -30,18 +30,37 @@ export const runCode = async (req, res) => {
 			return res.status(400).json({ msg: `Unsupported language: ${language}` });
 		}
 
-		const clientId = process.env.JDOODLE_CLIENT_ID;
-		const clientSecret = process.env.JDOODLE_CLIENT_SECRET;
+		// Gather all available JDoodle keys from environment variables
+		const jdoodleKeys = [];
+		let i = 1;
+		while (process.env[`JDOODLE_CLIENT_ID_${i}`] && process.env[`JDOODLE_CLIENT_SECRET_${i}`]) {
+			jdoodleKeys.push({
+				clientId: process.env[`JDOODLE_CLIENT_ID_${i}`],
+				clientSecret: process.env[`JDOODLE_CLIENT_SECRET_${i}`]
+			});
+			i++;
+		}
+		
+		// Fallback to original variables if array-style not used yet
+		if (jdoodleKeys.length === 0 && process.env.JDOODLE_CLIENT_ID && process.env.JDOODLE_CLIENT_SECRET) {
+			jdoodleKeys.push({
+				clientId: process.env.JDOODLE_CLIENT_ID,
+				clientSecret: process.env.JDOODLE_CLIENT_SECRET
+			});
+		}
 
-		if (!clientId || !clientSecret) {
+		if (jdoodleKeys.length === 0) {
 			return res.status(500).json({ success: false, msg: 'JDoodle API not configured' });
 		}
+
+		// Select a random key to balance the load and save tokens
+		const randomKey = jdoodleKeys[Math.floor(Math.random() * jdoodleKeys.length)];
 
 		try {
 			const startTime = Date.now();
 			const response = await axios.post('https://api.jdoodle.com/v1/execute', {
-				clientId,
-				clientSecret,
+				clientId: randomKey.clientId,
+				clientSecret: randomKey.clientSecret,
 				script: code,
 				language: langConfig.language,
 				versionIndex: langConfig.versionIndex,

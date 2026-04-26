@@ -169,103 +169,137 @@ const submissionControllers = {
 
 			await submission.save();
 
-			// Send to JDoodle API for judging (free, 200 credits/day)
-			try {
-				const jdoodleLangs = {
-					'python3': { language: 'python3', versionIndex: '5' },
-					'python2': { language: 'python2', versionIndex: '0' },
-					'c': { language: 'c', versionIndex: '5' },
-					'c11': { language: 'c', versionIndex: '5' },
-					'c++11': { language: 'cpp14', versionIndex: '4' },
-					'c++14': { language: 'cpp14', versionIndex: '4' },
-					'c++17': { language: 'cpp17', versionIndex: '1' },
-					'c++20': { language: 'cpp17', versionIndex: '1' },
-					'java': { language: 'java', versionIndex: '4' },
-					'javascript': { language: 'nodejs', versionIndex: '4' },
-					'node': { language: 'nodejs', versionIndex: '4' }
-				};
+			// Send to JDoodle API for judging with Key Rotation (bypassing 200 credits/day limit)
+		try {
+			const jdoodleLangs = {
+				'python3': { language: 'python3', versionIndex: '5' },
+				'python2': { language: 'python2', versionIndex: '0' },
+				'c': { language: 'c', versionIndex: '5' },
+				'c11': { language: 'c', versionIndex: '5' },
+				'c++11': { language: 'cpp14', versionIndex: '4' },
+				'c++14': { language: 'cpp14', versionIndex: '4' },
+				'c++17': { language: 'cpp17', versionIndex: '1' },
+				'c++20': { language: 'cpp17', versionIndex: '1' },
+				'java': { language: 'java', versionIndex: '4' },
+				'javascript': { language: 'nodejs', versionIndex: '4' },
+				'node': { language: 'nodejs', versionIndex: '4' }
+			};
 
-				const langConfig = jdoodleLangs[language];
-				if (!langConfig) {
-					await submission.updateOne({ status: 'IE', msg: { server: `Unsupported language: ${language}` }, completedAt: new Date() });
-					return;
-				}
+			const langConfig = jdoodleLangs[language];
+			if (!langConfig) {
+				await submission.updateOne({ status: 'IE', msg: { server: `Unsupported language: ${language}` }, completedAt: new Date() });
+				return;
+			}
 
-				const clientId = process.env.JDOODLE_CLIENT_ID;
-				const clientSecret = process.env.JDOODLE_CLIENT_SECRET;
-
-				if (!clientId || !clientSecret) {
-					await submission.updateOne({ status: 'IE', msg: { server: 'JDoodle API not configured' }, completedAt: new Date() });
-					return;
-				}
-
-				const testcases = problem.testcase || [];
-				
-				// Run testcases concurrently to bypass Vercel's 10s timeout limit
-				const judgingPromises = testcases.map(async (tc, index) => {
-					try {
-						const startTime = Date.now();
-						const response = await axios.post('https://api.jdoodle.com/v1/execute', {
-							clientId,
-							clientSecret,
-							script: src,
-							language: langConfig.language,
-							versionIndex: langConfig.versionIndex,
-							stdin: tc.input || ''
-						}, { timeout: 15000 });
-
-						const elapsed = Date.now() - startTime;
-						const data = response.data;
-						const actualOutput = (data.output || '').trim();
-						const expectedOutput = (tc.output || '').trim();
-
-						let tcStatus = 'AC';
-						if (data.statusCode !== 200) {
-							tcStatus = data.output?.includes('compilation') ? 'CE' : 'RTE';
-						} else if (actualOutput !== expectedOutput) {
-							tcStatus = 'WA';
-						}
-
-						return {
-							id: index + 1,
-							status: tcStatus,
-							time: elapsed,
-							memory: Number(data.memory) || 0,
-							input: tc.input,
-							expectedOutput: tc.output,
-							actualOutput: actualOutput
-						};
-					} catch (err) {
-						const errDetail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
-						return {
-							id: index + 1,
-							status: 'IE',
-							time: 0,
-							msg: errDetail
-						};
-					}
+			// Gather all available JDoodle keys from environment variables
+			const jdoodleKeys = [];
+			let i = 1;
+			while (process.env[`JDOODLE_CLIENT_ID_${i}`] && process.env[`JDOODLE_CLIENT_SECRET_${i}`]) {
+				jdoodleKeys.push({
+					clientId: process.env[`JDOODLE_CLIENT_ID_${i}`],
+					clientSecret: process.env[`JDOODLE_CLIENT_SECRET_${i}`]
 				});
+				i++;
+			}
+			
+			// Fallback to original variables if array-style not used yet
+			if (jdoodleKeys.length === 0 && process.env.JDOODLE_CLIENT_ID && process.env.JDOODLE_CLIENT_SECRET) {
+				jdoodleKeys.push({
+					clientId: process.env.JDOODLE_CLIENT_ID,
+					clientSecret: process.env.JDOODLE_CLIENT_SECRET
+				});
+			}
 
-				// Wrap Promise.all with an 8.5s timeout to prevent Vercel 10s kill
-				const judgingTimeout = new Promise((resolve) => 
-					setTimeout(() => {
-						resolve([{
-							id: 1,
-							status: 'TLE',
-							time: 8500,
-							memory: 0,
-							input: 'System Timeout',
-							expectedOutput: '',
-							actualOutput: 'Execution took too long for the free tier.',
-							msg: 'Server execution timeout'
-						}]);
-					}, 8500)
-				);
+			if (jdoodleKeys.length === 0) {
+				await submission.updateOne({ status: 'IE', msg: { server: 'JDoodle API not configured' }, completedAt: new Date() });
+				return;
+			}
 
-				const testcaseResults = await Promise.race([
-					Promise.all(judgingPromises),
-					judgingTimeout
+			// Select a random key to balance the load and save tokens
+			const randomKey = jdoodleKeys[Math.floor(Math.random() * jdoodleKeys.length)];
+
+			const testcases = problem.testcase || [];
+			
+			// Batching: run max 3 testcases concurrently to avoid JDoodle burst limits & Vercel timeouts
+			const testcaseResults = [];
+			const batchSize = 3;
+			let isTimeout = false;
+
+			const timeoutPromise = new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), 8500));
+
+			const runTestcase = async (tc, index) => {
+				try {
+					const startTime = Date.now();
+					const response = await axios.post('https://api.jdoodle.com/v1/execute', {
+						clientId: randomKey.clientId,
+						clientSecret: randomKey.clientSecret,
+						script: src,
+						language: langConfig.language,
+						versionIndex: langConfig.versionIndex,
+						stdin: tc.input || ''
+					}, { timeout: 15000 });
+
+					const elapsed = Date.now() - startTime;
+					const data = response.data;
+					const actualOutput = (data.output || '').trim();
+					const expectedOutput = (tc.output || '').trim();
+
+					let tcStatus = 'AC';
+					if (data.statusCode !== 200) {
+						tcStatus = data.output?.includes('compilation') ? 'CE' : 'RTE';
+					} else if (actualOutput !== expectedOutput) {
+						tcStatus = 'WA';
+					}
+
+					return {
+						id: index + 1,
+						status: tcStatus,
+						time: elapsed,
+						memory: Number(data.memory) || 0,
+						input: tc.input,
+						expectedOutput: tc.output,
+						actualOutput: actualOutput
+					};
+				} catch (err) {
+					const errDetail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+					return {
+						id: index + 1,
+						status: 'IE',
+						time: 0,
+						msg: errDetail
+					};
+				}
+			};
+
+			// Process in batches
+			for (let j = 0; j < testcases.length; j += batchSize) {
+				if (isTimeout) break;
+				
+				const batch = testcases.slice(j, j + batchSize);
+				const batchPromises = batch.map((tc, idx) => runTestcase(tc, j + idx));
+				
+				const batchResult = await Promise.race([
+					Promise.all(batchPromises),
+					timeoutPromise
 				]);
+
+				if (batchResult === 'TIMEOUT') {
+					isTimeout = true;
+					testcaseResults.push({
+						id: j + 1,
+						status: 'TLE',
+						time: 8500,
+						memory: 0,
+						input: 'System Timeout',
+						expectedOutput: '',
+						actualOutput: 'Execution took too long on the server.',
+						msg: 'Server execution timeout'
+					});
+					break;
+				} else {
+					testcaseResults.push(...batchResult);
+				}
+			}
 
 
 				// Determine overall status
