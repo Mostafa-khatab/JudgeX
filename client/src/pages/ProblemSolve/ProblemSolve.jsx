@@ -61,10 +61,9 @@ const ProblemSolve = () => {
 	const pollIntervalRef = useRef(null);
 	const [isFullscreen, setIsFullscreen] = useState(false);
 	const [isRunning, setIsRunning] = useState(false);
-	const [runInput, setRunInput] = useState('');
-	const [runOutput, setRunOutput] = useState('');
-	const [runError, setRunError] = useState('');
 	const [showRunPanel, setShowRunPanel] = useState(false);
+	const [activeTestCase, setActiveTestCase] = useState(0);
+	const [testCases, setTestCases] = useState([]); // [{ stdin, expectedOutput, actualOutput, status, error }]
 
 	const openDialogRef = useRef(null); // kept for backward compat but no longer used as dialog trigger
 
@@ -87,6 +86,17 @@ const ProblemSolve = () => {
 		getProblem(id)
 			.then((res) => {
 				setProblem(res.data);
+				if (res.data?.testcase?.length > 0) {
+					setTestCases(
+						res.data.testcase.slice(0, 3).map((tc) => ({
+							stdin: tc.stdin,
+							expectedOutput: tc.stdout,
+							actualOutput: null,
+							status: null,
+							error: null,
+						}))
+					);
+				}
 			})
 			.catch((err) => {
 				toast.error(err.response?.data?.msg || 'Failed to load problem');
@@ -103,34 +113,65 @@ const ProblemSolve = () => {
 		setSrc(codeTemplate[languageType] || '');
 	}, [languageType]);
 
-	const handleRun = () => {
+	const handleRun = async () => {
 		if (!src.trim()) {
 			toast.error('Please write some code first');
 			return;
 		}
 
+		if (testCases.length === 0) {
+			toast.error('No testcases available to run');
+			return;
+		}
+
 		setIsRunning(true);
-		setRunOutput('');
-		setRunError('');
 		setShowRunPanel(true);
+		setActiveTestCase(0);
 
-		console.log('Running code:', { language, codeLength: src.length, hasInput: !!runInput });
+		// Reset previous results
+		setTestCases((prev) =>
+			prev.map((tc) => ({ ...tc, actualOutput: null, status: 'Running...', error: null }))
+		);
 
-		runCodeService({ code: src, language, input: runInput })
-			.then((res) => {
-				console.log('Run success:', res);
-				const data = res.data || res;
-				setRunOutput(data.output || 'No output');
-				if (data.error) {
-					setRunError(data.error);
+		try {
+			const promises = testCases.map(async (tc) => {
+				try {
+					const res = await runCodeService({ code: src, language, input: tc.stdin });
+					const data = res.data || res;
+					
+					const actualOut = (data.output || '').replace(/\r/g, '').trim();
+					const expectedOut = (tc.expectedOutput || '').replace(/\r/g, '').trim();
+
+					let status = 'AC';
+					if (data.error || (data.output && data.output.toLowerCase().includes('error') && data.statusCode !== 200)) {
+						status = 'RTE';
+					} else if (actualOut !== expectedOut) {
+						status = 'WA';
+					}
+
+					return {
+						...tc,
+						actualOutput: data.output || '',
+						status: status,
+						error: data.error || null,
+					};
+				} catch (err) {
+					return {
+						...tc,
+						actualOutput: '',
+						status: 'IE',
+						error: err.response?.data?.error || err.message || 'Execution failed',
+					};
 				}
-			})
-			.catch((err) => {
-				console.error('Run error:', err);
-				console.error('Error response:', err.response);
-				setRunError(err.response?.data?.error || err.response?.data?.msg || err.message || 'Execution failed');
-			})
-			.finally(() => setIsRunning(false));
+			});
+
+			const results = await Promise.all(promises);
+			setTestCases(results);
+		} catch (err) {
+			console.error('Run error:', err);
+		} finally {
+			setIsRunning(false);
+		}
 	};
 
 	const startPolling = useCallback((submissionId) => {
@@ -373,57 +414,102 @@ const ProblemSolve = () => {
 
 					{/* Run Panel */}
 					{showRunPanel && (
-						<div className="flex h-1/2 flex-col border-t border-gray-200 dark:border-neutral-800">
-							<Tabs defaultValue="output" className="flex h-full flex-col">
-								<div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-800">
-									<TabsList className="h-8 bg-transparent p-0">
-										<TabsTrigger value="input" className="h-7 text-xs">
-											Input
-										</TabsTrigger>
-										<TabsTrigger value="output" className="h-7 text-xs">
-											Output
-										</TabsTrigger>
-									</TabsList>
-									<Button variant="ghost" size="sm" onClick={() => setShowRunPanel(false)} className="h-7 px-2">
-										<X className="h-4 w-4" />
-									</Button>
+						<div className="flex h-1/2 flex-col border-t border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+							<div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-800/50">
+								<div className="flex items-center gap-2">
+									<Play className="h-4 w-4 text-green-500" />
+									<span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Testcases</span>
+								</div>
+								<Button variant="ghost" size="sm" onClick={() => setShowRunPanel(false)} className="h-7 px-2">
+									<X className="h-4 w-4 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200" />
+								</Button>
+							</div>
+
+							<div className="flex flex-1 overflow-hidden">
+								{/* Left side: Testcase Tabs */}
+								<div className="w-24 border-r border-gray-200 bg-gray-50/50 p-2 flex flex-col gap-1 overflow-y-auto dark:border-neutral-800 dark:bg-neutral-900/50">
+									{testCases.map((tc, idx) => (
+										<button
+											key={idx}
+											onClick={() => setActiveTestCase(idx)}
+											className={`flex items-center justify-between rounded px-3 py-2 text-xs font-medium transition-all ${
+												activeTestCase === idx 
+													? 'bg-white text-blue-600 shadow-sm dark:bg-neutral-800 dark:text-blue-400 border border-gray-200 dark:border-neutral-700' 
+													: 'text-gray-600 hover:bg-gray-200 border border-transparent dark:text-gray-400 dark:hover:bg-neutral-800'
+											}`}
+										>
+											Case {idx + 1}
+											{tc.status && tc.status !== 'Running...' && (
+												<span className={`h-2 w-2 rounded-full shadow-sm ${tc.status === 'AC' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+											)}
+										</button>
+									))}
 								</div>
 
-								<TabsContent value="input" className="flex-1 overflow-y-auto p-4">
-									<textarea
-										value={runInput}
-										onChange={(e) => setRunInput(e.target.value)}
-										placeholder="Enter input for your code..."
-										className="h-full w-full resize-none rounded border border-gray-300 bg-white p-2 font-mono text-sm focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-100"
-									/>
-								</TabsContent>
+								{/* Right side: Active Testcase Details */}
+								<div className="flex-1 overflow-y-auto p-4 bg-white dark:bg-neutral-900">
+									{testCases[activeTestCase] ? (
+										<div className="space-y-5">
+											<div className="flex items-center gap-3">
+												<h3 className="text-sm font-semibold text-gray-900 dark:text-white">Run Result</h3>
+												{testCases[activeTestCase].status && (
+													<span
+														className={`rounded px-2.5 py-1 text-xs font-bold shadow-sm ${
+															testCases[activeTestCase].status === 'Running...'
+																? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+																: testCases[activeTestCase].status === 'AC'
+																? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+																: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+														}`}
+													>
+														{testCases[activeTestCase].status === 'AC' ? 'Accepted' : testCases[activeTestCase].status === 'WA' ? 'Wrong Answer' : testCases[activeTestCase].status}
+													</span>
+												)}
+											</div>
 
-								<TabsContent value="output" className="flex-1 overflow-y-auto p-4">
-									{isRunning ? (
-										<div className="flex h-full items-center justify-center">
-											<Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+											{testCases[activeTestCase].error && (
+												<div>
+													<p className="mb-1.5 text-xs font-medium text-red-600 dark:text-red-400">Error</p>
+													<pre className="rounded-md border border-red-200 bg-red-50 p-3 font-mono text-xs text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-300 whitespace-pre-wrap">
+														{testCases[activeTestCase].error}
+													</pre>
+												</div>
+											)}
+
+											<div>
+												<p className="mb-1.5 text-xs font-medium text-gray-600 dark:text-gray-400">Input</p>
+												<pre className="rounded-md border border-gray-200 bg-gray-50 p-3 font-mono text-xs text-gray-800 dark:border-neutral-800 dark:bg-neutral-900 dark:text-gray-300 whitespace-pre-wrap">
+													{testCases[activeTestCase].stdin || '(empty)'}
+												</pre>
+											</div>
+
+											{testCases[activeTestCase].actualOutput !== null && (
+												<div>
+													<p className="mb-1.5 text-xs font-medium text-gray-600 dark:text-gray-400">Your Output</p>
+													<pre className={`rounded-md border p-3 font-mono text-xs whitespace-pre-wrap ${
+														testCases[activeTestCase].status === 'AC' 
+															? 'border-gray-200 bg-gray-50 text-gray-800 dark:border-neutral-800 dark:bg-neutral-900 dark:text-gray-300' 
+															: 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-900/10 dark:text-red-400'
+													}`}>
+														{testCases[activeTestCase].actualOutput || '(no output)'}
+													</pre>
+												</div>
+											)}
+
+											<div>
+												<p className="mb-1.5 text-xs font-medium text-gray-600 dark:text-gray-400">Expected Output</p>
+												<pre className="rounded-md border border-gray-200 bg-gray-50 p-3 font-mono text-xs text-gray-800 dark:border-neutral-800 dark:bg-neutral-900 dark:text-gray-300 whitespace-pre-wrap">
+													{testCases[activeTestCase].expectedOutput || '(empty)'}
+												</pre>
+											</div>
 										</div>
 									) : (
-										<div className="space-y-3">
-											{runError && (
-												<div className="rounded border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
-													<p className="text-xs font-semibold text-red-600 dark:text-red-400">Error:</p>
-													<pre className="mt-1 whitespace-pre-wrap font-mono text-xs text-red-700 dark:text-red-300">{runError}</pre>
-												</div>
-											)}
-											{runOutput && (
-												<div className="rounded border border-gray-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-900">
-													<p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Output:</p>
-													<pre className="mt-1 whitespace-pre-wrap font-mono text-xs text-gray-900 dark:text-gray-100">{runOutput}</pre>
-												</div>
-											)}
-											{!runOutput && !runError && (
-												<p className="text-center text-sm text-gray-500 dark:text-gray-400">No output yet. Click Run to execute your code.</p>
-											)}
+										<div className="flex h-full items-center justify-center">
+											<p className="text-sm text-gray-500 dark:text-gray-400">Select a testcase to view details</p>
 										</div>
 									)}
-								</TabsContent>
-							</Tabs>
+								</div>
+							</div>
 						</div>
 					)}
 
