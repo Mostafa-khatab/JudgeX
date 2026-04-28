@@ -18,9 +18,7 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
 	cors: {
-		origin: (origin, callback) => {
-			callback(null, origin || true);
-		},
+		origin: process.env.CLIENT_URL || true,
 		credentials: true,
 	},
 	transports: ['websocket', 'polling'],
@@ -43,7 +41,7 @@ app.use(
 
 app.use(
 	cors({
-		origin: (origin, callback) => callback(null, true),
+		origin: process.env.CLIENT_URL || true,
 		credentials: true,
 	}),
 );
