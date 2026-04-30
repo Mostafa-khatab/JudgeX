@@ -17,7 +17,7 @@ import {
   SelectTrigger, SelectValue 
 } from '~/components/ui/select';
 
-const Lobby = ({ interview, role, onJoin, candidateToken }) => {
+const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [devices, setDevices] = useState({ video: [], audio: [] });

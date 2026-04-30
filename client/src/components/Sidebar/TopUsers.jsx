@@ -44,7 +44,7 @@ const TopUsers = () => {
                     <div className="space-y-4">
                         {users.map((user, index) => (
                             <Link 
-                                key={user.id} 
+                                key={user?._id || user?.id || index} 
                                 to={routesConfig.user.replace(':name', user?.name || '')}
                                 className="flex items-center justify-between group"
                             >

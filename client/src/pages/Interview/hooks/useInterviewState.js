@@ -42,7 +42,7 @@ export const useInterviewState = (initialData, socketHandlers, apiHandlers) => {
     // 1. Instant sync via Socket
     if (newCode !== lastEmittedCode.current) {
       socketHandlers?.emit('interview-code-update', { 
-        interviewId: initialData._id, 
+        interviewId: initialData?._id, 
         code: newCode 
       });
       lastEmittedCode.current = newCode;
@@ -52,27 +52,31 @@ export const useInterviewState = (initialData, socketHandlers, apiHandlers) => {
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(async () => {
       try {
-        await apiHandlers.updateState(initialData._id, { code: newCode });
-        console.log('[State] Code persisted to backend');
+        if (initialData?._id) {
+          await apiHandlers.updateState(initialData._id, { code: newCode });
+          console.log('[State] Code persisted to backend');
+        }
       } catch (err) {
         console.error('[State] Failed to persist code:', err);
       }
     }, 5000); // 5 seconds debounce
-  }, [initialData._id, socketHandlers, apiHandlers]);
+  }, [initialData?._id, socketHandlers, apiHandlers]);
 
   const updateLanguage = useCallback(async (newLang) => {
     setLanguage(newLang);
     socketHandlers?.emit('interview-language-change', { 
-      interviewId: initialData._id, 
+      interviewId: initialData?._id, 
       language: newLang 
     });
     
     try {
-      await apiHandlers.updateState(initialData._id, { language: newLang });
+      if (initialData?._id) {
+        await apiHandlers.updateState(initialData._id, { language: newLang });
+      }
     } catch (err) {
       console.error('[State] Failed to update language:', err);
     }
-  }, [initialData._id, socketHandlers, apiHandlers]);
+  }, [initialData?._id, socketHandlers, apiHandlers]);
 
   return {
     code,

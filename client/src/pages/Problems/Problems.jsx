@@ -59,8 +59,10 @@ const Problems = () => {
 	useEffect(() => {
 		getProblems({ size: 1e9 })
 			.then((res) => {
-				const index = Math.round(Math.random() * res.data.length);
-				setRandomId(res.data[index].id);
+				if (res.data && res.data.length > 0) {
+					const index = Math.floor(Math.random() * res.data.length);
+					setRandomId(res.data[index]?.id || res.data[index]?._id || 0);
+				}
 			})
 			.catch((err) => {
 				toast.error(err);

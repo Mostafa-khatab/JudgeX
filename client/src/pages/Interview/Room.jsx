@@ -63,8 +63,10 @@ const InterviewRoom = () => {
 
   // 1. Socket Hook
   const { emit, on, isConnected } = useSocket(interview?._id, role, {
-    name: role === 'interviewer' ? interview?.instructor?.username : interview?.candidate?.name,
-    avatar: interview?.instructor?.avatar
+    name: role === 'interviewer' 
+      ? interview?.instructor?.username || 'Interviewer' 
+      : interview?.candidate?.name || 'Candidate',
+    avatar: interview?.instructor?.avatar || null
   });
 
   // 2. State Hook
@@ -212,6 +214,7 @@ const InterviewRoom = () => {
             role={role} 
             onJoin={handleJoinFromLobby} 
             candidateToken={candidateToken} 
+            isConnected={isConnected}
           />
         </motion.div>
       ) : (

@@ -12,6 +12,8 @@ import './i18n';
 import './assets/css/main.css';
 import App from './App.jsx';
 
+import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary.jsx';
+
 library.add(fab, far, fas);
 
 ChartJS.register(ArcElement, Tooltip);
@@ -20,7 +22,7 @@ loader.init().then((monacoInstance) => {
 	monacoInstance.editor.defineTheme('blackboard', blackboard);
 });
 
-console.log('%cHello! \ud83d\ude4b', 'color: #3486eb;font-size: 16px; font-weight: 600;');
+console.log('%cHello! 🙋', 'color: #3486eb;font-size: 16px; font-weight: 600;');
 console.log(
 	`%cJudgeX front-end was built with Javascript, React, Tailwind...
 	JudgeX back-end was built with NodeJS, ExpressJS, MongoDB...`,
@@ -29,7 +31,7 @@ console.log(
 console.log('%cNote: This project inspired by LeetCode, DMOJ, Codeforces...', 'color: #f4a261;font-size: 14px; font-weight: 600;');
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-	// <React.StrictMode>
-	<App />,
-	// </React.StrictMode>,
+	<ErrorBoundary>
+		<App />
+	</ErrorBoundary>
 );
