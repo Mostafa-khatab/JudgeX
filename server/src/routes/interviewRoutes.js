@@ -9,6 +9,7 @@ const {
   createInterview,
   getInterviews,
   getInterview,
+  getInterviewByToken,
   joinInterview,
   startInterview,
   pauseInterview,
@@ -37,7 +38,10 @@ const router = express.Router();
  */
 
 // ==================== PUBLIC ====================
-// Join interview via invite token (FIXED: Changed from GET to POST for CSRF protection)
+// Invite link: load session (lobby/refresh)
+router.get('/join/:token', getInterviewByToken);
+
+// Join interview via invite token
 router.post('/join/:token', joinInterview);
 
 // ==================== PROTECTED (Auth required) ====================

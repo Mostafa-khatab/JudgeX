@@ -133,8 +133,7 @@ export const endInterview = async (id) => {
  * Join interview via invite token
  */
 export const joinInterview = async (token, candidateInfo = {}) => {
-  const params = new URLSearchParams(candidateInfo).toString();
-  const response = await api.get(`/join/${token}?${params}`);
+  const response = await api.post(`/join/${token}`, candidateInfo);
   
   // Store candidate token for future requests
   if (response.data.candidateToken) {

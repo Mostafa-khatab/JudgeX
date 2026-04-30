@@ -31,6 +31,11 @@ const api = {
     const res = await httpRequest.get(`/interview/${id}`, config);
     return res.data;
   },
+  getInterviewByToken: async (token, candidateToken) => {
+    const config = candidateToken ? { headers: { 'x-candidate-token': candidateToken } } : {};
+    const res = await httpRequest.get(`/interview/join/${token}`, config);
+    return res.data;
+  },
   joinInterview: async (token, name, email) => {
     const res = await httpRequest.post(`/interview/join/${token}`, { name, email });
     return res.data;
@@ -72,11 +77,13 @@ const InterviewRoom = () => {
     name: role === 'interviewer' 
       ? interview?.instructor?.username || 'Interviewer' 
       : interview?.candidate?.name || 'Candidate',
-    avatar: interview?.instructor?.avatar || null
+    avatar: interview?.instructor?.avatar || null,
+    // Allow candidate to authenticate sockets directly from invite link.
+    inviteToken: candidateToken || inviteToken,
   });
 
   // 2. State Hook
-  const { code, setCode, language, setLanguage, activeProblem } = useInterviewState(
+  const { code, setCode, language, setLanguage, activeProblem, setActiveProblem } = useInterviewState(
     interview,
     { emit, on },
     { updateState: (id, state) => api.updateState(id, state, candidateToken) }
@@ -90,23 +97,22 @@ const InterviewRoom = () => {
     const init = async () => {
       try {
         let res;
-        if (inviteToken && !candidateToken) {
-          // Stay in lobby for candidate info
-          setLoading(false);
-          return;
-        } else if (inviteToken && candidateToken) {
-          res = await api.joinInterview(inviteToken, '', '');
+
+        if (inviteToken) {
+          // Allow loading session details from invite link (supports refresh/rejoin)
+          res = await api.getInterviewByToken(inviteToken, candidateToken);
         } else if (id) {
-          res = await api.getInterview(id);
+          res = await api.getInterview(id, candidateToken);
         }
 
         if (res?.success) {
-          setInterview(res.data);
-          setRole(res.role);
-          setMessages(res.data.messages || []);
-          if (res.candidateToken) {
-            setCandidateToken(res.candidateToken);
-            localStorage.setItem('candidateToken', res.candidateToken);
+          const payload = res.data || {};
+          setInterview(payload);
+          setRole(payload.role || 'candidate');
+          setMessages(payload.messages || []);
+          if (payload.candidateToken && payload.candidateToken !== candidateToken) {
+            setCandidateToken(payload.candidateToken);
+            localStorage.setItem('candidateToken', payload.candidateToken);
           }
         }
       } catch (err) {
@@ -116,19 +122,22 @@ const InterviewRoom = () => {
       }
     };
     init();
-  }, [id, inviteToken, candidateToken]);
+  }, [id, inviteToken, candidateToken, t]);
 
   const handleJoinFromLobby = async (data) => {
     setLoading(true);
     try {
-      if (inviteToken && !candidateToken) {
-        // Candidate joining for the first time
+      if (inviteToken && role === 'candidate') {
+        // Ensure candidate identity is recorded on server (required by backend schema)
         const res = await api.joinInterview(inviteToken, data.name, data.email);
         if (res.success) {
-          setInterview(res.data);
-          setRole('candidate');
-          setCandidateToken(res.candidateToken);
-          localStorage.setItem('candidateToken', res.candidateToken);
+          const payload = res.data || {};
+          setInterview(payload);
+          setRole(payload.role || 'candidate');
+          setCandidateToken(payload.candidateToken || inviteToken);
+          localStorage.setItem('candidateToken', payload.candidateToken || inviteToken);
+          localStorage.setItem('candidateName', data.name || '');
+          localStorage.setItem('candidateEmail', data.email || '');
         }
       }
 
@@ -166,7 +175,9 @@ const InterviewRoom = () => {
     try {
       const res = await api.addMessage(interview._id, content, role);
       if (res.success) {
-        setMessages(prev => [...prev, res.message]);
+        if (res.data) {
+          setMessages(prev => [...prev, res.data]);
+        }
         emit('interview-chat-message', { interviewId: interview._id, role, content });
       }
     } catch (err) {

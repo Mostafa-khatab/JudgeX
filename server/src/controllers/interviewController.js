@@ -199,6 +199,13 @@ const joinInterview = async (req, res) => {
     await interview.save({ session });
     await session.commitTransaction();
 
+    // Populate for UI (candidate needs problem details; lobby needs instructor info)
+    await interview.populate([
+      { path: 'instructor', select: 'username avatar' },
+      { path: 'questions.problemId', select: 'name difficulty task description examples constraints timeLimit memoryLimit' },
+      { path: 'state.activeProblemId', select: 'name difficulty task description examples constraints timeLimit memoryLimit' },
+    ]);
+
     // Return interview data (filtered for candidate)
     const responseData = {
       _id: interview._id,
@@ -208,6 +215,8 @@ const joinInterview = async (req, res) => {
       status: interview.status,
       state: interview.state,
       allowedLanguages: interview.allowedLanguages,
+      instructor: interview.instructor,
+      candidate: { name: interview.candidate?.name || '', joinedAt: interview.candidate?.joinedAt || null, isConnected: interview.candidate?.isConnected || false },
       questions: interview.questions.filter(q => q.isVisible),
       messages: interview.messages
     };
@@ -224,6 +233,52 @@ const joinInterview = async (req, res) => {
     return handleError(res, err, 'JoinInterview', 500);
   } finally {
     session.endSession();
+  }
+};
+
+// ==================== INVITE PREVIEW ====================
+/**
+ * Get interview by invite token (no join side-effects)
+ * GET /interview/join/:token
+ * Used for lobby/refresh on invite link.
+ */
+const getInterviewByToken = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    if (!token || !/^[a-f0-9]{32}$/.test(token)) {
+      return sendError(res, 'Invalid interview token', 400);
+    }
+
+    const interview = await Interview.findOne({ inviteToken: token })
+      .populate('instructor', 'username avatar')
+      .populate('questions.problemId', 'name difficulty task description examples constraints timeLimit memoryLimit')
+      .populate('state.activeProblemId', 'name difficulty task description examples constraints timeLimit memoryLimit')
+      .lean();
+
+    if (!interview) {
+      return sendError(res, 'Interview not found or invalid token', 404);
+    }
+
+    if (interview.status === 'finished' || interview.status === 'cancelled') {
+      return sendError(res, 'This interview has already ended', 400);
+    }
+
+    return sendSuccess(res, {
+      _id: interview._id,
+      title: interview.title,
+      type: interview.type,
+      duration: interview.duration,
+      status: interview.status,
+      state: interview.state,
+      allowedLanguages: interview.allowedLanguages,
+      instructor: interview.instructor,
+      candidate: { name: interview.candidate?.name || '', joinedAt: interview.candidate?.joinedAt || null, isConnected: interview.candidate?.isConnected || false },
+      questions: (interview.questions || []).filter(q => q?.isVisible),
+      messages: interview.messages || [],
+    }, 'Interview retrieved');
+  } catch (err) {
+    return handleError(res, err, 'GetInterviewByToken', 500);
   }
 };
 
@@ -513,7 +568,9 @@ const addMessage = async (req, res) => {
 
     await interview.save();
 
-    return sendSuccess(res, { message: content, role: isInstructor ? 'interviewer' : 'candidate' }, 'Message added');
+    const last = interview.messages[interview.messages.length - 1];
+
+    return sendSuccess(res, { role: last.role, content: last.content, timestamp: last.timestamp }, 'Message added');
   } catch (err) {
     return handleError(res, err, 'AddMessage', 500);
   }
@@ -764,6 +821,7 @@ export default {
   createInterview,
   getInterviews,
   getInterview,
+  getInterviewByToken,
   joinInterview,
   startInterview,
   pauseInterview,

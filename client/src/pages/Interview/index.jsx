@@ -105,7 +105,7 @@ const InterviewDashboard = () => {
         resetForm();
         navigate(`/interview/room/${res.data._id}`);
       } else {
-        toast.error(res.message || 'Failed to create');
+        toast.error(res.msg || 'Failed to create');
       }
     } catch (err) {
       toast.error('Failed to create interview');

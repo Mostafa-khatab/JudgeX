@@ -3,9 +3,10 @@ import {
   Video, VideoOff, Mic, MicOff, 
   Settings, ArrowRight, Camera, 
   User, CheckCircle2, ShieldCheck,
-  ChevronDown, Volume2, Copy
+  ChevronDown, Volume2, Copy, AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-toastify';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
@@ -18,8 +19,8 @@ import {
 } from '~/components/ui/select';
 
 const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState(() => localStorage.getItem('candidateName') || '');
+  const [email, setEmail] = useState(() => localStorage.getItem('candidateEmail') || '');
   const [devices, setDevices] = useState({ video: [], audio: [] });
   const [selectedDevices, setSelectedDevices] = useState({ video: '', audio: '' });
   const [permissionError, setPermissionError] = useState(null);
@@ -88,6 +89,10 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
   }, [selectedDevices, startPreview]);
 
   const copyInviteLink = () => {
+    if (!interview?.inviteToken) {
+      toast.error('Invite link is not available yet');
+      return;
+    }
     const link = `${window.location.origin}/interview/join/${interview.inviteToken}`;
     navigator.clipboard.writeText(link);
     toast.success('Invite link copied to clipboard!');
@@ -119,7 +124,7 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
   };
 
   const handleJoin = () => {
-    if (role === 'candidate' && !candidateToken && (!name.trim() || !email.trim())) {
+    if (role === 'candidate' && (!name.trim() || !email.trim())) {
       toast.error('Please enter your name and email');
       return;
     }
@@ -312,7 +317,7 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
               </div>
             )}
 
-            {role === 'candidate' && !candidateToken && (
+            {role === 'candidate' && (
               <div className="space-y-5">
                 <div className="space-y-2">
                   <Label className="text-neutral-500 text-[10px] uppercase tracking-widest font-black ml-1">Your Name</Label>

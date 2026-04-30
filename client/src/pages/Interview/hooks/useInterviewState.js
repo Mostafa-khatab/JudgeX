@@ -8,6 +8,26 @@ export const useInterviewState = (initialData, socketHandlers, apiHandlers) => {
   const lastEmittedCode = useRef(code);
   const saveTimeout = useRef(null);
 
+  // When interview changes (join/refresh), sync state from server.
+  useEffect(() => {
+    const nextCode = initialData?.state?.code || '';
+    const nextLang = initialData?.state?.language || 'cpp';
+
+    setCode(nextCode);
+    lastEmittedCode.current = nextCode;
+    setLanguage(nextLang);
+
+    const activeId = initialData?.state?.activeProblemId;
+    const visibleQuestion = initialData?.questions?.find(q => q?.isVisible);
+
+    if (activeId && initialData?.questions?.length) {
+      const matched = initialData.questions.find(q => q?.problemId?._id === activeId || q?.problemId === activeId);
+      setActiveProblem(matched?.problemId || visibleQuestion?.problemId || null);
+    } else {
+      setActiveProblem(visibleQuestion?.problemId || null);
+    }
+  }, [initialData?._id]);
+
   // Sync from socket
   useEffect(() => {
     if (!socketHandlers?.on) return;
