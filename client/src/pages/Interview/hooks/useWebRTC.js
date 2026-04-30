@@ -8,6 +8,8 @@ const ICE_SERVERS = {
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun.services.mozilla.com' },
+    { urls: 'stun:stun.l.google.com:19305' },
     {
       urls: 'turn:openrelay.metered.ca:80',
       username: 'openrelayproject',
@@ -22,9 +24,9 @@ const ICE_SERVERS = {
       urls: 'turn:openrelay.metered.ca:443?transport=tcp',
       username: 'openrelayproject',
       credential: 'openrelayproject',
-    },
-    { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
-  ]
+    }
+  ],
+  iceCandidatePoolSize: 10,
 };
 
 export const useWebRTC = (socketHandlers, interviewId, role) => {
@@ -350,18 +352,28 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     });
 
     // More direct: when someone joins the interview room, interviewer initiates.
-    const u7b = socketHandlers.on('participant-joined', () => {
-      if (role !== 'interviewer') return;
-      if (localStreamRef.current) initiateCall();
-      else shouldInitiateRef.current = true;
+    const u7b = socketHandlers.on('participant-joined', (data) => {
+      console.log('[WebRTC] Participant joined:', data);
+      if (role === 'interviewer') {
+        if (localStreamRef.current) initiateCall();
+        else shouldInitiateRef.current = true;
+      }
+    });
+
+    const u7c = socketHandlers.on('current-participants', ({ participants }) => {
+      console.log('[WebRTC] Current participants in room:', participants);
+      // If we join and someone is already there, the interviewer should initiate
+      if (role === 'interviewer' && participants.length > 0) {
+        if (localStreamRef.current) initiateCall();
+        else shouldInitiateRef.current = true;
+      }
     });
 
     const u8 = socketHandlers.on('participant-info', (data) => {
       console.log('[WebRTC] Received participant info:', data);
-      // If we joined and see someone else, we can also try to initiate or wait for offer
     });
     
-    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u7b(); u8(); };
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u7b(); u7c(); u8(); };
   }, [socketHandlers, handleOffer, handleAnswer, handleIce, handleScreenOffer]);
 
   return {

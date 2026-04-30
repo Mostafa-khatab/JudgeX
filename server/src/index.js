@@ -163,9 +163,12 @@ io.on('connection', (socket) => {
 		socket.join(room);
 		socket.interviewRoom = room;
 		socket.interviewId = interviewId;
+		socket.name = name;
+		socket.avatar = avatar;
+		
 		console.log(`${socket.role} ${name || socket.id} joined interview ${interviewId}`);
 
-		// Track candidate connectivity in DB (so reconnects don't get stuck)
+		// Track candidate connectivity in DB
 		if (socket.role === 'candidate') {
 			try {
 				const Interview = (await import('./models/interview.js')).default;
@@ -180,7 +183,23 @@ io.on('connection', (socket) => {
 			}
 		}
 
+		// 1. Notify others that someone joined
 		socket.to(room).emit('participant-joined', { role: socket.role, name, avatar, socketId: socket.id });
+		
+		// 2. Send current participants back to the new user
+		const sockets = await io.in(room).fetchSockets();
+		const participants = sockets
+			.filter(s => s.id !== socket.id)
+			.map(s => ({
+				role: s.role,
+				name: s.name,
+				avatar: s.avatar,
+				socketId: s.id
+			}));
+		
+		if (participants.length > 0) {
+			socket.emit('current-participants', { participants });
+		}
 	});
 
 	socket.on('leave-interview', ({ interviewId }) => {

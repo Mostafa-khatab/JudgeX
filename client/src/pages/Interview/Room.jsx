@@ -72,9 +72,10 @@ const InterviewRoom = () => {
   const [output, setOutput] = useState('');
   const [showOutput, setShowOutput] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [peerInfo, setPeerInfo] = useState(null);
 
   // 1. Socket Hook
-  const { emit, on, isConnected } = useSocket(interview?._id, role, {
+  const { emit, on, isConnected: isSocketConnected } = useSocket(interview?._id, role, {
     name: role === 'interviewer' 
       ? interview?.instructor?.username || 'Interviewer' 
       : interview?.candidate?.name || 'Candidate',
@@ -189,13 +190,32 @@ const InterviewRoom = () => {
     }
   };
 
-  // Listen for real-time messages
+  // Listen for real-time events
   useEffect(() => {
-    const cleanup = on('chat-message', (msg) => {
+    if (!on) return;
+
+    const u1 = on('chat-message', (msg) => {
       setMessages(prev => [...prev, msg]);
     });
-    return cleanup;
-  }, [on]);
+
+    const u2 = on('participant-joined', (data) => {
+      setPeerInfo(data);
+      toast.info(`${data.name} ${t('messages.joinedInterview') || 'joined the interview'}`);
+    });
+
+    const u3 = on('current-participants', ({ participants }) => {
+      if (participants && participants.length > 0) {
+        setPeerInfo(participants[0]);
+      }
+    });
+
+    const u4 = on('participant-left', () => {
+      setPeerInfo(null);
+      toast.warn(t('messages.participantLeft') || 'Participant left the room');
+    });
+
+    return () => { u1(); u2(); u3(); u4(); };
+  }, [on, t]);
 
   if (loading) {
     return (
@@ -238,7 +258,7 @@ const InterviewRoom = () => {
             role={role} 
             onJoin={handleJoinFromLobby} 
             candidateToken={candidateToken} 
-            isConnected={isConnected}
+            isConnected={isSocketConnected}
           />
         </motion.div>
       ) : (
@@ -306,9 +326,9 @@ const InterviewRoom = () => {
               </Button>
 
               <div className="flex items-center gap-2 px-3 py-1 bg-neutral-900 rounded-full border border-neutral-800">
-                <div className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                <div className={`h-2 w-2 rounded-full ${isSocketConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                 <span className="text-[10px] font-bold uppercase text-neutral-400">
-                  {isConnected ? t('status.connected') : t('status.offline')}
+                  {isSocketConnected ? t('status.connected') : t('status.offline')}
                 </span>
               </div>
             </div>
@@ -357,8 +377,8 @@ const InterviewRoom = () => {
               <div className="h-1/2">
                 <VideoPanel 
                   {...webrtc}
-                  isConnected={isConnected}
-                  peerInfo={{ 
+                  isSocketConnected={isSocketConnected}
+                  peerInfo={peerInfo || { 
                     name: role === 'interviewer' 
                       ? t('roles.candidate') || 'Candidate' 
                       : t('roles.interviewer') || 'Interviewer' 

@@ -10,11 +10,12 @@ const VideoPanel = ({
   localStream, remoteStream,
   isAudioEnabled, isVideoEnabled,
   toggleAudio, toggleVideo, initiateCall,
-  isConnected, peerInfo,
+  isConnected, // WebRTC status
+  isSocketConnected, // Socket status
+  peerInfo,
   remoteMediaState,
   isScreenSharing, onStartScreenShare, onStopScreenShare,
   remoteScreenStream,
-  connectionQuality // Added for better UX feedback
 }) => {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -54,7 +55,9 @@ const VideoPanel = ({
             <div className="h-20 w-20 rounded-full bg-neutral-800 flex items-center justify-center animate-pulse">
               <User className="h-10 w-10 text-neutral-600" />
             </div>
-            <p className="text-neutral-500 text-sm font-medium animate-pulse">Waiting for peer...</p>
+            <p className="text-neutral-500 text-sm font-medium animate-pulse">
+              {!isSocketConnected ? 'Connecting to server...' : 'Waiting for peer...'}
+            </p>
           </div>
         )}
         
@@ -62,7 +65,7 @@ const VideoPanel = ({
         <div className="absolute top-4 left-4 flex items-center gap-2">
           <Badge className="bg-black/40 backdrop-blur-md border-neutral-700/50 py-1 px-3">
             <div className={`h-2 w-2 rounded-full mr-2 ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-neutral-500'}`} />
-            {peerInfo?.name || 'Remote Peer'}
+            <span className="truncate max-w-[100px]">{peerInfo?.name || 'Remote Peer'}</span>
           </Badge>
           {!remoteMediaState?.audio && (
             <Badge variant="destructive" className="bg-red-500/20 text-red-500 border-red-500/20 backdrop-blur-md">
