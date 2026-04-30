@@ -178,6 +178,7 @@ const authControllers = {
 				permission: user.permission,
 				top,
 				topPercent,
+				token
 			}, 'Logged in successfully');
 		} catch (err) {
 			return handleError(res, err, 'Login');

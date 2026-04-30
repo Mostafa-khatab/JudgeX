@@ -23,6 +23,9 @@ const GoogleButton = () => {
 				});
 
 				if (res.data.success) {
+					if (res.data.token) {
+						localStorage.setItem('token', res.data.token);
+					}
 					setUser(res.data.user);
 					setIsAuth(true);
 					toast.success(t('auth.success'));

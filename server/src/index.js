@@ -82,14 +82,21 @@ app.use(
 				.map((url) => url.trim())
 				.filter(Boolean);
 
-			// Allow no origin (Postman, mobile) or matching origins
-			// If CLIENT_URL isn't configured, default to allowing requests.
-			// (Common in early deployments; without this, all browser requests are rejected.)
+			// Dynamic Origin Logic:
+			// 1. Allow if no origin (Postman/Local)
+			// 2. Allow if explicitly in CLIENT_URL list
+			// 3. Allow any Cloudflare Tunnel (solves the changing URL issue)
+			// 4. Allow any Vercel deployment of this project
+			const isCloudflare = origin && origin.endsWith('.trycloudflare.com');
+			const isVercel = origin && (origin.includes('vercel.app') || origin.includes('judgex'));
+
 			if (
 				!origin ||
 				allowed.length === 0 ||
 				allowed.includes(origin) ||
-				allowed.some((url) => origin === url.replace(/\/$/, ''))
+				allowed.some((url) => origin === url.replace(/\/$/, '')) ||
+				isCloudflare ||
+				isVercel
 			) {
 				callback(null, true);
 			} else {
@@ -98,6 +105,9 @@ app.use(
 			}
 		},
 		credentials: true,
+		methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+		allowedHeaders: ['Content-Type', 'Authorization', 'x-candidate-token', 'X-Requested-With', 'Accept'],
+		exposedHeaders: ['set-cookie']
 	}),
 );
 

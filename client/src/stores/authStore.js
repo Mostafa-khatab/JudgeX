@@ -48,7 +48,11 @@ const useAuthStore = create((set) => ({
 
 		try {
 			const res = await httpRequest.post('/auth/login', { email, password });
-			set({ user: res.data.data, isAuth: true, msg: res.data.msg, isLoading: false });
+			const { data, msg } = res.data;
+			if (data.token) {
+				localStorage.setItem('token', data.token);
+			}
+			set({ user: data, isAuth: true, msg: msg, isLoading: false });
 		} catch (err) {
 			set({ error: getErrorMessage(err), isAuth: false, isLoading: false });
 		}
@@ -70,9 +74,11 @@ const useAuthStore = create((set) => ({
 
 		try {
 			await httpRequest.post('/auth/logout');
+			localStorage.removeItem('token');
 			set({ isAuth: false, user: null, isLoading: false });
 		} catch (err) {
-			set({ isLoading: false });
+			localStorage.removeItem('token');
+			set({ isAuth: false, user: null, isLoading: false });
 		}
 	},
 

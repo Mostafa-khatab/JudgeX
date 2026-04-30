@@ -18,16 +18,12 @@ i18next
 		resources: {
 			en: { interview: enInterview },
 			vi: { interview: viInterview },
-			dev: { interview: devInterview },
 		},
 		lng: 'en',
+		fallbackLng: 'en',
 		defaultNS: 'layout',
 		interpolation: {
-			excapeValue: false,
+			escapeValue: false,
 		},
-		debug: true,
-		saveMissing: true,
-		missingKeyHandler: function (lng, ns, key) {
-			console.warn(`[i18next] Missing key: '${key}' in namespace: '${ns}', language: '${lng}'`);
-		},
+		debug: false,
 	});
