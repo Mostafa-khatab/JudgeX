@@ -1,204 +1,303 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { toast } from 'react-toastify';
 
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
   ]
 };
 
-export const useWebRTC = (socket, interviewId, isInterviewer) => {
+export const useWebRTC = (socketHandlers, interviewId, role) => {
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [remoteMediaState, setRemoteMediaState] = useState({ audio: true, video: true });
+  const [isConnected, setIsConnected] = useState(false);
   
-  const peerConnection = useRef(null);
-  const localVideoRef = useRef(null);
-  const remoteVideoRef = useRef(null);
+  // Screen share state
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [screenStream, setScreenStream] = useState(null);
+  const [remoteScreenStream, setRemoteScreenStream] = useState(null);
 
-  // Initialize media
-  const initMedia = useCallback(async () => {
+  const pcRef = useRef(null);
+  const screenPcRef = useRef(null);
+
+  const iceQueue = useRef([]);
+  const screenIceQueue = useRef([]);
+  const isRemoteDescriptionSet = useRef(false);
+  const isScreenRemoteDescriptionSet = useRef(false);
+
+  // Refs for media state to avoid stale closures
+  const localStreamRef = useRef(null);
+  const isAudioEnabledRef = useRef(true);
+  const isVideoEnabledRef = useRef(true);
+
+  // Initialize Media
+  const startMedia = useCallback(async (options = {}, existingStream = null) => {
     try {
+      if (existingStream) {
+        setLocalStream(existingStream);
+        setIsAudioEnabled(options.audio !== false);
+        setIsVideoEnabled(options.video !== false);
+        return existingStream;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true
+        video: options.video !== false,
+        audio: options.audio !== false
       });
       setLocalStream(stream);
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
+      setIsAudioEnabled(options.audio !== false);
+      setIsVideoEnabled(options.video !== false);
       return stream;
     } catch (err) {
-      console.error('Failed to get media:', err);
+      console.error('[WebRTC] Failed to get media:', err);
+      toast.error('Failed to access camera/microphone');
       return null;
     }
   }, []);
 
-  // Create peer connection
   const createPeerConnection = useCallback((stream) => {
+    if (pcRef.current) pcRef.current.close();
+    
     const pc = new RTCPeerConnection(ICE_SERVERS);
     
-    // Add local tracks
-    stream?.getTracks().forEach(track => {
-      pc.addTrack(track, stream);
-    });
+    stream?.getTracks().forEach(track => pc.addTrack(track, stream));
     
-    // Handle remote tracks
     pc.ontrack = (event) => {
-      const [remoteStream] = event.streams;
-      setRemoteStream(remoteStream);
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = remoteStream;
-      }
+      console.log('[WebRTC] Remote track received:', event.streams[0]);
+      setRemoteStream(event.streams[0]);
     };
     
-    // Handle ICE candidates
     pc.onicecandidate = (event) => {
-      if (event.candidate && socket) {
-        socket.emit('interview-webrtc-ice', {
+      if (event.candidate) {
+        console.log('[WebRTC] Local ICE Candidate found');
+        socketHandlers?.emit('interview-webrtc-ice', {
           interviewId,
           candidate: event.candidate
         });
       }
     };
     
-    pc.onconnectionstatechange = () => {
-      setIsConnected(pc.connectionState === 'connected');
+    pc.oniceconnectionstatechange = () => {
+      console.log('[WebRTC] ICE Connection State:', pc.iceConnectionState);
+      setIsConnected(pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed');
     };
-    
-    peerConnection.current = pc;
-    return pc;
-  }, [socket, interviewId]);
 
-  // Start call (Interviewer initiates)
-  const startCall = useCallback(async () => {
-    const stream = await initMedia();
-    if (!stream) return;
+    pc.onconnectionstatechange = () => {
+      console.log('[WebRTC] Peer Connection state:', pc.connectionState);
+    };
+
+    pcRef.current = pc;
+    return pc;
+  }, [interviewId, socketHandlers]);
+
+  const initiateCall = useCallback(async () => {
+    console.log('[WebRTC] Manual/Auto initiating call (ICE Restart)...');
     
+    // Close existing PC if any
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
+
+    const stream = localStream || await startMedia();
+    if (!stream) {
+      console.error('[WebRTC] Cannot initiate call without local stream');
+      return;
+    }
+
     const pc = createPeerConnection(stream);
-    
-    const offer = await pc.createOffer();
+    const offer = await pc.createOffer({ iceRestart: true });
     await pc.setLocalDescription(offer);
     
-    socket?.emit('interview-webrtc-offer', {
+    console.log('[WebRTC] Sending Offer to peer...');
+    socketHandlers?.emit('interview-webrtc-offer', {
       interviewId,
       offer
     });
-  }, [initMedia, createPeerConnection, socket, interviewId]);
+  }, [localStream, startMedia, createPeerConnection, interviewId, socketHandlers]);
 
-  // Handle incoming offer
+  // Signaling Handlers
   const handleOffer = useCallback(async (offer) => {
-    const stream = await initMedia();
-    if (!stream) return;
-    
-    const pc = createPeerConnection(stream);
+    let pc = pcRef.current;
+    if (!pc) {
+      const stream = localStream || await startMedia();
+      pc = createPeerConnection(stream);
+    }
     
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    isRemoteDescriptionSet.current = true;
+    
+    // Flush ICE
+    while (iceQueue.current.length > 0) {
+      await pc.addIceCandidate(new RTCIceCandidate(iceQueue.current.shift()));
+    }
+    
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    
-    socket?.emit('interview-webrtc-answer', {
-      interviewId,
-      answer
-    });
-  }, [initMedia, createPeerConnection, socket, interviewId]);
+    socketHandlers?.emit('interview-webrtc-answer', { interviewId, answer });
+  }, [localStream, startMedia, createPeerConnection, interviewId, socketHandlers]);
 
-  // Handle incoming answer
   const handleAnswer = useCallback(async (answer) => {
-    if (peerConnection.current) {
-      await peerConnection.current.setRemoteDescription(
-        new RTCSessionDescription(answer)
-      );
+    if (pcRef.current) {
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+      isRemoteDescriptionSet.current = true;
+      while (iceQueue.current.length > 0) {
+        await pcRef.current.addIceCandidate(new RTCIceCandidate(iceQueue.current.shift()));
+      }
     }
   }, []);
 
-  // Handle ICE candidate
-  const handleIceCandidate = useCallback(async (candidate) => {
-    if (peerConnection.current) {
-      await peerConnection.current.addIceCandidate(
-        new RTCIceCandidate(candidate)
-      );
+  const handleIce = useCallback(async (candidate) => {
+    if (pcRef.current && isRemoteDescriptionSet.current) {
+      await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+    } else {
+      iceQueue.current.push(candidate);
     }
   }, []);
 
-  // Toggle audio
+  // Screen Share
+  const startScreenShare = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      setScreenStream(stream);
+      setIsScreenSharing(true);
+      
+      const pc = new RTCPeerConnection(ICE_SERVERS);
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+      
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socketHandlers?.emit('interview-screen-ice', { interviewId, candidate: event.candidate });
+        }
+      };
+      
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socketHandlers?.emit('interview-screen-offer', { interviewId, offer });
+      
+      stream.getVideoTracks()[0].onended = () => stopScreenShare();
+      screenPcRef.current = pc;
+    } catch (err) {
+      console.error('[WebRTC] Screen share failed:', err);
+    }
+  }, [interviewId, socketHandlers]);
+
+  const stopScreenShare = useCallback(() => {
+    if (screenStream) {
+      screenStream.getTracks().forEach(track => track.stop());
+      setScreenStream(null);
+    }
+    if (screenPcRef.current) {
+      screenPcRef.current.close();
+      screenPcRef.current = null;
+    }
+    setIsScreenSharing(false);
+    socketHandlers?.emit('interview-screen-stopped', { interviewId });
+  }, [screenStream, interviewId, socketHandlers]);
+
+  const handleScreenOffer = useCallback(async (offer) => {
+    const pc = new RTCPeerConnection(ICE_SERVERS);
+    pc.ontrack = (event) => setRemoteScreenStream(event.streams[0]);
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        socketHandlers?.emit('interview-screen-ice', { interviewId, candidate: event.candidate });
+      }
+    };
+    
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    isScreenRemoteDescriptionSet.current = true;
+    while (screenIceQueue.current.length > 0) {
+      await pc.addIceCandidate(new RTCIceCandidate(screenIceQueue.current.shift()));
+    }
+    
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socketHandlers?.emit('interview-screen-answer', { interviewId, answer });
+    screenPcRef.current = pc;
+  }, [interviewId, socketHandlers]);
+
+  // Toggles
   const toggleAudio = useCallback(() => {
     if (localStream) {
-      localStream.getAudioTracks().forEach(track => {
-        track.enabled = !track.enabled;
+      const state = !isAudioEnabled;
+      localStream.getAudioTracks().forEach(t => t.enabled = state);
+      setIsAudioEnabled(state);
+      socketHandlers?.emit('interview-media-state', {
+        interviewId,
+        mediaState: { audio: state, video: isVideoEnabled }
       });
-      setIsAudioEnabled(prev => !prev);
     }
-  }, [localStream]);
+  }, [localStream, isAudioEnabled, isVideoEnabled, interviewId, socketHandlers]);
 
-  // Toggle video
   const toggleVideo = useCallback(() => {
     if (localStream) {
-      localStream.getVideoTracks().forEach(track => {
-        track.enabled = !track.enabled;
+      const state = !isVideoEnabled;
+      localStream.getVideoTracks().forEach(t => t.enabled = state);
+      setIsVideoEnabled(state);
+      socketHandlers?.emit('interview-media-state', {
+        interviewId,
+        mediaState: { audio: isAudioEnabled, video: state }
       });
-      setIsVideoEnabled(prev => !prev);
     }
-  }, [localStream]);
+  }, [localStream, isAudioEnabled, isVideoEnabled, interviewId, socketHandlers]);
 
-  // End call
-  const endCall = useCallback(() => {
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-      setLocalStream(null);
-    }
-    if (peerConnection.current) {
-      peerConnection.current.close();
-      peerConnection.current = null;
-    }
-    setRemoteStream(null);
-    setIsConnected(false);
-  }, [localStream]);
-
-  // Socket event listeners
+  // Lifecycle
   useEffect(() => {
-    if (!socket) return;
+    if (!socketHandlers?.on) return;
     
-    socket.on('webrtc-offer', ({ offer }) => {
-      handleOffer(offer);
+    const u1 = socketHandlers.on('webrtc-offer', ({ offer }) => handleOffer(offer));
+    const u2 = socketHandlers.on('webrtc-answer', ({ answer }) => handleAnswer(answer));
+    const u3 = socketHandlers.on('webrtc-ice', ({ candidate }) => handleIce(candidate));
+    const u4 = socketHandlers.on('screen-offer', ({ offer }) => handleScreenOffer(offer));
+    const u5 = socketHandlers.on('screen-stopped', () => setRemoteScreenStream(null));
+    const u6 = socketHandlers.on('media-state-updated', ({ mediaState }) => {
+      setRemoteMediaState(mediaState);
     });
     
-    socket.on('webrtc-answer', ({ answer }) => {
-      handleAnswer(answer);
+    // When a new participant joins, the existing peer should initiate the call
+    const u7 = socketHandlers.on('participant-query', ({ from }) => {
+      console.log('[WebRTC] Participant query from:', from);
+      if (localStream) initiateCall();
     });
-    
-    socket.on('webrtc-ice', ({ candidate }) => {
-      handleIceCandidate(candidate);
-    });
-    
-    return () => {
-      socket.off('webrtc-offer');
-      socket.off('webrtc-answer');
-      socket.off('webrtc-ice');
-    };
-  }, [socket, handleOffer, handleAnswer, handleIceCandidate]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      endCall();
-    };
-  }, [endCall]);
+    const u8 = socketHandlers.on('participant-info', (data) => {
+      console.log('[WebRTC] Received participant info:', data);
+      // If we joined and see someone else, we can also try to initiate or wait for offer
+    });
+    
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); };
+  }, [socketHandlers, handleOffer, handleAnswer, handleIce, handleScreenOffer]);
 
   return {
-    localStream,
-    remoteStream,
-    localVideoRef,
-    remoteVideoRef,
-    isConnected,
-    isAudioEnabled,
-    isVideoEnabled,
-    startCall,
-    endCall,
-    toggleAudio,
-    toggleVideo
+    localStream, remoteStream, 
+    isAudioEnabled, isVideoEnabled, isConnected,
+    isScreenSharing, screenStream, remoteScreenStream,
+    startMedia, createPeerConnection, initiateCall,
+    toggleAudio, toggleVideo,
+    startScreenShare, stopScreenShare
   };
 };
 

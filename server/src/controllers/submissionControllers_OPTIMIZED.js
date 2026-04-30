@@ -26,23 +26,16 @@ const submissionControllers = {
 			const pageSize = Math.min(parseInt(size) || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
 			const pageNum = Math.max(parseInt(page) || 1, 1);
 
-			// Build filter object
-			const filter = {};
-			if (status) filter.status = status;
-			if (author) filter.author = author;
-			if (language) filter.language = language;
-			if (problem) filter.forProblem = problem;
-			if (contestId) filter.forContest = contestId;
-
 			// FIX: Fetch user in parallel instead of after loading all submissions
 			const [submissions, user, totalCount] = await Promise.all([
-				Submission.find(filter)
+				Submission.filter({ status, author, language, problem, contest: contestId })
 					.lean()
 					.limit(pageSize)
-					.skip(pageSize * (pageNum - 1))
-					.sort({ createdAt: -1 }),
+					.skip(pageSize * (pageNum - 1)),
 				User.findById(req.userId),
-				Submission.countDocuments(filter),
+				Submission.countDocuments(
+					{ ...(status && { status }), ...(author && { author }), ...(language && { language }), ...(problem && { forProblem: problem }), ...(contestId && { forContest: contestId }) }
+				),
 			]);
 
 			// FIX: Map once with permission check
@@ -112,11 +105,6 @@ const submissionControllers = {
 	async get(req, res, next) {
 		try {
 			const { id } = req.params;
-
-			// FIX: Validate ObjectId
-			if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-				return sendError(res, 'Invalid submission ID', 400);
-			}
 
 			const [user, submission] = await Promise.all([
 				User.findById(req.userId),
@@ -229,13 +217,8 @@ const submissionControllers = {
 		try {
 			const { id } = req.params;
 
-			// FIX: Validate ObjectId
-			if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-				return sendError(res, 'Invalid submission ID', 400);
-			}
-
 			// FIX: Check admin permission
-			if (req.userPermission !== 'Admin') {
+			if (req.userPermission !== 'admin') {
 				return sendError(res, 'Admin permission required', 403);
 			}
 

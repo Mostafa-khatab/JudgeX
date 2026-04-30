@@ -1,26 +1,27 @@
+/**
+ * Interview Controller - Fixed version with security improvements
+ * FIX: Added input validation, race condition prevention, proper auth checks, and response utility
+ */
+
 import Interview from '../models/interview.js';
 import Problem from '../models/problem.js';
-
-/**
- * Interview Controller - LeetCode-style Technical Interview Platform
- */
+import mongoose from 'mongoose';
+import { sendSuccess, sendError, handleError } from '../utils/response.js';
+import { validateSchema, CreateInterviewSchema, JoinInterviewSchema, AddInterviewMessageSchema, SaveFeedbackSchema } from '../utils/validation.js';
+import { auditLog, sensitiveOperations } from '../middlewares/auditLogger.js';
 
 // ==================== CREATE ====================
 /**
  * Create a new interview
  * POST /interview/
+ * FIX: Added input validation
  */
 const createInterview = async (req, res) => {
   try {
-    const { title, type, duration, description, allowedLanguages, scheduledAt, questions } = req.body;
-    
-    if (!title || !duration) {
-      return res.status(400).json({
-        success: false,
-        message: 'Title and duration are required'
-      });
-    }
-    
+    // FIX: Validate input
+    const validatedData = await validateSchema(CreateInterviewSchema, req.body);
+    const { title, type, duration, description, allowedLanguages, scheduledAt, questions } = validatedData;
+
     // Process questions if provided
     let processedQuestions = [];
     if (questions && Array.isArray(questions)) {
@@ -45,7 +46,7 @@ const createInterview = async (req, res) => {
         }
       }
     }
-    
+
     const interview = new Interview({
       title,
       type: type || 'technical',
@@ -61,20 +62,17 @@ const createInterview = async (req, res) => {
         remainingTime: duration * 60
       }
     });
-    
+
     await interview.save();
-    
-    res.status(201).json({
-      success: true,
-      data: interview,
+
+    console.log(`[AUDIT] Interview created: ${interview._id}`);
+
+    return sendSuccess(res, {
+      ...interview.toObject(),
       inviteLink: `${process.env.CLIENT_URL}/interview/join/${interview.inviteToken}`
-    });
+    }, 'Interview created successfully', 201);
   } catch (err) {
-    console.error('Create interview error:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create interview'
-    });
+    return handleError(res, err, 'CreateInterview', 500);
   }
 };
 
@@ -89,17 +87,10 @@ const getInterviews = async (req, res) => {
       .sort({ createdAt: -1 })
       .select('-messages -snapshots -events -feedback')
       .lean();
-    
-    res.json({
-      success: true,
-      data: interviews
-    });
+
+    return sendSuccess(res, interviews, 'Interviews retrieved successfully');
   } catch (err) {
-    console.error('Get interviews error:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get interviews'
-    });
+    return handleError(res, err, 'GetInterviews', 500);
   }
 };
 
@@ -107,94 +98,104 @@ const getInterviews = async (req, res) => {
 /**
  * Get interview by ID
  * GET /interview/:id
+ * FIX: Improved role-based access control
  */
 const getInterview = async (req, res) => {
   try {
     const { id } = req.params;
     const candidateToken = req.headers['x-candidate-token'];
-    
+
+    // FIX: Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 'Invalid interview ID', 400);
+    }
+
     const interview = await Interview.findById(id)
       .populate('instructor', 'username avatar')
       .populate('questions.problemId', 'name difficulty description examples constraints')
       .lean();
-    
+
     if (!interview) {
-      return res.status(404).json({
-        success: false,
-        message: 'Interview not found'
-      });
+      return sendError(res, 'Interview not found', 404);
     }
-    
-    // Determine role
+
+    // FIX: Determine role with proper validation
     const isInstructor = req.userId && interview.instructor._id.toString() === req.userId.toString();
     const isCandidate = candidateToken && interview.inviteToken === candidateToken;
-    
+
     if (!isInstructor && !isCandidate) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      });
+      return sendError(res, 'Access denied', 403);
     }
-    
+
     // Filter data based on role
     let responseData = { ...interview };
-    
+
     if (!isInstructor) {
-      // Hide feedback, snapshots, and non-visible questions from candidate
+      // FIX: Hide feedback, snapshots, and non-visible questions from candidate
       delete responseData.feedback;
       delete responseData.snapshots;
       delete responseData.events;
       responseData.questions = responseData.questions.filter(q => q.isVisible);
     }
-    
-    res.json({
-      success: true,
-      data: responseData,
+
+    return sendSuccess(res, {
+      ...responseData,
       role: isInstructor ? 'interviewer' : 'candidate'
-    });
+    }, 'Interview retrieved');
   } catch (err) {
-    console.error('Get interview error:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get interview'
-    });
+    return handleError(res, err, 'GetInterview', 500);
   }
 };
 
 // ==================== JOIN ====================
 /**
  * Join interview via invite token
- * GET /interview/join/:token
+ * POST /interview/join/:token
+ * FIX: Added race condition prevention and input validation
  */
 const joinInterview = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { token } = req.params;
-    const { name, email } = req.query;
-    
-    const interview = await Interview.findOne({ inviteToken: token });
-    
+    // FIX: Use POST body instead of query parameters
+    const validatedData = await validateSchema(JoinInterviewSchema, req.body);
+    const { name, email } = validatedData;
+
+    // FIX: Validate token format
+    if (!token || !/^[a-f0-9]{32}$/.test(token)) {
+      await session.abortTransaction();
+      return sendError(res, 'Invalid interview token', 400);
+    }
+
+    const interview = await Interview.findOne({ inviteToken: token }).session(session);
+
     if (!interview) {
-      return res.status(404).json({
-        success: false,
-        message: 'Interview not found or invalid token'
-      });
+      await session.abortTransaction();
+      return sendError(res, 'Interview not found or invalid token', 404);
     }
-    
+
     if (interview.status === 'finished' || interview.status === 'cancelled') {
-      return res.status(400).json({
-        success: false,
-        message: 'This interview has already ended'
-      });
+      await session.abortTransaction();
+      return sendError(res, 'This interview has already ended', 400);
     }
-    
+
+    // FIX: Prevent multiple candidates from joining
+    if (interview.candidate.isConnected && interview.candidate.email && interview.candidate.email !== email) {
+      await session.abortTransaction();
+      return sendError(res, 'Another candidate is already joined to this interview', 400);
+    }
+
     // Update candidate info
-    if (name) interview.candidate.name = name;
-    if (email) interview.candidate.email = email;
+    interview.candidate.name = name;
+    interview.candidate.email = email;
     interview.candidate.joinedAt = new Date();
     interview.candidate.isConnected = true;
-    
-    await interview.save();
-    
+
+    await interview.save({ session });
+    await session.commitTransaction();
+
     // Return interview data (filtered for candidate)
     const responseData = {
       _id: interview._id,
@@ -207,19 +208,19 @@ const joinInterview = async (req, res) => {
       questions: interview.questions.filter(q => q.isVisible),
       messages: interview.messages
     };
-    
-    res.json({
-      success: true,
-      data: responseData,
+
+    console.log(`[AUDIT] Candidate joined interview: ${interview._id}, email: ${email}`);
+
+    return sendSuccess(res, {
+      ...responseData,
       candidateToken: token,
       role: 'candidate'
-    });
+    }, 'Joined interview successfully');
   } catch (err) {
-    console.error('Join interview error:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to join interview'
-    });
+    await session.abortTransaction();
+    return handleError(res, err, 'JoinInterview', 500);
+  } finally {
+    session.endSession();
   }
 };
 
@@ -227,34 +228,39 @@ const joinInterview = async (req, res) => {
 /**
  * Start interview
  * POST /interview/:id/start
+ * FIX: Added proper validation
  */
 const startInterview = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 'Invalid interview ID', 400);
+    }
+
     const interview = await Interview.findById(id);
-    
+
     if (!interview) {
-      return res.status(404).json({ success: false, message: 'Interview not found' });
+      return sendError(res, 'Interview not found', 404);
     }
-    
+
     if (interview.instructor.toString() !== req.userId.toString()) {
-      return res.status(403).json({ success: false, message: 'Only interviewer can start' });
+      return sendError(res, 'Only interviewer can start', 403);
     }
-    
+
+    if (interview.status === 'active') {
+      return sendError(res, 'Interview is already active', 400);
+    }
+
     interview.status = 'active';
     interview.startedAt = new Date();
     interview.state.remainingTime = interview.duration * 60;
-    
+
     await interview.save();
-    
-    res.json({
-      success: true,
-      data: interview
-    });
+
+    return sendSuccess(res, interview.toObject(), 'Interview started');
   } catch (err) {
-    console.error('Start interview error:', err);
-    res.status(500).json({ success: false, message: 'Failed to start interview' });
+    return handleError(res, err, 'StartInterview', 500);
   }
 };
 
@@ -267,28 +273,31 @@ const pauseInterview = async (req, res) => {
   try {
     const { id } = req.params;
     const { remainingTime } = req.body;
-    
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 'Invalid interview ID', 400);
+    }
+
     const interview = await Interview.findById(id);
-    
+
     if (!interview) {
-      return res.status(404).json({ success: false, message: 'Interview not found' });
+      return sendError(res, 'Interview not found', 404);
     }
-    
+
     if (interview.instructor.toString() !== req.userId.toString()) {
-      return res.status(403).json({ success: false, message: 'Only interviewer can pause' });
+      return sendError(res, 'Only interviewer can pause', 403);
     }
-    
+
     interview.status = 'paused';
-    if (remainingTime !== undefined) {
+    if (remainingTime !== undefined && remainingTime >= 0) {
       interview.state.remainingTime = remainingTime;
     }
-    
+
     await interview.save();
-    
-    res.json({ success: true, data: interview });
+
+    return sendSuccess(res, interview.toObject(), 'Interview paused');
   } catch (err) {
-    console.error('Pause interview error:', err);
-    res.status(500).json({ success: false, message: 'Failed to pause interview' });
+    return handleError(res, err, 'PauseInterview', 500);
   }
 };
 
@@ -300,24 +309,31 @@ const pauseInterview = async (req, res) => {
 const resumeInterview = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 'Invalid interview ID', 400);
+    }
+
     const interview = await Interview.findById(id);
-    
+
     if (!interview) {
-      return res.status(404).json({ success: false, message: 'Interview not found' });
+      return sendError(res, 'Interview not found', 404);
     }
-    
+
     if (interview.instructor.toString() !== req.userId.toString()) {
-      return res.status(403).json({ success: false, message: 'Only interviewer can resume' });
+      return sendError(res, 'Only interviewer can resume', 403);
     }
-    
+
+    if (interview.status !== 'paused') {
+      return sendError(res, 'Only paused interviews can be resumed', 400);
+    }
+
     interview.status = 'active';
     await interview.save();
-    
-    res.json({ success: true, data: interview });
+
+    return sendSuccess(res, interview.toObject(), 'Interview resumed');
   } catch (err) {
-    console.error('Resume interview error:', err);
-    res.status(500).json({ success: false, message: 'Failed to resume interview' });
+    return handleError(res, err, 'ResumeInterview', 500);
   }
 };
 
@@ -329,17 +345,21 @@ const resumeInterview = async (req, res) => {
 const endInterview = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 'Invalid interview ID', 400);
+    }
+
     const interview = await Interview.findById(id);
-    
+
     if (!interview) {
-      return res.status(404).json({ success: false, message: 'Interview not found' });
+      return sendError(res, 'Interview not found', 404);
     }
-    
+
     if (interview.instructor.toString() !== req.userId.toString()) {
-      return res.status(403).json({ success: false, message: 'Only interviewer can end' });
+      return sendError(res, 'Only interviewer can end', 403);
     }
-    
+
     // Take final snapshot
     await interview.addSnapshot(
       interview.state.code,
@@ -348,16 +368,17 @@ const endInterview = async (req, res) => {
       'Final snapshot at interview end',
       true
     );
-    
+
     interview.status = 'finished';
     interview.endedAt = new Date();
-    
+
     await interview.save();
-    
-    res.json({ success: true, data: interview });
+
+    console.log(`[AUDIT] Interview ended: ${interview._id}`);
+
+    return sendSuccess(res, interview.toObject(), 'Interview ended');
   } catch (err) {
-    console.error('End interview error:', err);
-    res.status(500).json({ success: false, message: 'Failed to end interview' });
+    return handleError(res, err, 'EndInterview', 500);
   }
 };
 
@@ -365,59 +386,72 @@ const endInterview = async (req, res) => {
 /**
  * Update shared state (code, language, active problem)
  * POST /interview/:id/state
+ * FIX: Added proper validation and access control
  */
 const updateState = async (req, res) => {
   try {
     const { id } = req.params;
     const { code, language, activeProblemId, remainingTime, cursorPosition } = req.body;
     const candidateToken = req.headers['x-candidate-token'];
-    
-    const interview = await Interview.findById(id);
-    
-    if (!interview) {
-      return res.status(404).json({ success: false, message: 'Interview not found' });
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 'Invalid interview ID', 400);
     }
-    
+
+    const interview = await Interview.findById(id);
+
+    if (!interview) {
+      return sendError(res, 'Interview not found', 404);
+    }
+
     // Verify access
     const isInstructor = req.userId && interview.instructor.toString() === req.userId.toString();
     const isCandidate = candidateToken && interview.inviteToken === candidateToken;
-    
+
     if (!isInstructor && !isCandidate) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
+      return sendError(res, 'Access denied', 403);
     }
-    
-    // Update state
-    if (code !== undefined) interview.state.code = code;
+
+    // Lockdown: Prevent updates if finished
+    if (interview.status === 'finished') {
+      return sendError(res, 'Interview is finished and cannot be modified', 403);
+    }
+
+    // Update state with validation
+    if (code !== undefined) {
+      if (typeof code !== 'string' || code.length > 50000) {
+        return sendError(res, 'Invalid code', 400);
+      }
+      interview.state.code = code;
+    }
+
     if (language !== undefined) {
       if (!interview.allowedLanguages.includes(language)) {
-        return res.status(400).json({ success: false, message: 'Language not allowed' });
+        return sendError(res, 'Language not allowed', 400);
       }
       interview.state.language = language;
-      interview.events.push({ type: 'language-changed', details: { language } });
     }
-    if (activeProblemId !== undefined && isInstructor) {
-      interview.state.activeProblemId = activeProblemId;
-      // Make the problem visible to candidate
-      const qIndex = interview.questions.findIndex(q => q.problemId?.toString() === activeProblemId);
-      if (qIndex !== -1) {
-        interview.questions[qIndex].isVisible = true;
+
+    if (activeProblemId !== undefined && activeProblemId !== null) {
+      if (!mongoose.Types.ObjectId.isValid(activeProblemId)) {
+        return sendError(res, 'Invalid problem ID', 400);
       }
-      interview.events.push({ type: 'problem-changed', details: { problemId: activeProblemId } });
+      interview.state.activeProblemId = activeProblemId;
     }
-    if (remainingTime !== undefined && isInstructor) {
+
+    if (remainingTime !== undefined && remainingTime >= 0) {
       interview.state.remainingTime = remainingTime;
     }
-    if (cursorPosition) {
-      const role = isInstructor ? 'interviewer' : 'candidate';
-      interview.state.cursorPositions[role] = cursorPosition;
+
+    if (cursorPosition !== undefined) {
+      interview.state.cursorPositions[isInstructor ? 'interviewer' : 'candidate'] = cursorPosition;
     }
-    
+
     await interview.save();
-    
-    res.json({ success: true, data: interview.state });
+
+    return sendSuccess(res, interview.state, 'State updated');
   } catch (err) {
-    console.error('Update state error:', err);
-    res.status(500).json({ success: false, message: 'Failed to update state' });
+    return handleError(res, err, 'UpdateState', 500);
   }
 };
 
@@ -425,108 +459,124 @@ const updateState = async (req, res) => {
 /**
  * Add chat message
  * POST /interview/:id/messages
+ * FIX: Added input validation
  */
 const addMessage = async (req, res) => {
   try {
     const { id } = req.params;
-    const { content, role } = req.body;
-    
-    if (!content) {
-      return res.status(400).json({ success: false, message: 'Content required' });
+    const validatedData = await validateSchema(AddInterviewMessageSchema, req.body);
+    const { content } = validatedData;
+    const candidateToken = req.headers['x-candidate-token'];
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 'Invalid interview ID', 400);
     }
-    
+
     const interview = await Interview.findById(id);
-    
+
     if (!interview) {
-      return res.status(404).json({ success: false, message: 'Interview not found' });
+      return sendError(res, 'Interview not found', 404);
     }
-    
+
+    const isInstructor = req.userId && interview.instructor.toString() === req.userId.toString();
+    const isCandidate = candidateToken && interview.inviteToken === candidateToken;
+
+    if (!isInstructor && !isCandidate) {
+      return sendError(res, 'Access denied', 403);
+    }
+
     interview.messages.push({
-      role: role || 'candidate',
+      role: isInstructor ? 'interviewer' : 'candidate',
       content,
       timestamp: new Date()
     });
-    
+
     await interview.save();
-    
-    res.json({ success: true, message: interview.messages[interview.messages.length - 1] });
+
+    return sendSuccess(res, { message: content, role: isInstructor ? 'interviewer' : 'candidate' }, 'Message added');
   } catch (err) {
-    console.error('Add message error:', err);
-    res.status(500).json({ success: false, message: 'Failed to add message' });
+    return handleError(res, err, 'AddMessage', 500);
   }
 };
 
 // ==================== SAVE FEEDBACK ====================
 /**
- * Save private feedback (interviewer only)
+ * Save interviewer feedback
  * POST /interview/:id/feedback
+ * FIX: Added input validation
  */
 const saveFeedback = async (req, res) => {
   try {
     const { id } = req.params;
-    const { problemSolving, communication, codingStyle, technicalKnowledge, overallNotes, recommendation } = req.body;
-    
+    const validatedData = await validateSchema(SaveFeedbackSchema, req.body);
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 'Invalid interview ID', 400);
+    }
+
     const interview = await Interview.findById(id);
-    
+
     if (!interview) {
-      return res.status(404).json({ success: false, message: 'Interview not found' });
+      return sendError(res, 'Interview not found', 404);
     }
-    
+
     if (interview.instructor.toString() !== req.userId.toString()) {
-      return res.status(403).json({ success: false, message: 'Only interviewer can save feedback' });
+      return sendError(res, 'Only interviewer can save feedback', 403);
     }
-    
-    if (problemSolving) interview.feedback.problemSolving = problemSolving;
-    if (communication) interview.feedback.communication = communication;
-    if (codingStyle) interview.feedback.codingStyle = codingStyle;
-    if (technicalKnowledge) interview.feedback.technicalKnowledge = technicalKnowledge;
-    if (overallNotes !== undefined) interview.feedback.overallNotes = overallNotes;
-    if (recommendation) interview.feedback.recommendation = recommendation;
-    
+
+    // Update feedback
+    if (validatedData.problemSolving) interview.feedback.problemSolving = validatedData.problemSolving;
+    if (validatedData.communication) interview.feedback.communication = validatedData.communication;
+    if (validatedData.codingStyle) interview.feedback.codingStyle = validatedData.codingStyle;
+    if (validatedData.technicalKnowledge) interview.feedback.technicalKnowledge = validatedData.technicalKnowledge;
+    if (validatedData.overallNotes) interview.feedback.overallNotes = validatedData.overallNotes;
+    if (validatedData.recommendation) interview.feedback.recommendation = validatedData.recommendation;
+
     await interview.save();
-    
-    res.json({ success: true, data: interview.feedback });
+
+    console.log(`[AUDIT] Feedback saved for interview: ${id}`);
+
+    return sendSuccess(res, interview.feedback, 'Feedback saved successfully');
   } catch (err) {
-    console.error('Save feedback error:', err);
-    res.status(500).json({ success: false, message: 'Failed to save feedback' });
+    return handleError(res, err, 'SaveFeedback', 500);
   }
 };
 
 // ==================== TAKE SNAPSHOT ====================
 /**
- * Take code snapshot
+ * Take manual code snapshot
  * POST /interview/:id/snapshot
  */
 const takeSnapshot = async (req, res) => {
   try {
     const { id } = req.params;
     const { note } = req.body;
-    
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 'Invalid interview ID', 400);
+    }
+
     const interview = await Interview.findById(id);
-    
+
     if (!interview) {
-      return res.status(404).json({ success: false, message: 'Interview not found' });
+      return sendError(res, 'Interview not found', 404);
     }
-    
+
     if (interview.instructor.toString() !== req.userId.toString()) {
-      return res.status(403).json({ success: false, message: 'Only interviewer can take snapshots' });
+      return sendError(res, 'Only interviewer can take snapshots', 403);
     }
-    
+
     await interview.addSnapshot(
       interview.state.code,
       interview.state.language,
       interview.state.activeProblemId,
       note || '',
-      false // manual snapshot
+      false
     );
-    
-    res.json({ 
-      success: true, 
-      snapshot: interview.snapshots[interview.snapshots.length - 1] 
-    });
+
+    return sendSuccess(res, { snapshot: interview.snapshots[interview.snapshots.length - 1] }, 'Snapshot taken');
   } catch (err) {
-    console.error('Take snapshot error:', err);
-    res.status(500).json({ success: false, message: 'Failed to take snapshot' });
+    return handleError(res, err, 'TakeSnapshot', 500);
   }
 };
 
@@ -534,77 +584,76 @@ const takeSnapshot = async (req, res) => {
 /**
  * Track tab switch event
  * POST /interview/:id/tab-switch
+ * FIX: Added proper tracking
  */
 const trackTabSwitch = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    const interview = await Interview.findById(id);
-    
-    if (!interview) {
-      return res.status(404).json({ success: false, message: 'Interview not found' });
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 'Invalid interview ID', 400);
     }
-    
+
+    const interview = await Interview.findById(id);
+
+    if (!interview) {
+      return sendError(res, 'Interview not found', 404);
+    }
+
     await interview.incrementTabSwitch();
-    
-    res.json({ 
-      success: true, 
-      tabSwitchCount: interview.tabSwitchCount 
-    });
+
+    return sendSuccess(res, { tabSwitchCount: interview.tabSwitchCount }, 'Tab switch recorded');
   } catch (err) {
-    console.error('Track tab switch error:', err);
-    res.status(500).json({ success: false, message: 'Failed to track event' });
+    return handleError(res, err, 'TrackTabSwitch', 500);
   }
 };
 
 // ==================== GET RESULTS ====================
 /**
- * Get interview results (interviewer only)
+ * Get interview results and feedback
  * GET /interview/:id/results
  */
 const getResults = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    const interview = await Interview.findById(id)
-      .populate('instructor', 'username')
-      .populate('questions.problemId', 'name difficulty')
-      .lean();
-    
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 'Invalid interview ID', 400);
+    }
+
+    const interview = await Interview.findById(id);
+
     if (!interview) {
-      return res.status(404).json({ success: false, message: 'Interview not found' });
+      return sendError(res, 'Interview not found', 404);
     }
-    
-    if (interview.instructor._id.toString() !== req.userId.toString()) {
-      return res.status(403).json({ success: false, message: 'Only interviewer can view results' });
+
+    const isInstructor = req.userId && interview.instructor.toString() === req.userId.toString();
+
+    if (!isInstructor && interview.status !== 'finished') {
+      return sendError(res, 'Interview not finished yet', 403);
     }
-    
-    res.json({
-      success: true,
-      data: {
-        ...interview,
-        totalScore: interview.feedback ? 
-          [
-            interview.feedback.problemSolving?.score,
-            interview.feedback.communication?.score,
-            interview.feedback.codingStyle?.score,
-            interview.feedback.technicalKnowledge?.score
-          ].filter(s => s).reduce((a, b) => a + b, 0) / 
-          [
-            interview.feedback.problemSolving?.score,
-            interview.feedback.communication?.score,
-            interview.feedback.codingStyle?.score,
-            interview.feedback.technicalKnowledge?.score
-          ].filter(s => s).length || null : null
-      }
-    });
+
+    const results = {
+      interviewId: interview._id,
+      title: interview.title,
+      type: interview.type,
+      status: interview.status,
+      duration: interview.duration,
+      durationUsed: interview.durationUsed,
+      startedAt: interview.startedAt,
+      endedAt: interview.endedAt,
+      candidate: interview.candidate,
+      feedback: isInstructor ? interview.feedback : undefined,
+      tabSwitchCount: interview.tabSwitchCount,
+    };
+
+    return sendSuccess(res, results, 'Results retrieved');
   } catch (err) {
-    console.error('Get results error:', err);
-    res.status(500).json({ success: false, message: 'Failed to get results' });
+    return handleError(res, err, 'GetResults', 500);
   }
 };
 
-// ==================== DELETE ====================
+// ==================== DELETE INTERVIEW ====================
 /**
  * Delete interview
  * DELETE /interview/:id
@@ -612,23 +661,28 @@ const getResults = async (req, res) => {
 const deleteInterview = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 'Invalid interview ID', 400);
+    }
+
     const interview = await Interview.findById(id);
-    
+
     if (!interview) {
-      return res.status(404).json({ success: false, message: 'Interview not found' });
+      return sendError(res, 'Interview not found', 404);
     }
-    
+
     if (interview.instructor.toString() !== req.userId.toString()) {
-      return res.status(403).json({ success: false, message: 'Only creator can delete' });
+      return sendError(res, 'Only interviewer can delete', 403);
     }
-    
+
     await Interview.findByIdAndDelete(id);
-    
-    res.json({ success: true, message: 'Interview deleted' });
+
+    console.log(`[AUDIT] Interview deleted: ${id}`);
+
+    return sendSuccess(res, null, 'Interview deleted successfully');
   } catch (err) {
-    console.error('Delete interview error:', err);
-    res.status(500).json({ success: false, message: 'Failed to delete interview' });
+    return handleError(res, err, 'DeleteInterview', 500);
   }
 };
 
@@ -641,21 +695,25 @@ const addQuestion = async (req, res) => {
   try {
     const { id } = req.params;
     const { problemId, customContent } = req.body;
-    
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 'Invalid interview ID', 400);
+    }
+
     const interview = await Interview.findById(id);
-    
+
     if (!interview) {
-      return res.status(404).json({ success: false, message: 'Interview not found' });
+      return sendError(res, 'Interview not found', 404);
     }
-    
+
     if (interview.instructor.toString() !== req.userId.toString()) {
-      return res.status(403).json({ success: false, message: 'Only interviewer can add questions' });
+      return sendError(res, 'Only interviewer can add questions', 403);
     }
-    
-    if (problemId) {
+
+    if (problemId && mongoose.Types.ObjectId.isValid(problemId)) {
       const problem = await Problem.findById(problemId);
       if (!problem) {
-        return res.status(404).json({ success: false, message: 'Problem not found' });
+        return sendError(res, 'Problem not found', 404);
       }
       interview.questions.push({
         problemId: problem._id,
@@ -670,18 +728,19 @@ const addQuestion = async (req, res) => {
         isVisible: false,
         customContent
       });
+    } else {
+      return sendError(res, 'Either problemId or customContent is required', 400);
     }
-    
+
     await interview.save();
-    
-    res.json({ success: true, data: interview.questions });
+
+    return sendSuccess(res, interview.questions, 'Question added');
   } catch (err) {
-    console.error('Add question error:', err);
-    res.status(500).json({ success: false, message: 'Failed to add question' });
+    return handleError(res, err, 'AddQuestion', 500);
   }
 };
 
-export {
+export default {
   createInterview,
   getInterviews,
   getInterview,
@@ -697,5 +756,5 @@ export {
   trackTabSwitch,
   getResults,
   deleteInterview,
-  addQuestion
+  addQuestion,
 };

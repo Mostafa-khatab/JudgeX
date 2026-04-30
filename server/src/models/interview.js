@@ -181,9 +181,12 @@ const interviewSchema = new mongoose.Schema({
 });
 
 // ==================== Indexes ====================
-interviewSchema.index({ instructor: 1 });
-interviewSchema.index({ status: 1 });
-interviewSchema.index({ createdAt: -1 });
+// FIX: Add comprehensive indexes for performance
+interviewSchema.index({ instructor: 1, createdAt: -1 }); // For instructor's interviews list
+interviewSchema.index({ inviteToken: 1 }); // For join via token
+interviewSchema.index({ status: 1, createdAt: -1 }); // For filtering by status
+interviewSchema.index({ createdAt: -1 }); // For timeline queries
+interviewSchema.index({ 'candidate.email': 1 }); // For finding by candidate email
 
 // ==================== Virtual: Total Score ====================
 interviewSchema.virtual('totalScore').get(function() {

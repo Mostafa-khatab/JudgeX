@@ -10,6 +10,8 @@ import connectDB from './config/db.js';
 import route from './routes/index.js';
 
 import { delayMiddleware } from './middlewares/delayMiddlewares.js';
+import { socketAuthMiddleware } from './middlewares/socketAuth.js';
+import { globalErrorHandler, notFoundHandler } from './middlewares/errorHandler.js';
 
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -31,18 +33,25 @@ export { io };
 
 connectDB();
 
+app.use(
+	cors({
+		origin: (origin, callback) => {
+			const allowed = process.env.CLIENT_URL;
+			if (!origin || !allowed || origin === allowed || origin === allowed.replace(/\/$/, '')) {
+				callback(null, true);
+			} else {
+				callback(new Error('Not allowed by CORS'));
+			}
+		},
+		credentials: true,
+	}),
+);
+
 app.use(express.static(path.join(path.resolve(), 'uploads')));
 
 app.use(
 	express.urlencoded({
 		extended: true,
-	}),
-);
-
-app.use(
-	cors({
-		origin: process.env.CLIENT_URL || true,
-		credentials: true,
 	}),
 );
 
@@ -56,6 +65,9 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 route(app);
+
+// 🔐 Socket.IO Authentication Middleware
+io.use(socketAuthMiddleware);
 
 io.on('connection', (socket) => {
 	console.log('A user connected:', socket.id);
@@ -83,8 +95,9 @@ io.on('connection', (socket) => {
 		socket.to(room).emit('participant-left', { socketId: socket.id });
 	});
 
-	socket.on('interview-code-update', ({ interviewId, code, problemId, language }) => {
+	socket.on('interview-code-update', async ({ interviewId, code, problemId, language }) => {
 		const room = `interview:${interviewId}`;
+		// Optional: Add DB check if high security is needed, or use a local cache
 		socket.to(room).emit('code-updated', { code, problemId, language, from: socket.id });
 	});
 
@@ -173,6 +186,14 @@ io.on('connection', (socket) => {
 			
 			const problem = await Problem.findById(problemId);
 			if (!problem) return;
+
+			const interview = await Interview.findById(interviewId);
+			if (!interview || interview.status === 'finished') return;
+			
+			// Only interviewer can switch problems
+			if (socket.role !== 'interviewer' && interview.instructor.toString() !== socket.userId?.toString()) {
+				return;
+			}
 			
 			const langMap = {
 				'c': 'c',
@@ -345,6 +366,10 @@ io.on('connection', (socket) => {
 		}
 	});
 });
+
+// ✅ Global Error Handler Middleware (must be last)
+app.use(notFoundHandler);
+app.use(globalErrorHandler);
 
 const PORT = process.env.PORT || 8080;
 httpServer.listen(PORT, () => console.log(`Server listening on port ${PORT} ${process.env.PORT ? '' : '(default)'}`));
