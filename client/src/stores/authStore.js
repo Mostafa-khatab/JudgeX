@@ -3,6 +3,14 @@ import { create } from 'zustand';
 import httpRequest from '~/utils/httpRequest';
 import useLoadingStore from './loadingStore';
 
+const getErrorMessage = (err) => {
+	if (err.response?.status === 401) return 'Invalid email or password';
+	if (err.response?.status === 403) return 'Please verify your email first';
+	if (err.response?.status === 429) return 'Too many login attempts. Try again later.';
+	if (!err.response) return 'Network error. Check your connection.';
+	return err.response?.data?.msg || 'Something went wrong';
+};
+
 const useAuthStore = create((set) => ({
 	user: null,
 	isAuth: false,
@@ -21,7 +29,6 @@ const useAuthStore = create((set) => ({
 			set({ user: res.data.data, isAuth: true, isLoading: false });
 			useLoadingStore.setState({ isLoading: false });
 		} catch (err) {
-			console.error(err);
 			set({ user: null, isAuth: false, isLoading: false });
 			useLoadingStore.setState({ isLoading: false });
 		}
@@ -32,7 +39,6 @@ const useAuthStore = create((set) => ({
 			const res = await httpRequest.get('/auth');
 			set({ user: res.data.data, isAuth: true });
 		} catch (err) {
-			console.error(err);
 			set({ isAuth: false });
 		}
 	},
@@ -44,8 +50,7 @@ const useAuthStore = create((set) => ({
 			const res = await httpRequest.post('/auth/login', { email, password });
 			set({ user: res.data.data, isAuth: true, msg: res.data.msg, isLoading: false });
 		} catch (err) {
-			console.error(err);
-			set({ error: err.response?.data?.msg, isAuth: false, isLoading: false });
+			set({ error: getErrorMessage(err), isAuth: false, isLoading: false });
 		}
 	},
 
@@ -56,8 +61,7 @@ const useAuthStore = create((set) => ({
 			const res = await httpRequest.post('/auth/signup', { email, password, name });
 			set({ msg: res.data.msg, isLoading: false });
 		} catch (err) {
-			console.error(err);
-			set({ error: err.response?.data?.msg, isLoading: false });
+			set({ error: getErrorMessage(err), isLoading: false });
 		}
 	},
 
@@ -65,10 +69,9 @@ const useAuthStore = create((set) => ({
 		set({ error: null, msg: null, isLoading: true });
 
 		try {
-			const res = await httpRequest.post('/auth/logout');
+			await httpRequest.post('/auth/logout');
 			set({ isAuth: false, user: null, isLoading: false });
 		} catch (err) {
-			console.error(err);
 			set({ isLoading: false });
 		}
 	},
@@ -80,8 +83,7 @@ const useAuthStore = create((set) => ({
 			const res = await httpRequest.post(`/auth/verify-email/${code}`);
 			set({ isLoading: false, msg: res.data.msg });
 		} catch (err) {
-			console.error(err);
-			set({ error: err.response?.data?.msg, isLoading: false });
+			set({ error: getErrorMessage(err), isLoading: false });
 		}
 	},
 
@@ -92,8 +94,7 @@ const useAuthStore = create((set) => ({
 			const res = await httpRequest.post(`/auth/re-send-verify`, { email });
 			set({ isLoading: false, msg: res.data.msg });
 		} catch (err) {
-			console.error(err);
-			set({ error: err.response?.data?.msg, isLoading: false });
+			set({ error: getErrorMessage(err), isLoading: false });
 		}
 	},
 
@@ -104,8 +105,7 @@ const useAuthStore = create((set) => ({
 			const res = await httpRequest.post('/auth/forgot-password', { email });
 			set({ isLoading: false, msg: res.data.msg });
 		} catch (err) {
-			console.error(err);
-			set({ error: err.response?.data?.msg, isLoading: false });
+			set({ error: getErrorMessage(err), isLoading: false });
 		}
 	},
 
@@ -116,8 +116,7 @@ const useAuthStore = create((set) => ({
 			const res = await httpRequest.post(`/auth/reset-password/${token}`, { password });
 			set({ isLoading: false, msg: res.data.msg });
 		} catch (err) {
-			console.error(err);
-			set({ error: err.response?.data?.msg, isLoading: false });
+			set({ error: getErrorMessage(err), isLoading: false });
 		}
 	},
 

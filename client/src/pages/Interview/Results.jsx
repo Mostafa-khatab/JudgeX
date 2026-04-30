@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
@@ -8,24 +9,24 @@ import {
   Trophy, Calendar, User, AlertTriangle, Star,
   Copy, Eye, FileText
 } from 'lucide-react';
+import httpRequest from '~/utils/httpRequest';
 
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-
 // ============ API ============
 const api = {
   getResults: async (id) => {
-    const res = await fetch(`${API_URL}/interview/${id}/results`, { credentials: 'include' });
-    return res.json();
+    const res = await httpRequest.get(`/interview/${id}/results`);
+    return res.data;
   }
 };
 
 // ============ Component ============
 const InterviewResults = () => {
+  const { t } = useTranslation('interview');
   const { id } = useParams();
   const navigate = useNavigate();
   
@@ -43,11 +44,11 @@ const InterviewResults = () => {
       if (res.success) {
         setData(res.data);
       } else {
-        toast.error(res.message || 'Failed to load results');
+        toast.error(res.message || t('errors.failedFetchInterview'));
         navigate('/interview');
       }
     } catch (err) {
-      toast.error('Failed to load results');
+      toast.error(t('errors.failedFetchInterview'));
       navigate('/interview');
     } finally {
       setLoading(false);
@@ -55,7 +56,7 @@ const InterviewResults = () => {
   };
 
   const formatDuration = (startedAt, endedAt) => {
-    if (!startedAt) return 'N/A';
+    if (!startedAt) return t('messages.dateNotAvailable');
     const start = new Date(startedAt);
     const end = endedAt ? new Date(endedAt) : new Date();
     const diff = Math.floor((end - start) / 1000);
@@ -104,7 +105,7 @@ const InterviewResults = () => {
       <div className="dark min-h-screen bg-neutral-950 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
-          <p className="text-neutral-500">Loading results...</p>
+          <p className="text-neutral-500">{t('loading.loadingResults')}</p>
         </div>
       </div>
     );
@@ -120,18 +121,18 @@ const InterviewResults = () => {
           <div className="flex items-center gap-4">
             <Button variant="ghost" onClick={() => navigate('/interview')}>
               <ChevronLeft className="h-4 w-4 mr-1" />
-              Back
+              {t('buttons.back')}
             </Button>
             <div className="h-6 w-px bg-neutral-700" />
             <div>
               <Badge variant="outline" className="mb-1 text-xs border-green-500/30 text-green-500">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
-                Completed
+                {t('status.completed')}
               </Badge>
-              <h1 className="text-2xl font-bold">{data?.title || 'Interview Results'}</h1>
+              <h1 className="text-2xl font-bold">{data?.title || t('messages.interviewResultsTitle')}</h1>
               <p className="text-neutral-500 text-sm flex items-center gap-2 mt-1">
                 <Calendar className="h-3.5 w-3.5" />
-                {data?.createdAt ? formatDate(data.createdAt) : 'N/A'}
+                {data?.createdAt ? formatDate(data.createdAt) : t('messages.dateNotAvailable')}
               </p>
             </div>
           </div>
@@ -143,14 +144,14 @@ const InterviewResults = () => {
           <Card className="col-span-2 bg-gradient-to-br from-blue-600/20 to-indigo-600/20 border-blue-500/30 p-8">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-neutral-400 text-sm uppercase tracking-wider">Overall Score</p>
+                <p className="text-neutral-400 text-sm uppercase tracking-wider">{t('labels.overallScore')}</p>
                 <p className="text-6xl font-black mt-2">
                   {data?.totalScore || '—'}
-                  <span className="text-2xl text-neutral-400">/5</span>
+                  <span className="text-2xl text-neutral-400">{t('labels.scoreScale')}</span>
                 </p>
                 {data?.feedback?.recommendation && (
                   <Badge className={`mt-4 ${getRecommendationColor(data.feedback.recommendation)}`}>
-                    {data.feedback.recommendation.replace(/_/g, ' ').toUpperCase()}
+                    {t(`labels.finalRecommendation`)}: {data.feedback.recommendation.replace(/_/g, ' ').toUpperCase()}
                   </Badge>
                 )}
               </div>
@@ -163,15 +164,15 @@ const InterviewResults = () => {
           {/* Candidate Info */}
           <Card className="bg-neutral-900/50 border-neutral-800 p-6">
             <User className="h-5 w-5 text-blue-400 mb-4" />
-            <h3 className="font-bold text-lg">{data?.candidate?.name || 'Candidate'}</h3>
-            <p className="text-sm text-neutral-500 mt-1">{data?.candidate?.email || 'No email'}</p>
+            <h3 className="font-bold text-lg">{data?.candidate?.name || t('roles.candidate')}</h3>
+            <p className="text-sm text-neutral-500 mt-1">{data?.candidate?.email || t('labels.noEmail')}</p>
             <div className="mt-4 pt-4 border-t border-neutral-800">
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-500">Duration:</span>
+                <span className="text-neutral-500">{t('labels.duration')}</span>
                 <span className="font-medium">{formatDuration(data?.startedAt, data?.endedAt)}</span>
               </div>
               <div className="flex justify-between text-sm mt-2">
-                <span className="text-neutral-500">Tab Switches:</span>
+                <span className="text-neutral-500">{t('labels.tabSwitches')}</span>
                 <span className={`font-medium ${data?.tabSwitchCount > 0 ? 'text-red-400' : ''}`}>
                   {data?.tabSwitchCount || 0}
                 </span>
@@ -185,19 +186,19 @@ const InterviewResults = () => {
           <TabsList className="bg-neutral-900 border border-neutral-800">
             <TabsTrigger value="feedback" className="data-[state=active]:bg-blue-600">
               <Star className="h-4 w-4 mr-2" />
-              Feedback
+              {t('sections.feedback')}
             </TabsTrigger>
             <TabsTrigger value="snapshots" className="data-[state=active]:bg-blue-600">
               <Code2 className="h-4 w-4 mr-2" />
-              Snapshots ({data?.snapshots?.length || 0})
+              {t('labels.snapshotsPrefix')}{data?.snapshots?.length || 0}{t('labels.closeParen')}
             </TabsTrigger>
             <TabsTrigger value="chat" className="data-[state=active]:bg-blue-600">
               <MessageSquare className="h-4 w-4 mr-2" />
-              Chat ({data?.messages?.length || 0})
+              {t('labels.chatPrefix')}{data?.messages?.length || 0}{t('labels.closeParen')}
             </TabsTrigger>
             <TabsTrigger value="events" className="data-[state=active]:bg-blue-600">
               <BarChart3 className="h-4 w-4 mr-2" />
-              Events ({data?.events?.length || 0})
+              {t('labels.eventsPrefix')}{data?.events?.length || 0}{t('labels.closeParen')}
             </TabsTrigger>
           </TabsList>
 
@@ -221,7 +222,7 @@ const InterviewResults = () => {
                         <div className="h-10 w-10 rounded-xl bg-blue-600/20 flex items-center justify-center">
                           <item.icon className="h-5 w-5 text-blue-400" />
                         </div>
-                        <span className="font-bold">{item.label}</span>
+                        <span className="font-bold">{t(`categories.${item.key}`)}</span>
                       </div>
                       {renderStars(data?.feedback?.[item.key]?.score || 0)}
                     </div>
@@ -239,7 +240,7 @@ const InterviewResults = () => {
               <Card className="bg-neutral-900/50 border-neutral-800 p-5 mt-4">
                 <h4 className="font-bold mb-3 flex items-center gap-2">
                   <FileText className="h-4 w-4 text-blue-400" />
-                  Overall Notes
+                  {t('sections.overallNotes')}
                 </h4>
                 <p className="text-sm text-neutral-400">{data.feedback.overallNotes}</p>
               </Card>
@@ -281,7 +282,7 @@ const InterviewResults = () => {
               {(!data?.snapshots || data.snapshots.length === 0) && (
                 <Card className="col-span-3 bg-neutral-900/30 border-neutral-800 border-dashed p-10 text-center">
                   <Code2 className="h-10 w-10 text-neutral-700 mx-auto mb-2" />
-                  <p className="text-neutral-500">No snapshots were taken</p>
+                  <p className="text-neutral-500">{t('messages.noSnapshots')}</p>
                 </Card>
               )}
             </div>
@@ -301,7 +302,7 @@ const InterviewResults = () => {
                     variant="ghost"
                     onClick={() => {
                       navigator.clipboard.writeText(data.snapshots[activeSnapshot].code);
-                      toast.success('Code copied!');
+                      toast.success(t('messages.codeCopied'));
                     }}
                   >
                     <Copy className="h-4 w-4" />
@@ -334,7 +335,7 @@ const InterviewResults = () => {
                 {(!data?.messages || data.messages.length === 0) && (
                   <div className="text-center py-10 text-neutral-500">
                     <MessageSquare className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                    <p>No messages in this session</p>
+                    <p>{t('messages.noMessagesInSession')}</p>
                   </div>
                 )}
               </div>
@@ -364,7 +365,7 @@ const InterviewResults = () => {
                 {(!data?.events || data.events.length === 0) && (
                   <div className="text-center py-10 text-neutral-500">
                     <BarChart3 className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                    <p>No proctoring events recorded</p>
+                    <p>{t('messages.noProctoringEvents')}</p>
                   </div>
                 )}
               </div>

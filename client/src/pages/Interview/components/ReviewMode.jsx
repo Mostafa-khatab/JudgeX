@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   Code2, MessageSquare, Clock, 
   ChevronLeft, ChevronRight, History,
@@ -12,6 +13,7 @@ import { Button } from '~/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 
 const ReviewMode = ({ interview, role }) => {
+  const { t } = useTranslation('interview');
   const [activeSnapshotIdx, setActiveSnapshotIdx] = useState(0);
   const snapshots = interview?.snapshots || [];
   const currentSnapshot = snapshots[activeSnapshotIdx] || { code: interview?.state?.code, language: interview?.state?.language };
@@ -27,7 +29,7 @@ const ReviewMode = ({ interview, role }) => {
       {/* Header */}
       <header className="h-16 border-b border-neutral-800 bg-black/50 backdrop-blur-md flex items-center justify-between px-8 shrink-0">
         <div className="flex items-center gap-6">
-          <Badge className="bg-neutral-800 text-neutral-400 border-neutral-700">Finished</Badge>
+          <Badge className="bg-neutral-800 text-neutral-400 border-neutral-700">{t('status.finished')}</Badge>
           <div className="h-4 w-px bg-neutral-800" />
           <h1 className="text-xl font-bold">{interview?.title}</h1>
         </div>
@@ -45,7 +47,7 @@ const ReviewMode = ({ interview, role }) => {
             <div className="p-4 border-b border-neutral-800 bg-neutral-900/50 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <History className="h-4 w-4 text-blue-400" />
-                <span className="font-bold text-sm">Code Timeline</span>
+                <span className="font-bold text-sm">{t('sections.codeTimeline')}</span>
                 <Badge variant="outline" className="text-[10px]">{currentSnapshot.language}</Badge>
               </div>
               
@@ -91,7 +93,7 @@ const ReviewMode = ({ interview, role }) => {
           {/* Timeline Slider / Markers */}
           <Card className="p-4 bg-neutral-900/50 border-neutral-800">
             <div className="flex items-center gap-4">
-              <span className="text-[10px] font-bold text-neutral-500 uppercase">Playback</span>
+              <span className="text-[10px] font-bold text-neutral-500 uppercase">{t('labels.playback')}</span>
               <input 
                 type="range" 
                 min="0" 
@@ -108,8 +110,8 @@ const ReviewMode = ({ interview, role }) => {
         <div className="flex-1 flex flex-col gap-6">
           <Tabs defaultValue="info" className="flex-1 flex flex-col overflow-hidden">
             <TabsList className="bg-neutral-900 border-neutral-800 w-full">
-              <TabsTrigger value="info" className="flex-1">Overview</TabsTrigger>
-              <TabsTrigger value="chat" className="flex-1">Chat Logs</TabsTrigger>
+              <TabsTrigger value="info" className="flex-1">{t('sections.overview')}</TabsTrigger>
+              <TabsTrigger value="chat" className="flex-1">{t('sections.chatLogs')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="info" className="flex-1 mt-4 space-y-4 overflow-y-auto pr-2">
@@ -119,8 +121,8 @@ const ReviewMode = ({ interview, role }) => {
                     <User className="h-6 w-6 text-neutral-500" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg">{interview?.candidate?.name || 'Candidate'}</h3>
-                    <p className="text-xs text-neutral-500">{interview?.candidate?.email}</p>
+                    <h3 className="font-bold text-lg">{interview?.candidate?.name || t('roles.candidate')}</h3>
+                    <p className="text-xs text-neutral-500">{interview?.candidate?.email || t('labels.noEmail')}</p>
                   </div>
                 </div>
 
@@ -128,13 +130,13 @@ const ReviewMode = ({ interview, role }) => {
 
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between text-neutral-500">
-                    <span>Total Duration</span>
-                    <span className="text-white font-medium">{interview?.duration}m</span>
+                    <span>{t('labels.totalDuration')}</span>
+                    <span className="text-white font-medium">{interview?.duration}{t('labels.durationUnit')}</span>
                   </div>
                   <div className="flex justify-between text-neutral-500">
-                    <span>Final Recommendation</span>
+                    <span>{t('labels.finalRecommendation')}</span>
                     <Badge variant="secondary" className="bg-blue-600/10 text-blue-400">
-                      {role === 'interviewer' ? (interview?.feedback?.recommendation || 'No Data') : 'Restricted'}
+                      {role === 'interviewer' ? (interview?.feedback?.recommendation || t('labels.noData')) : t('labels.restricted')}
                     </Badge>
                   </div>
                 </div>
@@ -144,14 +146,14 @@ const ReviewMode = ({ interview, role }) => {
                 <Card className="bg-neutral-900/50 border-neutral-800 p-6 space-y-4">
                   <h4 className="font-bold flex items-center gap-2">
                     <Star className="h-4 w-4 text-yellow-500" />
-                    Evaluation
+                    {t('sections.evaluation')}
                   </h4>
                   <div className="space-y-4">
                     {['problemSolving', 'communication', 'codingStyle'].map(key => (
                       <div key={key} className="space-y-2">
                         <div className="flex justify-between text-[10px] uppercase font-black text-neutral-500 tracking-widest">
-                          <span>{key.replace(/([A-Z])/g, ' $1')}</span>
-                          <span>{interview.feedback[key]?.score || 0}/5</span>
+                          <span>{t(`categories.${key}`)}</span>
+                          <span>{interview.feedback?.[key]?.score || 0}{t('labels.scoreScale')}</span>
                         </div>
                         <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden">
                           <div 
@@ -186,7 +188,7 @@ const ReviewMode = ({ interview, role }) => {
                 {(!interview?.messages || interview.messages.length === 0) && (
                   <div className="h-full flex flex-col items-center justify-center opacity-20">
                     <MessageSquare className="h-12 w-12" />
-                    <p className="text-xs mt-2">No messages</p>
+                    <p className="text-xs mt-2">{t('messages.noMessages')}</p>
                   </div>
                 )}
               </Card>
@@ -198,7 +200,7 @@ const ReviewMode = ({ interview, role }) => {
             className="w-full h-12 border border-neutral-800 hover:bg-neutral-800 text-neutral-500 hover:text-white"
             onClick={() => window.close()}
           >
-            Close Session
+            {t('buttons.closeSession')}
           </Button>
         </div>
       </main>

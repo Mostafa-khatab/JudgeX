@@ -57,10 +57,11 @@ const interviewSchema = new mongoose.Schema({
     required: true
   },
   candidate: {
-    name: { type: String, default: '' },
+    name: { type: String, default: 'Waiting for candidate...' },
     email: { type: String, default: '' },
     joinedAt: { type: Date, default: null },
-    isConnected: { type: Boolean, default: false }
+    isConnected: { type: Boolean, default: false },
+    socketId: { type: String, default: null }
   },
   
   // ==================== Access ====================
@@ -122,26 +123,26 @@ const interviewSchema = new mongoose.Schema({
   // ==================== Private Feedback (Interviewer Only) ====================
   feedback: {
     problemSolving: {
-      score: { type: Number, min: 1, max: 5, default: null },
+      score: { type: Number, min: 1, max: 5, default: 0 },
       notes: { type: String, default: '' }
     },
     communication: {
-      score: { type: Number, min: 1, max: 5, default: null },
+      score: { type: Number, min: 1, max: 5, default: 0 },
       notes: { type: String, default: '' }
     },
     codingStyle: {
-      score: { type: Number, min: 1, max: 5, default: null },
+      score: { type: Number, min: 1, max: 5, default: 0 },
       notes: { type: String, default: '' }
     },
     technicalKnowledge: {
-      score: { type: Number, min: 1, max: 5, default: null },
+      score: { type: Number, min: 1, max: 5, default: 0 },
       notes: { type: String, default: '' }
     },
     overallNotes: { type: String, default: '' },
     recommendation: { 
       type: String, 
       enum: ['strong_hire', 'hire', 'lean_hire', 'lean_no_hire', 'no_hire', null],
-      default: null 
+      default: 'lean_hire' 
     }
   },
   

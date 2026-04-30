@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router';
 import { toast } from 'react-toastify';
 import { Loader2 } from 'lucide-react';
+import httpRequest from '~/utils/httpRequest';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import Lobby from './components/Lobby';
@@ -16,66 +18,35 @@ import useSocket from './hooks/useSocket';
 import useWebRTC from './hooks/useWebRTC';
 import useInterviewState from './hooks/useInterviewState';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-
 // ============ API Handlers ============
 const api = {
   getInterview: async (id, candidateToken) => {
-    const headers = candidateToken ? { 'x-candidate-token': candidateToken } : {};
-    const res = await fetch(`${API_URL}/interview/${id}`, { credentials: 'include', headers });
-    if (!res.ok) throw new Error('Failed to fetch interview');
-    return res.json();
+    const config = candidateToken ? { headers: { 'x-candidate-token': candidateToken } } : {};
+    const res = await httpRequest.get(`/interview/${id}`, config);
+    return res.data;
   },
   joinInterview: async (token, name, email) => {
-    const res = await fetch(`${API_URL}/interview/join/${token}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email })
-    });
-    if (!res.ok) throw new Error('Failed to join interview');
-    return res.json();
+    const res = await httpRequest.post(`/interview/join/${token}`, { name, email });
+    return res.data;
   },
   updateState: async (id, state, candidateToken) => {
-    const headers = { 
-      'Content-Type': 'application/json',
-      ...(candidateToken ? { 'x-candidate-token': candidateToken } : {})
-    };
-    const res = await fetch(`${API_URL}/interview/${id}/state`, {
-      method: 'POST',
-      credentials: 'include',
-      headers,
-      body: JSON.stringify(state)
-    });
-    if (!res.ok) throw new Error('Failed to update state');
-    return res.json();
+    const config = candidateToken ? { headers: { 'x-candidate-token': candidateToken } } : {};
+    const res = await httpRequest.post(`/interview/${id}/state`, state, config);
+    return res.data;
   },
   runCode: async (code, language, input, candidateToken) => {
-    const headers = { 
-      'Content-Type': 'application/json',
-      ...(candidateToken ? { 'x-candidate-token': candidateToken } : {})
-    };
-    const res = await fetch(`${API_URL}/code/interview-run`, {
-      method: 'POST',
-      credentials: 'include',
-      headers,
-      body: JSON.stringify({ code, language, input })
-    });
-    if (!res.ok) throw new Error('Failed to run code');
-    return res.json();
+    const config = candidateToken ? { headers: { 'x-candidate-token': candidateToken } } : {};
+    const res = await httpRequest.post(`/code/interview-run`, { code, language, input }, config);
+    return res.data;
   },
   addMessage: async (id, content, role) => {
-    const res = await fetch(`${API_URL}/interview/${id}/messages`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, role })
-    });
-    if (!res.ok) throw new Error('Failed to add message');
-    return res.json();
+    const res = await httpRequest.post(`/interview/${id}/messages`, { content, role });
+    return res.data;
   }
 };
 
 const InterviewRoom = () => {
+  const { t } = useTranslation('interview');
   const { id, token: inviteToken } = useParams();
   const navigate = useNavigate();
   
@@ -131,7 +102,7 @@ const InterviewRoom = () => {
           }
         }
       } catch (err) {
-        toast.error('Failed to load interview');
+        toast.error(t(err.message.includes('interview:') ? err.message : 'errors.failedFetchInterview'));
       } finally {
         setLoading(false);
       }
@@ -155,7 +126,7 @@ const InterviewRoom = () => {
           setShowLobby(false);
         }
       } catch (err) {
-        toast.error('Failed to join: ' + (err.response?.data?.message || err.message));
+        toast.error(t('errors.failedJoinPrefix') + (err.response?.data?.message || err.message));
       } finally {
         setLoading(false);
       }
@@ -169,12 +140,12 @@ const InterviewRoom = () => {
     try {
       const res = await api.runCode(code, language, '', candidateToken);
       if (res.success) {
-        setOutput(res.output || 'Code executed successfully.');
+        setOutput(res.output || t('messages.codeExecutedSuccessfully'));
       } else {
-        setOutput('Error: ' + res.message);
+        setOutput(t('errors.errorPrefix') + res.message);
       }
     } catch (err) {
-      setOutput('Failed to run code.');
+      setOutput(t('errors.failedRunCodeFinal'));
     } finally {
       setIsRunning(false);
     }
@@ -188,7 +159,7 @@ const InterviewRoom = () => {
         emit('interview-chat-message', { interviewId: interview._id, role, content });
       }
     } catch (err) {
-      toast.error('Failed to send message');
+      toast.error(t('errors.failedSendMessage'));
     }
   };
 
@@ -208,8 +179,8 @@ const InterviewRoom = () => {
           <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
         </div>
         <div className="text-center space-y-2">
-          <h2 className="text-xl font-bold text-white">Preparing Your Session</h2>
-          <p className="text-neutral-500 text-sm">Securely connecting to server...</p>
+          <h2 className="text-xl font-bold text-white">{t('loading.preparingSession')}</h2>
+          <p className="text-neutral-500 text-sm">{t('loading.connectingServer')}</p>
         </div>
       </div>
     );
@@ -264,7 +235,9 @@ const InterviewRoom = () => {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 px-3 py-1 bg-neutral-900 rounded-full border border-neutral-800">
                 <div className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                <span className="text-[10px] font-bold uppercase text-neutral-400">{isConnected ? 'Connected' : 'Offline'}</span>
+                <span className="text-[10px] font-bold uppercase text-neutral-400">
+                  {isConnected ? t('status.connected') : t('status.offline')}
+                </span>
               </div>
             </div>
           </header>
@@ -313,7 +286,7 @@ const InterviewRoom = () => {
                 <VideoPanel 
                   {...webrtc}
                   isConnected={isConnected}
-                  peerInfo={{ name: role === 'interviewer' ? 'Candidate' : 'Interviewer' }}
+                  peerInfo={{ name: role === 'interviewer' ? t('roles.candidate') : t('roles.interviewer') }}
                 />
               </div>
               <div className="flex-1">
