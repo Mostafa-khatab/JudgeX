@@ -148,7 +148,7 @@ const InterviewRoom = () => {
       
     } catch (err) {
       console.error('[Room] Join failed:', err);
-      toast.error(t('errors.failedJoinPrefix') + (err.response?.data?.message || err.message));
+      toast.error(t('errors.failedJoinPrefix') + (err.response?.data?.msg || err.message));
     } finally {
       setLoading(false);
     }

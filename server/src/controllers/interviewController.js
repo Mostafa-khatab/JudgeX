@@ -157,9 +157,6 @@ const getInterview = async (req, res) => {
  * FIX: Added race condition prevention and input validation
  */
 const joinInterview = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     const { token } = req.params;
     // FIX: Use POST body instead of query parameters
@@ -168,36 +165,50 @@ const joinInterview = async (req, res) => {
 
     // FIX: Validate token format
     if (!token || !/^[a-f0-9]{32}$/.test(token)) {
-      await session.abortTransaction();
       return sendError(res, 'Invalid interview token', 400);
     }
 
-    const interview = await Interview.findOne({ inviteToken: token }).session(session);
+    // NOTE: Avoid MongoDB transactions here.
+    // Many deployments run MongoDB without replica-set support (transactions would hard-fail).
+    // Use an atomic findOneAndUpdate to prevent double-joins.
+    const now = new Date();
+    const interview = await Interview.findOneAndUpdate(
+      {
+        inviteToken: token,
+        status: { $nin: ['finished', 'cancelled'] },
+        $or: [
+          { 'candidate.isConnected': { $ne: true } },
+          { 'candidate.email': email },
+          { 'candidate.email': '' },
+        ],
+      },
+      {
+        $set: {
+          'candidate.name': name,
+          'candidate.email': email,
+          'candidate.joinedAt': now,
+          'candidate.isConnected': true,
+        },
+      },
+      { new: true }
+    );
 
     if (!interview) {
-      await session.abortTransaction();
-      return sendError(res, 'Interview not found or invalid token', 404);
+      // Provide a more accurate error message.
+      const existing = await Interview.findOne({ inviteToken: token })
+        .select('status candidate.email candidate.isConnected')
+        .lean();
+
+      if (!existing) return sendError(res, 'Interview not found or invalid token', 404);
+      if (existing.status === 'finished' || existing.status === 'cancelled') {
+        return sendError(res, 'This interview has already ended', 400);
+      }
+      if (existing.candidate?.isConnected && existing.candidate?.email && existing.candidate.email !== email) {
+        return sendError(res, 'Another candidate is already joined to this interview', 400);
+      }
+
+      return sendError(res, 'Unable to join interview', 400);
     }
-
-    if (interview.status === 'finished' || interview.status === 'cancelled') {
-      await session.abortTransaction();
-      return sendError(res, 'This interview has already ended', 400);
-    }
-
-    // FIX: Prevent multiple candidates from joining
-    if (interview.candidate.isConnected && interview.candidate.email && interview.candidate.email !== email) {
-      await session.abortTransaction();
-      return sendError(res, 'Another candidate is already joined to this interview', 400);
-    }
-
-    // Update candidate info
-    interview.candidate.name = name;
-    interview.candidate.email = email;
-    interview.candidate.joinedAt = new Date();
-    interview.candidate.isConnected = true;
-
-    await interview.save({ session });
-    await session.commitTransaction();
 
     // Populate for UI (candidate needs problem details; lobby needs instructor info)
     await interview.populate([
@@ -229,10 +240,7 @@ const joinInterview = async (req, res) => {
       role: 'candidate'
     }, 'Joined interview successfully');
   } catch (err) {
-    await session.abortTransaction();
     return handleError(res, err, 'JoinInterview', 500);
-  } finally {
-    session.endSession();
   }
 };
 
