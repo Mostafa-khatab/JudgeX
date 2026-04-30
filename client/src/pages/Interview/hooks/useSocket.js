@@ -16,6 +16,9 @@ export const useSocket = (interviewId, role, userInfo) => {
     socketRef.current = io(API_URL, {
       withCredentials: true,
       transports: ['websocket'],
+      auth: {
+        inviteToken: localStorage.getItem('candidateToken') || userInfo?.inviteToken
+      },
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,

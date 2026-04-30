@@ -13,8 +13,28 @@ import Interview from '../models/interview.js';
  */
 export const socketAuthMiddleware = async (socket, next) => {
   try {
-    // Extract token from handshake auth
-    const token = socket.handshake.auth.token;
+    // Extract token from handshake auth or cookies
+    let token = socket.handshake.auth.token;
+    
+    if (!token && socket.handshake.headers.cookie) {
+      // Manual cookie parsing since socket.io doesn't use cookie-parser middleware by default
+      const cookies = socket.handshake.headers.cookie.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.split('=').map(c => c.trim());
+        acc[key] = value;
+        return acc;
+      }, {});
+      token = cookies.token;
+    }
+
+    // Special case for candidates: they might only have an inviteToken
+    const inviteToken = socket.handshake.auth.inviteToken;
+    
+    if (!token && inviteToken) {
+      // Allow candidates to connect without a user account
+      // We will validate their inviteToken inside specific event handlers
+      console.log(`[Socket.IO] Candidate connecting via inviteToken: ${inviteToken}`);
+      return next();
+    }
     
     if (!token) {
       return next(new Error('Authentication token required'));
