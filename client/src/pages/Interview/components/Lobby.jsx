@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Video, VideoOff, Mic, MicOff, 
   Settings, ArrowRight, Camera, 
