@@ -20,8 +20,8 @@ export const generateTokenAndSetCookie = (res, userId, remember = true) => {
 
 	res.cookie('token', token, {
 		httpOnly: true,
-		secure: process.env.NODE_ENV === 'production',
-		sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+		secure: true, // Always true for cross-domain support over HTTPS
+		sameSite: 'none', // Required for cross-domain cookies
 		maxAge,
 	});
 

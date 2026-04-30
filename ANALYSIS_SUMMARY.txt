@@ -1,0 +1,104 @@
+JudgeX CODEBASE ISSUES - COMPREHENSIVE ANALYSIS
+Generated: April 30, 2026
+
+=== CRITICAL ISSUES ===
+
+1. AUTHENTICATION FLOW (CRITICAL)
+File: client/src/App.jsx lines 40-47, client/src/stores/authStore.js
+Problem: getInfo() called on app init with NO error handling
+When: Token missing/invalid returns 401
+Result: setIsCheckingAuth(false) called regardless of success
+Impact: App blocks on Loading screen, verified users get login prompt
+
+2. CLOUDFLARE CORS MISMATCH (CRITICAL)
+File: server/.env line 9, server/src/index.js lines 77-89, client/.env
+Problem: Three different URLs
+- Client API: https://retreat-quizzes-afford-stretch.trycloudflare.com
+- Server expects: https://judgex-site.vercel.app
+- Local dev: localhost
+Result: CORS fails for local development
+Impact: Interview features blocked, Socket.IO cannot connect
+
+3. MISSING INTERVIEW i18n NAMESPACE (CRITICAL)
+File: client/src/locales/ missing en/interview.json and vi/interview.json
+Problem: Interview pages have ZERO useTranslation() calls
+All strings hard-coded in English
+Result: Cannot support Vietnamese for interviews
+
+=== HIGH SEVERITY ===
+
+4. UNSAFE candidate.name ACCESS
+File: client/src/pages/Interview/Room.jsx line 95
+Problem: interview?.candidate?.name may be undefined before join
+Socket receives undefined/null
+Result: UI shows undefined, data corruption
+
+5. AUTH ERROR HANDLING
+File: client/src/stores/authStore.js all methods
+Problem: All errors caught identically, only console.error
+No retry mechanism for network failures
+Result: Users cannot understand login failures
+
+6. INTERVIEW DATA MODEL
+File: server/src/controllers/interviewController.js lines 190-194
+Problem: Candidate fields uninitialized until join
+No default values in model
+Result: All components must independently handle null
+
+=== FILE LOCATIONS ===
+
+Authentication:
+- D:\JudgeX\JudgeX\client\src\App.jsx
+- D:\JudgeX\JudgeX\client\src\stores\authStore.js
+- D:\JudgeX\JudgeX\server\src\routes\authRoutes.js
+- D:\JudgeX\JudgeX\server\src\middlewares\authMiddlewares.js
+- D:\JudgeX\JudgeX\client\src\utils\httpRequest.js
+
+i18n Configuration:
+- D:\JudgeX\JudgeX\client\src\i18n\index.js
+- D:\JudgeX\JudgeX\client\src\locales\en\ (24 namespace files)
+- D:\JudgeX\JudgeX\client\src\locales\vi\ (22 namespace files)
+- D:\JudgeX\JudgeX\client\src\locales\dev\ (2 empty files)
+
+Interview Components:
+- D:\JudgeX\JudgeX\client\src\pages\Interview\Room.jsx
+- D:\JudgeX\JudgeX\client\src\pages\Interview\index.jsx
+- D:\JudgeX\JudgeX\client\src\pages\Interview\Results.jsx
+- D:\JudgeX\JudgeX\client\src\pages\Interview\components\Lobby.jsx
+- D:\JudgeX\JudgeX\client\src\pages\Interview\components\ReviewMode.jsx
+- D:\JudgeX\JudgeX\server\src\controllers\interviewController.js
+
+Network Configuration:
+- D:\JudgeX\JudgeX\server\src\index.js (CORS setup)
+- D:\JudgeX\JudgeX\server\.env (CLIENT_URL)
+- D:\JudgeX\JudgeX\client\.env (VITE_API_URL)
+
+=== ROOT CAUSES ===
+
+1. Network Layer: SERVER CLIENT_URL (Vercel) conflicts with local dev (Cloudflare tunnel)
+
+2. Application Layer: getInfo() error handling silently fails
+
+3. Data Model Layer: Interview fields uninitialized
+
+4. Component Layer: No defensive null checks
+
+5. Localization Layer: Interview pages don't use i18n
+
+=== FIX PRIORITY ===
+
+PHASE 1 - CRITICAL (Fix First)
+1. Update SERVER CLIENT_URL to support both Vercel and Cloudflare
+2. Add retry and error handling to getInfo()
+3. Create interview.json in en/ and vi/ locales
+
+PHASE 2 - HIGH (Fix Soon)
+1. Add null checks to Room.jsx, ReviewMode.jsx, Results.jsx
+2. Improve auth error messages in authStore.js
+3. Initialize interview candidate fields with defaults
+
+PHASE 3 - MEDIUM (Fix Later)
+1. Remove or populate dev locale
+2. Refactor Interview API to use httpRequest consistently
+
+=== END OF SUMMARY ===

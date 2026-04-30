@@ -1,0 +1,78 @@
+{
+  "english": {
+    "errors": {
+      "failedFetchInterview": "Failed to fetch interview",
+      "failedJoinInterview": "Failed to join interview",
+      "failedUpdateState": "Failed to update state",
+      "failedRunCode": "Failed to run code",
+      "failedAddMessage": "Failed to add message",
+      "failedJoinPrefix": "Failed to join: ",
+      "failedRunCodeFinal": "Failed to run code.",
+      "failedSendMessage": "Failed to send message",
+      "errorPrefix": "Error: "
+    },
+    "loading": {
+      "preparingSession": "Preparing Your Session",
+      "connectingServer": "Securely connecting to server...",
+      "loadingResults": "Loading results..."
+    },
+    "status": {
+      "connected": "Connected",
+      "offline": "Offline",
+      "finished": "Finished",
+      "completed": "Completed"
+    },
+    "roles": {
+      "candidate": "Candidate",
+      "interviewer": "Interviewer"
+    },
+    "sections": {
+      "codeTimeline": "Code Timeline",
+      "overview": "Overview",
+      "chatLogs": "Chat Logs",
+      "evaluation": "Evaluation",
+      "feedback": "Feedback",
+      "snapshots": "Snapshots",
+      "chat": "Chat",
+      "events": "Events",
+      "overallNotes": "Overall Notes"
+    },
+    "labels": {
+      "playback": "Playback",
+      "totalDuration": "Total Duration",
+      "durationUnit": "m",
+      "finalRecommendation": "Final Recommendation",
+      "noData": "No Data",
+      "restricted": "Restricted",
+      "overallScore": "Overall Score",
+      "scoreScale": "/5",
+      "noEmail": "No email",
+      "duration": "Duration:",
+      "tabSwitches": "Tab Switches:",
+      "snapshotsPrefix": "Snapshots (",
+      "chatPrefix": "Chat (",
+      "eventsPrefix": "Events (",
+      "closeParen": ")"
+    },
+    "buttons": {
+      "back": "Back",
+      "closeSession": "Close Session"
+    },
+    "categories": {
+      "problemSolving": "Problem Solving",
+      "communication": "Communication",
+      "codingStyle": "Coding Style",
+      "technicalKnowledge": "Technical Knowledge"
+    },
+    "messages": {
+      "codeExecutedSuccessfully": "Code executed successfully.",
+      "codeCopied": "Code copied!",
+      "noSnapshots": "No snapshots were taken",
+      "noMessages": "No messages",
+      "noMessagesInSession": "No messages in this session",
+      "noProctoringEvents": "No proctoring events recorded",
+      "interviewResultsTitle": "Interview Results",
+      "dateNotAvailable": "N/A"
+    }
+  }
+}

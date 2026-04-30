@@ -1,0 +1,266 @@
+=== JUDGEEX CODEBASE EXPLORATION - DETAILED FINDINGS ===
+Date: April 30, 2026
+
+=== PROJECT STRUCTURE ===
+Root: D:\JudgeX\JudgeX
+- client/ (React frontend)
+- server/ (Node.js/Express backend)
+- admin/ (Admin panel)
+- ai-service/ (AI service)
+- mobile/ (Mobile app)
+
+=== CODEBASE STATISTICS ===
+
+Locales Discovered:
+- English (en): 24 translation files including auth, problem, contest, user, layout
+- Vietnamese (vi): 22 translation files (missing interview, auth, skillgap)
+- Dev (dev): 2 files but EMPTY - translation.json = '{}', layout.json incomplete
+
+Interview Translation Gap:
+- interview.json MISSING in both en/ and vi/
+- Interview pages use ZERO i18n (no useTranslation() calls)
+- All UI text hard-coded in English
+
+=== CRITICAL CODE FLOWS ===
+
+APP INITIALIZATION FLOW:
+1. main.jsx loads
+2. App component renders
+3. useEffect calls getInfo() - App.jsx line 42
+4. If fails: authStore sets error but NO notification to component
+5. setIsCheckingAuth(false) called regardless
+6. App continues and shows page or redirects based on isAuth state
+
+CORS CHECK FLOW FOR LOCAL DEV:
+1. Client browser (localhost or tunnel URL) makes request to API
+2. Browser includes Origin header
+3. Server CORS middleware (index.js lines 79-82) checks:
+   - If origin === process.env.CLIENT_URL (https://judgex-site.vercel.app)
+   - Or origin === CLIENT_URL without trailing slash
+4. If NO match: 'Not allowed by CORS' error
+5. Socket.IO CORS also checks: origin: process.env.CLIENT_URL || true
+6. Result: Local dev CORS fails because localhost != Vercel URL
+
+INTERVIEW JOIN FLOW:
+1. Candidate gets invite token
+2. Clicks link to /interview/join/:token
+3. Room component loads with candidateToken from localStorage
+4. JOIN BUTTON calls handleJoinFromLobby() - Room.jsx line 142
+5. Socket created with interview?.instructor?.username OR interview?.candidate?.name
+6. If candidate not yet joined: candidate.name is UNDEFINED
+7. Socket event emitted with undefined/null name
+8. Peer info displays undefined name in UI
+
+=== CRITICAL FILES EXAMINED ===
+
+D:\JudgeX\JudgeX\client\src\App.jsx (68 lines)
+- Line 17: getInfo() from authStore destructured
+- Lines 40-47: useEffect calls getInfo() with NO error handling
+- Line 42: await getInfo() result IGNORED
+- Line 43: setIsCheckingAuth(false) ALWAYS called
+
+D:\JudgeX\JudgeX\client\src\stores\authStore.js (130 lines)
+- Line 20: httpRequest.get('/auth') called
+- Lines 23-27: catch(err) block - console.error only
+- Line 25: set({ user: null, isAuth: false })
+- ALL methods (signup, login, logout) follow same pattern
+- NO error.message property exposed to UI
+- NO retry mechanism
+
+D:\JudgeX\JudgeX\server\src\index.js (429 lines)
+- Lines 23-26: Socket.IO CORS: origin: process.env.CLIENT_URL || true
+- Lines 77-89: Express CORS middleware
+- Lines 79-85: origin callback checks CLIENT_URL only
+- No support for multiple origins or dynamic URLs
+- no VITE_ prefix environment variables supported
+
+D:\JudgeX\JudgeX\server\src\middlewares\authMiddlewares.js (123 lines)
+- Lines 10-58: isAuth middleware
+- Line 25: jwt.verify() decodes token
+- Lines 37-44: Checks if user.isVerified
+- Line 39-43: Returns 401 if NOT verified (includes needsVerification: true)
+- Problem: Client doesn't check needsVerification flag
+
+D:\JudgeX\JudgeX\client\src\i18n\index.js (24 lines)
+- Lines 5-8: locales export has en, vi but NOT dev
+- Line 14: Default language: en
+- Line 15: Default namespace: layout
+- Line 20: saveMissing: true (attempts to save missing keys)
+- Line 19: debug: true (logs missing keys)
+
+D:\JudgeX\JudgeX\client\src\pages\Interview\Room.jsx (334 lines)
+- Lines 22-76: API handlers - use fetch() directly
+- Line 95: interview?.instructor?.username OR interview?.candidate?.name
+- NO null checks on candidate fields
+- Socket created with potentially undefined name
+- Line 119: Empty string passed to joinInterview before lobby
+
+D:\JudgeX\JudgeX\client\src\pages\Interview\components\ReviewMode.jsx
+- Line 122: interview?.candidate?.name || 'Candidate' - has fallback
+- Line 123: interview?.candidate?.email - NO fallback check
+
+D:\JudgeX\JudgeX\server\.env (63 lines)
+- Line 9: CLIENT_URL=https://judgex-site.vercel.app
+- Line 1: VITE_API_URL=https://retreat-quizzes-afford-stretch.trycloudflare.com (in client/.env)
+- Mismatch: Server expects Vercel, client points to tunnel
+
+D:\JudgeX\JudgeX\client\.env (2 lines)
+- Line 1: VITE_API_URL=https://retreat-quizzes-afford-stretch.trycloudflare.com
+- Line 2: VITE_GOOGLE_CLIENT_ID set
+
+D:\JudgeX\JudgeX\server\src\controllers\authControllers.js (326 lines)
+- Line 20: httpRequest.get('/auth') - WAIT this is client code
+- Actually in authControllers.js server file:
+- Lines 304-318: getSelfInfo returns user with all properties
+- No error for missing candidate.name in other endpoints
+
+D:\JudgeX\JudgeX\server\src\controllers\interviewController.js (777 lines)
+- Lines 190-194: interview.candidate properties set when joining
+- interview.candidate.name = name (from request body)
+- interview.candidate.email = email (from request body)
+- BEFORE join: these fields may be undefined or empty
+- NO schema validation for name/email format
+
+=== ERROR MESSAGE OBSERVATIONS ===
+
+When getInfo() fails:
+- 401 Unauthorized (missing/invalid token)
+- 401 Email verification required (not verified)
+- 403 Admin access denied (if admin flag set)
+- CORS error (if origin doesn't match)
+- Network timeout (if server unreachable)
+
+Client receives:
+- All errors treated identically
+- Only console.error shown
+- UI gets undefined error message
+- App continues as if no error occurred
+
+=== TRANSLATION NAMESPACE ANALYSIS ===
+
+Existing Namespaces in English (en/):
+1. auth.json - login/signup strings
+2. avatar_change.json
+3. contest.json
+4. contests.json
+5. forgot_password.json
+6. home.json
+7. layout.json - MAIN namespace (header, footer, nav)
+8. login.json
+9. not_found.json
+10. pagination.json
+11. problem.json - problem-related strings
+12. problems.json - problems list strings
+13. reset_password.json
+14. send_verify_code.json
+15. setting.json
+16. signup.json
+17. skillgap.json
+18. submission.json
+19. submissions.json
+20. submit.json
+21. user.json - user profile strings
+22. users.json - users list strings
+23. verify_email.json
+24. welcome.json
+
+MISSING namespace:
+- interview.json (needed for interview feature UI)
+
+Hard-coded strings in Interview files needing translation:
+- 'Ready to join?' (Lobby.jsx)
+- 'Join Room' (Lobby.jsx)
+- 'Interview Session' (Lobby.jsx)
+- All labels and buttons in Room.jsx, Results.jsx, index.jsx
+
+=== SOCKET.IO EVENTS TRACE ===
+
+Events requiring undefined/null name:
+1. join-interview event (index.js line 123)
+   - Emits: { interviewId, role, name, avatar, socketId }
+   - name could be undefined if candidate hasn't joined yet
+
+2. participant-joined (index.js line 129)
+   - Broadcasts to room: { role, name, avatar, socketId }
+   - name could be undefined
+
+3. interview-chat-message (index.js line 156)
+   - Broadcasts: { role, content, timestamp }
+   - role needed but derived from socket.role set at join
+
+4. participant-response (index.js line 338)
+   - Broadcasts: { role, name, avatar, socketId }
+   - name could be undefined
+
+=== DEPENDENCY CHAIN ===
+
+LOCAL DEV SETUP ISSUE:
+Tunnel URL (Cloudflare)
+  -> Client makes request to tunnel
+    -> Server receives request from tunnel origin
+      -> CORS check: Is tunnel origin === CLIENT_URL (Vercel)?
+        -> NO -> CORS Error
+          -> Request blocked
+            -> getInfo() fails
+              -> App.jsx shows Loading indefinitely
+
+=== INTERVIEW FEATURE DEPENDENCIES ===
+
+Interview works IF:
+1. CORS allows request from client origin
+2. getInfo() succeeds to get user data
+3. Interview model has instructor/candidate populated
+4. Socket.IO connection established
+5. All candidate fields have valid values
+
+Interview fails IF:
+- Any of above conditions not met
+- Plus: undefined name breaks UI
+- Plus: No error messages tell user why
+
+=== RECOMMENDATION SUMMARY ===
+
+IMMEDIATE (Critical):
+1. Fix CORS: Update server CLIENT_URL to support multiple origins
+   - Add logic to accept both Vercel and Cloudflare tunnel
+   
+2. Fix Auth: Add error handling and retry to getInfo()
+   - Check error type and retry on network error
+   - Show meaningful error message to user
+   
+3. Create Interview i18n:
+   - Extract all strings from Interview components
+   - Create interview.json for en and vi
+   - Add useTranslation() to Interview components
+
+SHORT TERM (High):
+1. Add null checks to all candidate/instructor access
+2. Initialize interview model with default values
+3. Differentiate auth errors (not-logged-in vs needs-verification)
+
+MEDIUM TERM (Quality):
+1. Clean up dev locale
+2. Implement error retry mechanism
+3. Add error boundary for Interview feature
+
+=== ENVIRONMENT CONFIGURATION ===
+
+Frontend (client/.env):
+VITE_API_URL=https://retreat-quizzes-afford-stretch.trycloudflare.com
+VITE_GOOGLE_CLIENT_ID=364985378425-opme09q7immjbibva92731f3rspetqqa.apps.googleusercontent.com
+
+Backend (server/.env excerpt):
+CLIENT_URL=https://judgex-site.vercel.app
+PORT=8080
+NODE_ENV=development
+JWT_SECRET=[configured]
+JWT_EXPIRES_IN=90d
+
+MISMATCH CONFIRMED:
+Client calls: https://retreat-quizzes-afford-stretch.trycloudflare.com
+Server allows: https://judgex-site.vercel.app
+Local dev has: localhost or 127.0.0.1
+
+RESULT: CORS FAILS for all local development
+
+=== END OF DETAILED FINDINGS ===

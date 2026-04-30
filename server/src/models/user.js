@@ -100,8 +100,6 @@ const userSchema = new mongoose.Schema(
 );
 
 // FIX: Add database indexes for performance
-userSchema.index({ email: 1 }); // For email lookups
-userSchema.index({ name: 1 }); // For username lookups
 userSchema.index({ permission: 1, totalScore: -1 }); // For rankings
 userSchema.index({ createdAt: -1 }); // For timeline queries
 userSchema.index({ isVerified: 1 }); // For verification queries

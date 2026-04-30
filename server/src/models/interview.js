@@ -123,19 +123,19 @@ const interviewSchema = new mongoose.Schema({
   // ==================== Private Feedback (Interviewer Only) ====================
   feedback: {
     problemSolving: {
-      score: { type: Number, min: 1, max: 5, default: 0 },
+      score: { type: Number, min: 1, max: 5, default: 1 },
       notes: { type: String, default: '' }
     },
     communication: {
-      score: { type: Number, min: 1, max: 5, default: 0 },
+      score: { type: Number, min: 1, max: 5, default: 1 },
       notes: { type: String, default: '' }
     },
     codingStyle: {
-      score: { type: Number, min: 1, max: 5, default: 0 },
+      score: { type: Number, min: 1, max: 5, default: 1 },
       notes: { type: String, default: '' }
     },
     technicalKnowledge: {
-      score: { type: Number, min: 1, max: 5, default: 0 },
+      score: { type: Number, min: 1, max: 5, default: 1 },
       notes: { type: String, default: '' }
     },
     overallNotes: { type: String, default: '' },

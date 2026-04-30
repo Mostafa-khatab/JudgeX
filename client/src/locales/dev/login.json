@@ -1,5 +1,10 @@
 {
+    "title": "Login to JudgeX",
+    "email": "Email Address",
+    "password": "Password",
+    "forgot-password": "Forgot Password?",
+    "verify-email": "Verify Email",
     "login": "Login",
-    "email": "Email",
-    "password": "Password"
+    "dont-have-account": "Don't have an account?",
+    "signup": "Sign Up"
 }
