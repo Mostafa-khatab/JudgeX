@@ -139,6 +139,9 @@ const InterviewRoom = () => {
           localStorage.setItem('candidateToken', payload.candidateToken || inviteToken);
           localStorage.setItem('candidateName', data.name || '');
           localStorage.setItem('candidateEmail', data.email || '');
+
+          // Re-announce with the real candidate name after joining.
+          emit('join-interview', { interviewId: payload._id, role: 'candidate', name: data.name });
         }
       }
 

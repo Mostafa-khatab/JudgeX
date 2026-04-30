@@ -161,7 +161,8 @@ const joinInterview = async (req, res) => {
     const { token } = req.params;
     // FIX: Use POST body instead of query parameters
     const validatedData = await validateSchema(JoinInterviewSchema, req.body);
-    const { name, email } = validatedData;
+    const name = (validatedData.name || '').trim();
+    const email = (validatedData.email || '').trim().toLowerCase();
 
     // FIX: Validate token format
     if (!token || !/^[a-f0-9]{32}$/.test(token)) {
@@ -170,24 +171,20 @@ const joinInterview = async (req, res) => {
 
     // NOTE: Avoid MongoDB transactions here.
     // Many deployments run MongoDB without replica-set support (transactions would hard-fail).
-    // Use an atomic findOneAndUpdate to prevent double-joins.
+    // Also: joining via invite should not permanently lock the session.
+    // We treat "join" as recording candidate identity; real-time connectivity is tracked by sockets.
     const now = new Date();
     const interview = await Interview.findOneAndUpdate(
       {
         inviteToken: token,
         status: { $nin: ['finished', 'cancelled'] },
-        $or: [
-          { 'candidate.isConnected': { $ne: true } },
-          { 'candidate.email': email },
-          { 'candidate.email': '' },
-        ],
       },
       {
         $set: {
           'candidate.name': name,
           'candidate.email': email,
           'candidate.joinedAt': now,
-          'candidate.isConnected': true,
+          // Do NOT set isConnected here. This is updated by socket lifecycle.
         },
       },
       { new: true }
@@ -203,10 +200,6 @@ const joinInterview = async (req, res) => {
       if (existing.status === 'finished' || existing.status === 'cancelled') {
         return sendError(res, 'This interview has already ended', 400);
       }
-      if (existing.candidate?.isConnected && existing.candidate?.email && existing.candidate.email !== email) {
-        return sendError(res, 'Another candidate is already joined to this interview', 400);
-      }
-
       return sendError(res, 'Unable to join interview', 400);
     }
 

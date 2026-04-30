@@ -123,13 +123,44 @@ io.on('connection', (socket) => {
 	});
 
 	// Interview specific events
-	socket.on('join-interview', ({ interviewId, role, name, avatar }) => {
+	socket.on('join-interview', async ({ interviewId, role, name, avatar }) => {
 		const room = `interview:${interviewId}`;
+
+		// Validate access and set authoritative role
+		try {
+			const { validateInterviewAccess } = await import('./middlewares/socketAuth.js');
+			const access = await validateInterviewAccess(interviewId, socket);
+			if (!access.valid) {
+				socket.emit('error', { event: 'join-interview', message: access.reason || 'Access denied' });
+				return;
+			}
+			socket.role = access.role;
+		} catch (e) {
+			console.error('[Socket] join-interview validate failed:', e);
+			return;
+		}
+
 		socket.join(room);
 		socket.interviewRoom = room;
-		socket.role = role;
-		console.log(`${role} ${name || socket.id} joined interview ${interviewId}`);
-		socket.to(room).emit('participant-joined', { role, name, avatar, socketId: socket.id });
+		socket.interviewId = interviewId;
+		console.log(`${socket.role} ${name || socket.id} joined interview ${interviewId}`);
+
+		// Track candidate connectivity in DB (so reconnects don't get stuck)
+		if (socket.role === 'candidate') {
+			try {
+				const Interview = (await import('./models/interview.js')).default;
+				await Interview.findByIdAndUpdate(interviewId, {
+					$set: {
+						'candidate.isConnected': true,
+						'candidate.socketId': socket.id,
+					},
+				});
+			} catch (e) {
+				console.error('[Socket] Failed to update candidate socketId:', e);
+			}
+		}
+
+		socket.to(room).emit('participant-joined', { role: socket.role, name, avatar, socketId: socket.id });
 	});
 
 	socket.on('leave-interview', ({ interviewId }) => {
@@ -408,6 +439,21 @@ io.on('connection', (socket) => {
 				role: socket.role,
 				timestamp: new Date()
 			});
+
+			// Clear candidate connectivity in DB
+			if (socket.role === 'candidate' && socket.interviewId) {
+				(async () => {
+					try {
+						const Interview = (await import('./models/interview.js')).default;
+						await Interview.findOneAndUpdate(
+							{ _id: socket.interviewId, 'candidate.socketId': socket.id },
+							{ $set: { 'candidate.isConnected': false, 'candidate.socketId': null } }
+						);
+					} catch (e) {
+						console.error('[Socket] Failed to clear candidate socketId:', e);
+					}
+				})();
+			}
 			
 			// Check if room is now empty
 			const roomSockets = io.sockets.adapter.rooms.get(socket.interviewRoom);
