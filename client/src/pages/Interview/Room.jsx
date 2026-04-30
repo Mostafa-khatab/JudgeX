@@ -113,25 +113,28 @@ const InterviewRoom = () => {
   }, [id, inviteToken, candidateToken]);
 
   const handleJoinFromLobby = async (data) => {
-    if (inviteToken && !candidateToken) {
-      setLoading(true);
-      try {
+    setLoading(true);
+    try {
+      if (inviteToken && !candidateToken) {
+        // Candidate joining for the first time
         const res = await api.joinInterview(inviteToken, data.name, data.email);
         if (res.success) {
           setInterview(res.data);
           setRole('candidate');
           setCandidateToken(res.candidateToken);
           localStorage.setItem('candidateToken', res.candidateToken);
-
-          // Start media with user choices, reusing stream from lobby if available
-          await webrtc.startMedia({ video: data.isVideoOn, audio: data.isMicOn }, data.existingStream);
-          setShowLobby(false);
         }
-      } catch (err) {
-        toast.error(t('errors.failedJoinPrefix') + (err.response?.data?.message || err.message));
-      } finally {
-        setLoading(false);
       }
+
+      // Both roles: Start media and enter room
+      await webrtc.startMedia({ video: data.isVideoOn, audio: data.isMicOn }, data.existingStream);
+      setShowLobby(false);
+      
+    } catch (err) {
+      console.error('[Room] Join failed:', err);
+      toast.error(t('errors.failedJoinPrefix') + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
     }
   };
 
