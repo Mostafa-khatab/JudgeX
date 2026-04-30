@@ -8,6 +8,10 @@ import httpRequest from '~/utils/httpRequest';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '~/components/ui/button';
 import { Badge } from '~/components/ui/badge';
+import { 
+  Select, SelectContent, SelectItem, 
+  SelectTrigger, SelectValue 
+} from '~/components/ui/select';
 import Lobby from './components/Lobby';
 import ProblemPanel from './components/ProblemPanel';
 import CodeEditor from './components/CodeEditor';
@@ -241,6 +245,37 @@ const InterviewRoom = () => {
             </div>
             
             <div className="flex items-center gap-4">
+              {role === 'interviewer' && interview?.questions?.length > 0 && (
+                <Select 
+                  value={activeProblem?._id || interview?.questions?.find(q => q.isVisible)?.problemId?._id} 
+                  onValueChange={async (problemId) => {
+                    try {
+                      // 1. Update backend visibility
+                      await api.updateState(id, { activeProblemId: problemId }, candidateToken);
+                      // 2. Emit socket event
+                      emit('interview-problem-switch', { interviewId: id, problemId, language });
+                      // 3. Local update
+                      const question = interview.questions.find(q => q.problemId._id === problemId);
+                      if (question) setActiveProblem(question.problemId);
+                      toast.success('Problem switched successfully');
+                    } catch (err) {
+                      toast.error('Failed to switch problem');
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-[180px] h-9 bg-neutral-900 border-neutral-800 text-xs font-bold text-blue-400">
+                    <SelectValue placeholder="Select Question" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-neutral-900 border-neutral-800 text-white">
+                    {interview.questions.map((q, i) => (
+                      <SelectItem key={q.problemId._id} value={q.problemId._id} className="text-xs">
+                        {i + 1}. {q.problemId.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
               <Button
                 variant="outline"
                 size="sm"
@@ -308,7 +343,11 @@ const InterviewRoom = () => {
                 <VideoPanel 
                   {...webrtc}
                   isConnected={isConnected}
-                  peerInfo={{ name: role === 'interviewer' ? t('roles.candidate') : t('roles.interviewer') }}
+                  peerInfo={{ 
+                    name: role === 'interviewer' 
+                      ? t('roles.candidate') || 'Candidate' 
+                      : t('roles.interviewer') || 'Interviewer' 
+                  }}
                 />
               </div>
               <div className="flex-1">
