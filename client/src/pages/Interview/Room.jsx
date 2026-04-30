@@ -50,8 +50,9 @@ const api = {
     const res = await httpRequest.post(`/code/interview-run`, { code, language, input }, config);
     return res.data;
   },
-  addMessage: async (id, content, role) => {
-    const res = await httpRequest.post(`/interview/${id}/messages`, { content, role });
+  addMessage: async (id, content, role, candidateToken) => {
+    const config = candidateToken ? { headers: { 'x-candidate-token': candidateToken } } : {};
+    const res = await httpRequest.post(`/interview/${id}/messages`, { content, role }, config);
     return res.data;
   }
 };
@@ -173,7 +174,7 @@ const InterviewRoom = () => {
 
   const handleSendMessage = async (content) => {
     try {
-      const res = await api.addMessage(interview._id, content, role);
+      const res = await api.addMessage(interview._id, content, role, candidateToken);
       if (res.success) {
         if (res.data) {
           setMessages(prev => [...prev, res.data]);

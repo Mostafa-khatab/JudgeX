@@ -53,30 +53,77 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
   const isAudioEnabledRef = useRef(true);
   const isVideoEnabledRef = useRef(true);
 
+  // If a peer queries presence before local media is ready, initiate once it is.
+  const shouldInitiateRef = useRef(false);
+
+  useEffect(() => {
+    localStreamRef.current = localStream;
+  }, [localStream]);
+
   // Initialize Media
   const startMedia = useCallback(async (options = {}, existingStream = null) => {
     try {
+      const wantAudio = options.audio !== false;
+      const wantVideo = options.video !== false;
+
+      // Prefer reusing an existing lobby preview stream, but only if it actually has live tracks.
       if (existingStream) {
-        setLocalStream(existingStream);
-        setIsAudioEnabled(options.audio !== false);
-        setIsVideoEnabled(options.video !== false);
-        return existingStream;
+        const hasLiveAudio = existingStream.getAudioTracks().some(t => t.readyState === 'live');
+        const hasLiveVideo = existingStream.getVideoTracks().some(t => t.readyState === 'live');
+        const usable = (!wantAudio || hasLiveAudio) && (!wantVideo || hasLiveVideo);
+
+        if (usable) {
+          setLocalStream(existingStream);
+          localStreamRef.current = existingStream;
+          setIsAudioEnabled(wantAudio);
+          setIsVideoEnabled(wantVideo);
+          isAudioEnabledRef.current = wantAudio;
+          isVideoEnabledRef.current = wantVideo;
+
+          // Kick presence signaling again now that media is ready.
+          if (interviewId) socketHandlers?.emit('participant-request', { interviewId });
+          if (role === 'interviewer') shouldInitiateRef.current = true;
+
+          return existingStream;
+        }
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: options.video !== false,
-        audio: options.audio !== false
+        video: wantVideo,
+        audio: wantAudio
       });
       setLocalStream(stream);
-      setIsAudioEnabled(options.audio !== false);
-      setIsVideoEnabled(options.video !== false);
+      localStreamRef.current = stream;
+      setIsAudioEnabled(wantAudio);
+      setIsVideoEnabled(wantVideo);
+      isAudioEnabledRef.current = wantAudio;
+      isVideoEnabledRef.current = wantVideo;
+
+      // Kick presence signaling again now that media is ready.
+      if (interviewId) socketHandlers?.emit('participant-request', { interviewId });
+      if (role === 'interviewer') shouldInitiateRef.current = true;
+
       return stream;
     } catch (err) {
       console.error('[WebRTC] Failed to get media:', err);
       toast.error('Failed to access camera/microphone');
       return null;
     }
-  }, []);
+  }, [interviewId, role, socketHandlers]);
+
+  // If we were asked to connect before we had media, initiate once ready.
+  useEffect(() => {
+    if (role !== 'interviewer') return;
+    if (!localStream) return;
+    if (!shouldInitiateRef.current) return;
+
+    shouldInitiateRef.current = false;
+    // Delay slightly to let the other peer finish joining the room.
+    const t = setTimeout(() => {
+      initiateCall();
+    }, 300);
+    return () => clearTimeout(t);
+  }, [localStream, role, initiateCall]);
 
   const createPeerConnection = useCallback((stream) => {
     if (pcRef.current) pcRef.current.close();
@@ -296,7 +343,17 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     // When a new participant joins, the existing peer should initiate the call
     const u7 = socketHandlers.on('participant-query', ({ from }) => {
       console.log('[WebRTC] Participant query from:', from);
-      if (localStream) initiateCall();
+      if (role === 'interviewer') {
+        if (localStreamRef.current) initiateCall();
+        else shouldInitiateRef.current = true;
+      }
+    });
+
+    // More direct: when someone joins the interview room, interviewer initiates.
+    const u7b = socketHandlers.on('participant-joined', () => {
+      if (role !== 'interviewer') return;
+      if (localStreamRef.current) initiateCall();
+      else shouldInitiateRef.current = true;
     });
 
     const u8 = socketHandlers.on('participant-info', (data) => {
@@ -304,7 +361,7 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
       // If we joined and see someone else, we can also try to initiate or wait for offer
     });
     
-    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); };
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u7b(); u8(); };
   }, [socketHandlers, handleOffer, handleAnswer, handleIce, handleScreenOffer]);
 
   return {
