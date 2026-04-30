@@ -77,10 +77,20 @@ setInterval(async () => {
 app.use(
 	cors({
 		origin: (origin, callback) => {
-			const allowed = (process.env.CLIENT_URL || '').split(',').map((url) => url.trim());
+			const allowed = (process.env.CLIENT_URL || '')
+				.split(',')
+				.map((url) => url.trim())
+				.filter(Boolean);
 
 			// Allow no origin (Postman, mobile) or matching origins
-			if (!origin || allowed.includes(origin) || allowed.some((url) => origin === url.replace(/\/$/, ''))) {
+			// If CLIENT_URL isn't configured, default to allowing requests.
+			// (Common in early deployments; without this, all browser requests are rejected.)
+			if (
+				!origin ||
+				allowed.length === 0 ||
+				allowed.includes(origin) ||
+				allowed.some((url) => origin === url.replace(/\/$/, ''))
+			) {
 				callback(null, true);
 			} else {
 				console.warn(`CORS rejected: ${origin} not in ${allowed}`);
