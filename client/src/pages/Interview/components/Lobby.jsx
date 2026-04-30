@@ -18,8 +18,6 @@ import {
   SelectTrigger, SelectValue 
 } from '~/components/ui/select';
 
-import ClayIcon from './ClayIcon';
-
 const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
   const [name, setName] = useState(() => localStorage.getItem('candidateName') || '');
   const [email, setEmail] = useState(() => localStorage.getItem('candidateEmail') || '');
@@ -138,7 +136,7 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="dark min-h-screen text-white flex items-center justify-center p-6 bg-[radial-gradient(1200px_700px_at_15%_-10%,rgba(59,130,246,0.22),transparent_55%),radial-gradient(900px_600px_at_92%_12%,rgba(168,85,247,0.18),transparent_55%),radial-gradient(900px_700px_at_60%_120%,rgba(16,185,129,0.12),transparent_50%),linear-gradient(to_br,rgba(10,10,10,1),rgba(4,4,6,1))]"
+      className="min-h-screen flex items-center justify-center p-6 bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-50"
     >
       <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-5 gap-12 items-center">
         
@@ -150,13 +148,13 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
           className="lg:col-span-3 space-y-6"
         >
           <div className="space-y-2">
-            <h1 className="text-4xl font-black bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-500 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
               Ready to join?
             </h1>
-            <p className="text-neutral-500 text-lg">Check your camera and microphone before entering.</p>
+            <p className="text-neutral-500 text-base">Check your camera and microphone before entering.</p>
           </div>
 
-          <Card className="jx-glass-strong aspect-video relative overflow-hidden">
+          <Card className="jx-glass aspect-video relative overflow-hidden">
             <video
               ref={videoRef}
               autoPlay
@@ -170,12 +168,12 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="absolute inset-0 bg-black/40 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center"
+                  className="absolute inset-0 bg-neutral-100/80 dark:bg-neutral-900/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center"
                 >
-                  <ClayIcon size={72} tint="blue" className="rounded-[28px] mb-4 ring-white/15">
-                    <Video className="h-9 w-9" />
-                  </ClayIcon>
-                  <h3 className="text-xl font-bold mb-2">
+                  <div className="p-4 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-full mb-4">
+                    <Video className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-lg font-medium mb-2 text-neutral-900 dark:text-neutral-100">
                     {permissionError ? 'Permission Denied' : 'Camera is off'}
                   </h3>
                   <p className="text-neutral-500 text-sm max-w-xs mb-6">
@@ -186,7 +184,7 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
                       setPermissionError(null);
                       startPreview();
                     }}
-                    className="rounded-2xl px-8 bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400 text-white shadow-xl shadow-blue-500/20"
+                    className="px-6"
                   >
                     {permissionError ? 'Try Again' : 'Enable Devices'}
                   </Button>
@@ -197,52 +195,52 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="absolute inset-0 bg-neutral-950 flex items-center justify-center"
+                  className="absolute inset-0 bg-neutral-900 flex items-center justify-center"
                 >
-                  <div className="h-24 w-24 rounded-full bg-neutral-900 flex items-center justify-center shadow-inner">
-                    <VideoOff className="h-10 w-10 text-neutral-600" />
+                  <div className="h-20 w-20 rounded-full bg-neutral-800 flex items-center justify-center">
+                    <VideoOff className="h-8 w-8 text-neutral-500" />
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* Floating Controls */}
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/35 backdrop-blur-2xl p-3 rounded-3xl border border-white/10 shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md p-2 rounded-lg border border-neutral-200 dark:border-neutral-800 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300">
               <Button
                 variant={isMicOn ? "ghost" : "destructive"}
                 size="icon"
                 onClick={toggleMic}
-                className="h-14 w-14 rounded-2xl hover:bg-white/[0.08] transition-colors"
+                className="h-10 w-10"
               >
-                {isMicOn ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
+                {isMicOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
               </Button>
               <Button
                 variant={isVideoOn ? "ghost" : "destructive"}
                 size="icon"
                 onClick={toggleVideo}
-                className="h-14 w-14 rounded-2xl hover:bg-white/[0.08] transition-colors"
+                className="h-10 w-10"
               >
-                {isVideoOn ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
+                {isVideoOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
               </Button>
-              <Separator orientation="vertical" className="h-8 bg-white/10 mx-1" />
+              <Separator orientation="vertical" className="h-6 mx-2" />
               
               {/* Quick Settings Dropdown */}
-              <div className="flex items-center gap-2 pr-2">
+              <div className="flex items-center gap-1 pr-1">
                 <Select value={selectedDevices.video} onValueChange={(id) => handleDeviceChange('video', id)}>
-                  <SelectTrigger className="w-10 h-10 p-0 border-none bg-transparent hover:bg-white/10 rounded-xl flex items-center justify-center">
-                    <Camera className="h-5 w-5 text-neutral-400" />
+                  <SelectTrigger className="w-9 h-9 p-0 border-none bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center justify-center">
+                    <Camera className="h-4 w-4 text-neutral-500" />
                   </SelectTrigger>
-                  <SelectContent className="bg-neutral-950/85 border-white/10 text-white backdrop-blur-2xl">
+                  <SelectContent>
                     {devices.video.map(d => (
                       <SelectItem key={d.deviceId} value={d.deviceId} className="text-xs">{d.label || 'Camera'}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <Select value={selectedDevices.audio} onValueChange={(id) => handleDeviceChange('audio', id)}>
-                  <SelectTrigger className="w-10 h-10 p-0 border-none bg-transparent hover:bg-white/10 rounded-xl flex items-center justify-center">
-                    <Volume2 className="h-5 w-5 text-neutral-400" />
+                  <SelectTrigger className="w-9 h-9 p-0 border-none bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center justify-center">
+                    <Volume2 className="h-4 w-4 text-neutral-500" />
                   </SelectTrigger>
-                  <SelectContent className="bg-neutral-950/85 border-white/10 text-white backdrop-blur-2xl">
+                  <SelectContent>
                     {devices.audio.map(d => (
                       <SelectItem key={d.deviceId} value={d.deviceId} className="text-xs">{d.label || 'Microphone'}</SelectItem>
                     ))}
@@ -252,7 +250,7 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
             </div>
           </Card>
 
-          <div className="flex items-center gap-8 justify-center text-neutral-500 text-xs font-bold uppercase tracking-widest">
+          <div className="flex items-center gap-6 justify-center text-neutral-500 text-xs font-medium uppercase tracking-wider">
             <span className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-emerald-500" />
               Secure Link
@@ -269,49 +267,45 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
           initial={{ x: 20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="lg:col-span-2 space-y-8"
+          className="lg:col-span-2 space-y-6"
         >
-          <Card className="jx-glass-strong p-10 space-y-8 relative overflow-hidden ring-1 ring-white/5">
-            <div className="absolute top-0 right-0 p-6 opacity-10">
-              <Video className="h-24 w-24 -rotate-12" />
-            </div>
-
-            <div className="space-y-6 relative">
+          <Card className="jx-glass p-8 space-y-6">
+            <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Badge className="bg-blue-600/10 text-blue-400 border-blue-500/20 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter">
+                <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 dark:text-blue-400 dark:border-blue-900 dark:bg-blue-900/20 px-3 py-0.5 rounded-full text-xs font-medium">
                   {interview?.type || 'Technical'}
                 </Badge>
                 {isConnected && (
-                   <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter">
+                   <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-900 dark:bg-emerald-900/20 px-3 py-0.5 rounded-full text-xs font-medium">
                     Ready
                   </Badge>
                 )}
               </div>
-              <h2 className="text-3xl font-black leading-tight tracking-tight">{interview?.title || 'Interview Session'}</h2>
-              <div className="flex items-center gap-3 text-neutral-400">
-                <ClayIcon size={32} tint="neutral" className="rounded-2xl shadow-none">
+              <h2 className="text-2xl font-semibold tracking-tight">{interview?.title || 'Interview Session'}</h2>
+              <div className="flex items-center gap-3 text-neutral-600 dark:text-neutral-400">
+                <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-full">
                   <User className="h-4 w-4" />
-                </ClayIcon>
+                </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-neutral-600 uppercase font-black tracking-widest">Host</span>
-                  <span className="text-sm font-bold text-neutral-300">{interview?.instructor?.username || 'JudgeX Host'}</span>
+                  <span className="text-xs text-neutral-500">Host</span>
+                  <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{interview?.instructor?.username || 'JudgeX Host'}</span>
                 </div>
               </div>
             </div>
 
-            <Separator className="bg-neutral-800" />
+            <Separator />
             
             {role === 'interviewer' && (
-              <div className="space-y-3 p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10">
+              <div className="space-y-3 p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-800">
                 <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-blue-400" />
-                  <Label className="text-blue-400 text-[10px] uppercase tracking-widest font-black">Share with Candidate</Label>
+                  <AlertCircle className="h-4 w-4 text-blue-500" />
+                  <Label className="text-xs font-semibold">Share with Candidate</Label>
                 </div>
-                <p className="text-[10px] text-neutral-500 leading-tight">Send this link to the person you are interviewing. They do not need to log in.</p>
+                <p className="text-xs text-neutral-500">Send this link to the person you are interviewing. They do not need to log in.</p>
                 <Button 
                   variant="outline" 
                   onClick={copyInviteLink}
-                  className="w-full h-12 border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-xl"
+                  className="w-full"
                 >
                   <Copy className="h-4 w-4 mr-2" />
                   Copy Invite Link
@@ -320,21 +314,19 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
             )}
 
             {role === 'candidate' && (
-              <div className="space-y-5">
-                <div className="space-y-2">
-                  <Label className="text-neutral-500 text-[10px] uppercase tracking-widest font-black ml-1">Your Name</Label>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Your Name</Label>
                   <Input 
                     placeholder="Full Name" 
-                    className="bg-neutral-950 border-neutral-800 h-14 rounded-2xl focus:ring-2 ring-blue-500/20 px-6 font-medium"
                     value={name}
                     onChange={e => setName(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-neutral-500 text-[10px] uppercase tracking-widest font-black ml-1">Email Address</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Email Address</Label>
                   <Input 
                     placeholder="name@example.com" 
-                    className="bg-neutral-950 border-neutral-800 h-14 rounded-2xl focus:ring-2 ring-blue-500/20 px-6 font-medium"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                   />
@@ -344,14 +336,14 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
 
               <Button 
                 onClick={handleJoin}
-                className="w-full h-16 rounded-3xl bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400 text-white text-xl font-black shadow-xl shadow-blue-600/25 group transition-all"
+                className="w-full h-12 text-base font-medium transition-all"
               >
                 Join Room
-                <ArrowRight className="h-6 w-6 ml-3 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             
-            <p className="text-[10px] text-center text-neutral-600 px-4 leading-relaxed uppercase tracking-widest font-black opacity-60">
-              Secured & Powered by JudgeX Engine
+            <p className="text-xs text-center text-neutral-500">
+              Secured & Powered by JudgeX
             </p>
           </Card>
         </motion.div>

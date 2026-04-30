@@ -75,21 +75,21 @@
 		@apply !border-red-500 !text-red-500 !caret-red-500 !ring-red-500 focus-within:!border-red-500 focus-within:!ring-red-500;
 	}
 
-	/* Modern Playful: subtle glass + bento surfaces (used by Interview UI) */
+	/* Professional & Corporate: standard cards, readable, muted */
 	.jx-glass {
-		@apply rounded-3xl border border-white/10 bg-white/[0.06] backdrop-blur-xl shadow-2xl shadow-black/40;
+		@apply rounded-md border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900;
 	}
 	.jx-glass-strong {
-		@apply rounded-3xl border border-white/10 bg-white/[0.08] backdrop-blur-2xl shadow-2xl shadow-black/50;
+		@apply rounded-md border border-neutral-200 bg-neutral-50 shadow-sm dark:border-neutral-800 dark:bg-neutral-800/50;
 	}
 	.jx-glass-header {
-		@apply border-b border-white/10 bg-black/30 backdrop-blur-xl;
+		@apply border-b border-neutral-200 bg-neutral-100/50 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/50;
 	}
 	.jx-tile-title {
-		@apply text-[11px] font-black uppercase tracking-[0.22em] text-neutral-400;
+		@apply text-sm font-semibold text-neutral-800 dark:text-neutral-200;
 	}
 	.jx-tile-subtitle {
-		@apply text-xs text-neutral-500;
+		@apply text-sm text-neutral-500 dark:text-neutral-400;
 	}
 }
 

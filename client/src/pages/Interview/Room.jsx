@@ -17,7 +17,6 @@ import CodeEditor from './components/CodeEditor';
 import VideoPanel from './components/VideoPanel';
 import ChatPanel from './components/ChatPanel';
 import ReviewMode from './components/ReviewMode';
-import ClayIcon from './components/ClayIcon';
 
 // Hooks
 import useSocket from './hooks/useSocket';
@@ -267,30 +266,24 @@ const InterviewRoom = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="dark h-screen text-white flex flex-col overflow-hidden bg-[radial-gradient(1200px_700px_at_15%_-10%,rgba(59,130,246,0.28),transparent_55%),radial-gradient(900px_600px_at_92%_12%,rgba(168,85,247,0.22),transparent_55%),radial-gradient(900px_700px_at_60%_120%,rgba(16,185,129,0.16),transparent_50%),linear-gradient(to_br,rgba(10,10,10,1),rgba(4,4,6,1))]"
+          className="h-screen text-neutral-900 dark:text-neutral-50 flex flex-col overflow-hidden bg-neutral-50 dark:bg-neutral-950"
         >
           {/* Header */}
-          <header className="h-16 px-5 sm:px-7 shrink-0">
-            <div className="jx-glass-header h-full rounded-b-3xl border border-white/10 border-t-0 flex items-center justify-between px-5 sm:px-7">
+          <header className="h-14 px-4 sm:px-6 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
+            <div className="h-full flex items-center justify-between">
               <div className="flex items-center gap-4 min-w-0">
                 <div className="flex items-center gap-3 min-w-0">
-                  <ClayIcon size={38} tint="violet" className="rounded-2xl">
-                    <Sparkles className="h-5 w-5" />
-                  </ClayIcon>
+                  <div className="p-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-md">
+                    <Code2 className="h-4 w-4" />
+                  </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-lg font-black tracking-tight">JudgeX</span>
-                      <span className="hidden sm:inline text-[10px] font-black uppercase tracking-[0.25em] text-neutral-500">Interview</span>
+                      <span className="text-sm font-semibold tracking-tight">JudgeX Interview</span>
                     </div>
-                    <div className="truncate text-[11px] font-black uppercase tracking-[0.20em] text-neutral-500">
+                    <div className="truncate text-xs text-neutral-500">
                       {interview?.title}
                     </div>
                   </div>
-                </div>
-
-                <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-black/20 backdrop-blur-xl">
-                  <LayoutGrid className="h-3.5 w-3.5 text-neutral-300" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.25em] text-neutral-400">Bento Mode</span>
                 </div>
               </div>
 
@@ -313,10 +306,10 @@ const InterviewRoom = () => {
                     }
                   }}
                   >
-                  <SelectTrigger className="w-[180px] h-10 bg-black/30 border-white/10 text-[11px] font-black tracking-[0.12em] text-blue-200/90 backdrop-blur-xl">
+                  <SelectTrigger className="w-[180px] h-9">
                     <SelectValue placeholder="Select Question" />
                   </SelectTrigger>
-                  <SelectContent className="bg-neutral-950/90 border-white/10 text-white backdrop-blur-xl">
+                  <SelectContent>
                     {interview?.questions?.map((q, i) => (
                       <SelectItem key={q.problemId._id} value={q.problemId._id} className="text-xs">
                         {i + 1}. {q.problemId.name}
@@ -334,15 +327,15 @@ const InterviewRoom = () => {
                   navigator.clipboard.writeText(url);
                   toast.success(t('messages.linkCopied') || 'Invite link copied!');
                 }}
-                className="h-10 rounded-2xl bg-white/[0.06] border-white/12 text-blue-200/90 hover:bg-white/[0.10] gap-2 shadow-lg shadow-black/30"
+                className="h-9 gap-2"
               >
                 <Share2 className="h-4 w-4" />
                 <span className="hidden sm:inline">Copy Invite Link</span>
               </Button>
 
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-black/20 backdrop-blur-xl">
-                <div className={`h-2 w-2 rounded-full ${isSocketConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
-                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-neutral-400">
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-800">
+                <div className={`h-2 w-2 rounded-full ${isSocketConnected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
                   {isSocketConnected ? t('status.connected') : t('status.offline')}
                 </span>
               </div>
@@ -351,29 +344,44 @@ const InterviewRoom = () => {
           </header>
 
           {/* Main Layout */}
-          <main className="flex-1 overflow-hidden p-4 sm:p-6">
-            <div className="h-full grid grid-cols-12 grid-rows-12 gap-4">
+          <main className="flex-1 overflow-hidden p-4 sm:p-4">
+            <div className="h-full grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-1 gap-4">
               {/* Problem */}
               <motion.section
                 initial={{ x: -18, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.25 }}
-                className="col-span-12 lg:col-span-3 row-span-5 lg:row-span-12 min-h-0"
+                className="col-span-1 lg:col-span-3 min-h-0 h-full flex flex-col gap-4"
               >
-                <div className="jx-glass h-full overflow-hidden">
-                  <div className="jx-glass-header flex items-center justify-between px-5 py-3">
-                    <div className="flex items-center gap-3">
-                      <ClayIcon size={34} tint="blue" className="rounded-2xl">
-                        <Code2 className="h-4.5 w-4.5" />
-                      </ClayIcon>
-                      <div>
-                        <div className="jx-tile-title">Problem</div>
-                        <div className="jx-tile-subtitle">Specs and constraints</div>
-                      </div>
+                <div className="jx-glass flex-1 overflow-hidden flex flex-col">
+                  <div className="jx-glass-header flex items-center px-4 py-2.5">
+                    <div>
+                      <div className="jx-tile-title">Problem Statement</div>
                     </div>
                   </div>
-                  <div className="h-[calc(100%-52px)] min-h-0">
+                  <div className="flex-1 min-h-0">
                     <ProblemPanel problem={activeProblem || interview?.questions?.find(q => q.isVisible)?.problemId} />
+                  </div>
+                </div>
+
+                {/* Video */}
+                <div className="jx-glass h-[240px] overflow-hidden flex flex-col">
+                  <div className="jx-glass-header flex items-center px-4 py-2.5">
+                    <div>
+                      <div className="jx-tile-title">Participants</div>
+                    </div>
+                  </div>
+                  <div className="flex-1 min-h-0 p-3">
+                    <VideoPanel
+                      {...webrtc}
+                      isSocketConnected={isSocketConnected}
+                      peerInfo={peerInfo || {
+                        name:
+                          role === 'interviewer'
+                            ? t('roles.candidate') || 'Candidate'
+                            : t('roles.interviewer') || 'Interviewer'
+                      }}
+                    />
                   </div>
                 </div>
               </motion.section>
@@ -383,21 +391,15 @@ const InterviewRoom = () => {
                 initial={{ y: 16, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.35 }}
-                className="col-span-12 lg:col-span-6 row-span-7 lg:row-span-12 min-h-0"
+                className="col-span-1 lg:col-span-6 min-h-0 h-full"
               >
-                <div className="jx-glass-strong h-full overflow-hidden">
-                  <div className="jx-glass-header flex items-center justify-between px-5 py-3">
-                    <div className="flex items-center gap-3">
-                      <ClayIcon size={34} tint="violet" className="rounded-2xl">
-                        <LayoutGrid className="h-4.5 w-4.5" />
-                      </ClayIcon>
-                      <div>
-                        <div className="jx-tile-title">Workspace</div>
-                        <div className="jx-tile-subtitle">Editor and output</div>
-                      </div>
+                <div className="jx-glass-strong h-full overflow-hidden flex flex-col">
+                  <div className="jx-glass-header flex items-center px-4 py-2.5">
+                    <div>
+                      <div className="jx-tile-title">Code Editor</div>
                     </div>
                   </div>
-                  <div className="h-[calc(100%-52px)] min-h-0">
+                  <div className="flex-1 min-h-0">
                     <CodeEditor
                       code={code}
                       language={language}
@@ -414,60 +416,20 @@ const InterviewRoom = () => {
                 </div>
               </motion.section>
 
-              {/* Video */}
-              <motion.section
-                initial={{ x: 18, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.45 }}
-                className="col-span-12 lg:col-span-3 row-span-5 lg:row-span-6 min-h-0"
-              >
-                <div className="jx-glass h-full overflow-hidden">
-                  <div className="jx-glass-header flex items-center justify-between px-5 py-3">
-                    <div className="flex items-center gap-3">
-                      <ClayIcon size={34} tint="emerald" className="rounded-2xl">
-                        <VideoIcon className="h-4.5 w-4.5" />
-                      </ClayIcon>
-                      <div>
-                        <div className="jx-tile-title">Call</div>
-                        <div className="jx-tile-subtitle">Video and screenshare</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="h-[calc(100%-52px)] min-h-0 p-4">
-                    <VideoPanel
-                      {...webrtc}
-                      isSocketConnected={isSocketConnected}
-                      peerInfo={peerInfo || {
-                        name:
-                          role === 'interviewer'
-                            ? t('roles.candidate') || 'Candidate'
-                            : t('roles.interviewer') || 'Interviewer'
-                      }}
-                    />
-                  </div>
-                </div>
-              </motion.section>
-
               {/* Chat */}
               <motion.section
                 initial={{ x: 18, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.5 }}
-                className="col-span-12 lg:col-span-3 row-span-7 lg:row-span-6 min-h-0"
+                className="col-span-1 lg:col-span-3 min-h-0 h-full"
               >
-                <div className="jx-glass h-full overflow-hidden">
-                  <div className="jx-glass-header flex items-center justify-between px-5 py-3">
-                    <div className="flex items-center gap-3">
-                      <ClayIcon size={34} tint="amber" className="rounded-2xl">
-                        <MessageSquare className="h-4.5 w-4.5" />
-                      </ClayIcon>
-                      <div>
-                        <div className="jx-tile-title">Chat</div>
-                        <div className="jx-tile-subtitle">Notes and discussion</div>
-                      </div>
+                <div className="jx-glass h-full overflow-hidden flex flex-col">
+                  <div className="jx-glass-header flex items-center px-4 py-2.5">
+                    <div>
+                      <div className="jx-tile-title">Chat & Notes</div>
                     </div>
                   </div>
-                  <div className="h-[calc(100%-52px)] min-h-0">
+                  <div className="flex-1 min-h-0">
                     <ChatPanel
                       messages={messages}
                       onSendMessage={handleSendMessage}
