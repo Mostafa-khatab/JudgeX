@@ -21,16 +21,13 @@ const useAuthStore = create((set) => ({
 	setIsAuth: (isAuth) => set({ isAuth }),
 
 	async getInfo() {
-		useLoadingStore.setState({ isLoading: true });
 		set({ error: null, msg: null, isLoading: true });
 
 		try {
 			const res = await httpRequest.get('/auth');
 			set({ user: res.data.data, isAuth: true, isLoading: false });
-			useLoadingStore.setState({ isLoading: false });
 		} catch (err) {
 			set({ user: null, isAuth: false, isLoading: false });
-			useLoadingStore.setState({ isLoading: false });
 		}
 	},
 
@@ -48,11 +45,11 @@ const useAuthStore = create((set) => ({
 
 		try {
 			const res = await httpRequest.post('/auth/login', { email, password });
-			const { data, msg } = res.data;
-			if (data.token) {
-				localStorage.setItem('token', data.token);
+			const { data: payload, msg } = res.data;
+			if (payload.token) {
+				localStorage.setItem('token', payload.token);
 			}
-			set({ user: data, isAuth: true, msg: msg, isLoading: false });
+			set({ user: payload, isAuth: true, msg: msg, isLoading: false });
 		} catch (err) {
 			set({ error: getErrorMessage(err), isAuth: false, isLoading: false });
 		}

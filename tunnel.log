@@ -9,3 +9,13 @@
 2026-04-30T14:51:13Z INF GOOS: windows, GOVersion: go1.24.13, GoArch: amd64
 2026-04-30T14:51:13Z INF Settings: map[ha-connections:1 protocol:quic url:http://localhost:8080]
 2026-04-30T14:51:13Z INF cloudflared will not automatically update on Windows systems.
+2026-04-30T14:51:13Z INF Generated Connector ID: 48a8bde4-f0dd-40c3-9ed6-bf62de74224e
+2026-04-30T14:51:13Z INF Initial protocol quic
+2026-04-30T14:51:13Z INF ICMP proxy will use 192.168.1.4 as source for IPv4
+2026-04-30T14:51:14Z INF ICMP proxy will use fe80::bd02:29b5:9633:bfc9 in zone WiFi as source for IPv6
+2026-04-30T14:51:14Z INF cloudflared does not support loading the system root certificate pool on Windows. Please use --origin-ca-pool <PATH> to specify the path to the certificate pool
+2026-04-30T14:51:14Z INF ICMP proxy will use 192.168.1.4 as source for IPv4
+2026-04-30T14:51:14Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.192.37
+2026-04-30T14:51:14Z INF ICMP proxy will use fe80::bd02:29b5:9633:bfc9 in zone WiFi as source for IPv6
+2026-04-30T14:51:14Z INF Starting metrics server on 127.0.0.1:20241/metrics
+2026-04-30T14:51:15Z INF Registered tunnel connection connIndex=0 connection=21be7df6-4515-4161-a55f-5647a83ec624 event=0 ip=198.41.192.37 location=mrs04 protocol=quic

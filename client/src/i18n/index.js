@@ -4,7 +4,6 @@ import HttpApi from 'i18next-http-backend';
 
 import enInterview from '../locales/en/interview.json';
 import viInterview from '../locales/vi/interview.json';
-import devInterview from '../locales/dev/interview.json';
 
 export const locales = {
 	en: 'English',
