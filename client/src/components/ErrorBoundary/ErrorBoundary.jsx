@@ -1,6 +1,4 @@
 import React from 'react';
-import { AlertTriangle, RotateCcw, Home } from 'lucide-react';
-import { Button } from '~/components/ui/button';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -19,41 +17,83 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6 font-sans">
-          <div className="max-w-md w-full bg-neutral-900 border border-neutral-800 rounded-3xl p-10 text-center shadow-2xl ring-1 ring-white/5">
-            <div className="h-20 w-20 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 ring-1 ring-red-500/20">
-              <AlertTriangle className="h-10 w-10 text-red-500" />
+        <div style={{
+          minHeight: '100-vh',
+          backgroundColor: '#050505',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+          fontFamily: 'sans-serif'
+        }}>
+          <div style={{
+            maxWidth: '400px',
+            width: '100%',
+            backgroundColor: '#171717',
+            border: '1px solid #333',
+            borderRadius: '24px',
+            padding: '40px',
+            textAlign: 'center',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+          }}>
+            <div style={{
+              height: '80px',
+              width: '80px',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              borderRadius: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 24px',
+              border: '1px solid rgba(239, 68, 68, 0.2)'
+            }}>
+              <span style={{ fontSize: '32px' }}>⚠️</span>
             </div>
             
-            <h1 className="text-2xl font-black text-white mb-2 tracking-tight">Something went wrong</h1>
-            <p className="text-neutral-500 text-sm mb-8 leading-relaxed">
+            <h1 style={{ fontSize: '24px', fontWeight: '900', color: 'white', marginBottom: '8px' }}>Something went wrong</h1>
+            <p style={{ color: '#888', fontSize: '14px', marginBottom: '32px', lineHeight: '1.6' }}>
               An unexpected error occurred. Don't worry, your data is safe. 
               Try refreshing the page or going back home.
             </p>
 
-            <div className="flex flex-col gap-3">
-              <Button 
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button 
                 onClick={() => window.location.reload()}
-                className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl gap-2"
+                style={{
+                  width: '100%',
+                  height: '48px',
+                  backgroundColor: '#2563eb',
+                  border: 'none',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  borderRadius: '12px',
+                  cursor: 'pointer'
+                }}
               >
-                <RotateCcw className="h-4 w-4" />
                 Refresh Page
-              </Button>
+              </button>
               
-              <Button 
-                variant="ghost"
+              <button 
                 onClick={() => window.location.href = '/'}
-                className="w-full h-12 text-neutral-400 hover:text-white hover:bg-white/5 font-bold rounded-xl gap-2"
+                style={{
+                  width: '100%',
+                  height: '48px',
+                  backgroundColor: 'transparent',
+                  border: '1px solid #333',
+                  color: '#aaa',
+                  fontWeight: 'bold',
+                  borderRadius: '12px',
+                  cursor: 'pointer'
+                }}
               >
-                <Home className="h-4 w-4" />
                 Go to Homepage
-              </Button>
+              </button>
             </div>
 
             {import.meta.env.DEV && (
-              <div className="mt-8 text-left p-4 bg-black/50 rounded-xl border border-white/5 overflow-hidden">
-                <p className="text-[10px] font-black uppercase tracking-widest text-neutral-600 mb-2">Error Details</p>
-                <p className="text-xs font-mono text-red-400/80 break-all">{this.state.error?.message}</p>
+              <div style={{ marginTop: '32px', textAlign: 'left', padding: '16px', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <p style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: '#555', marginBottom: '8px' }}>Error Details</p>
+                <p style={{ fontSize: '12px', fontFamily: 'monospace', color: 'rgba(248, 113, 113, 0.8)', wordBreak: 'break-all' }}>{this.state.error?.message}</p>
               </div>
             )}
           </div>
