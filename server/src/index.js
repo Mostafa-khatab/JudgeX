@@ -77,10 +77,13 @@ setInterval(async () => {
 app.use(
 	cors({
 		origin: (origin, callback) => {
-			const allowed = process.env.CLIENT_URL;
-			if (!origin || !allowed || origin === allowed || origin === allowed.replace(/\/$/, '')) {
+			const allowed = (process.env.CLIENT_URL || '').split(',').map((url) => url.trim());
+
+			// Allow no origin (Postman, mobile) or matching origins
+			if (!origin || allowed.includes(origin) || allowed.some((url) => origin === url.replace(/\/$/, ''))) {
 				callback(null, true);
 			} else {
+				console.warn(`CORS rejected: ${origin} not in ${allowed}`);
 				callback(new Error('Not allowed by CORS'));
 			}
 		},

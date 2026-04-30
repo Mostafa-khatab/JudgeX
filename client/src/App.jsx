@@ -39,8 +39,13 @@ const App = () => {
 
 	useEffect(() => {
 		const checkAuth = async () => {
-			await getInfo();
-			setIsCheckingAuth(false);
+			try {
+				await getInfo();
+			} catch (err) {
+				console.error('Auth check failed:', err);
+			} finally {
+				setIsCheckingAuth(false);
+			}
 		};
 		checkAuth();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
