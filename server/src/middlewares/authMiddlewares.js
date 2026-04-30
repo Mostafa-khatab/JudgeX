@@ -11,49 +11,57 @@ const authMiddlewares = {
 		try {
 			// Support auth via cookie or Authorization: Bearer <token>
 			let token = req.cookies.token;
+			let source = 'cookie';
+			
 			if (!token) {
 				const authHeader = req.headers.authorization || req.headers.Authorization;
 				if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
 					token = authHeader.substring(7);
+					source = 'header';
 				}
 			}
-
+ 
 			if (!token) {
+				console.warn('[Auth] No token provided');
 				return res.status(401).json({ success: false, msg: 'Unauthorized - no token provided' });
 			}
-
+ 
 			const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
+ 
 			if (!decoded) {
+				console.warn('[Auth] Token verification failed (decoded is null)');
 				return res.status(401).json({ success: false, msg: 'Unauthorized - invalid token' });
 			}
-
+ 
 			const user = await User.findById(decoded.userId);
-
+ 
 			if (!user) {
+				console.warn(`[Auth] User not found for ID: ${decoded.userId}`);
 				return res.status(401).json({ success: false, msg: 'Unauthorized - user not found' });
 			}
-
+ 
 			// FIX: Check verified status on protected routes
 			if (!user.isVerified) {
+				console.warn(`[Auth] User not verified: ${user.email}`);
 				return res.status(401).json({ 
 					success: false, 
 					msg: 'Email verification required',
 					needsVerification: true 
 				});
 			}
-
+ 
 			req.userId = decoded.userId;
 			req.userPermission = user.permission.toLowerCase();
 			req.user = user; // Attach full user object for later use
-
+ 
+			console.log(`[Auth] User authenticated: ${user.email} (${source})`);
 			next();
 		} catch (err) {
+			console.error(`[Auth] Error: ${err.message}`);
 			if (err?.name === 'JsonWebTokenError' || err?.name === 'TokenExpiredError') {
 				return res.status(401).json({ success: false, msg: 'Unauthorized - invalid or expired token' });
 			}
 			res.status(500).json({ success: false, msg: 'Server error' });
-			console.error(`Error in checking auth: ${err.message}`);
 		}
 	},
 
