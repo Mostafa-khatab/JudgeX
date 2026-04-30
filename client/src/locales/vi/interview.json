@@ -1,0 +1,76 @@
+{
+  "errors": {
+    "failedFetchInterview": "Không thể lấy thông tin phỏng vấn",
+    "failedJoinInterview": "Không thể tham gia phỏng vấn",
+    "failedUpdateState": "Không thể cập nhật trạng thái",
+    "failedRunCode": "Không thể chạy mã",
+    "failedAddMessage": "Không thể thêm tin nhắn",
+    "failedJoinPrefix": "Không thể tham gia: ",
+    "failedRunCodeFinal": "Không thể chạy mã.",
+    "failedSendMessage": "Không thể gửi tin nhắn",
+    "errorPrefix": "Lỗi: "
+  },
+  "loading": {
+    "preparingSession": "Đang chuẩn bị phiên làm việc",
+    "connectingServer": "Đang kết nối an toàn tới máy chủ...",
+    "loadingResults": "Đang tải kết quả..."
+  },
+  "status": {
+    "connected": "Đã kết nối",
+    "offline": "Ngoại tuyến",
+    "finished": "Kết thúc",
+    "completed": "Hoàn thành"
+  },
+  "roles": {
+    "candidate": "Ứng viên",
+    "interviewer": "Người phỏng vấn"
+  },
+  "sections": {
+    "codeTimeline": "Dòng thời gian mã",
+    "overview": "Tổng quan",
+    "chatLogs": "Lịch sử chat",
+    "evaluation": "Đánh giá",
+    "feedback": "Phản hồi",
+    "snapshots": "Ảnh chụp",
+    "chat": "Chat",
+    "events": "Sự kiện",
+    "overallNotes": "Ghi chú tổng quát"
+  },
+  "labels": {
+    "playback": "Phát lại",
+    "totalDuration": "Tổng thời gian",
+    "durationUnit": "phút",
+    "finalRecommendation": "Đề xuất cuối cùng",
+    "noData": "Không có dữ liệu",
+    "restricted": "Bị hạn chế",
+    "overallScore": "Điểm tổng quát",
+    "scoreScale": "/5",
+    "noEmail": "Không có email",
+    "duration": "Thời lượng:",
+    "tabSwitches": "Chuyển Tab:",
+    "snapshotsPrefix": "Ảnh chụp (",
+    "chatPrefix": "Chat (",
+    "eventsPrefix": "Sự kiện (",
+    "closeParen": ")"
+  },
+  "buttons": {
+    "back": "Quay lại",
+    "closeSession": "Đóng phiên"
+  },
+  "categories": {
+    "problemSolving": "Giải quyết vấn đề",
+    "communication": "Giao tiếp",
+    "codingStyle": "Phong cách lập trình",
+    "technicalKnowledge": "Kiến thức kỹ thuật"
+  },
+  "messages": {
+    "codeExecutedSuccessfully": "Mã đã được thực thi thành công.",
+    "codeCopied": "Đã sao chép mã!",
+    "noSnapshots": "Không có ảnh chụp nào được ghi lại",
+    "noMessages": "Không có tin nhắn",
+    "noMessagesInSession": "Không có tin nhắn trong phiên này",
+    "noProctoringEvents": "Không có sự kiện giám sát nào được ghi lại",
+    "interviewResultsTitle": "Kết quả phỏng vấn",
+    "dateNotAvailable": "N/A"
+  }
+}
