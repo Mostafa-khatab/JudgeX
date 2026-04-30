@@ -6,6 +6,8 @@ import { Loader2, Copy, Check, Share2 } from 'lucide-react';
 import httpRequest from '~/utils/httpRequest';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from '~/components/ui/button';
+import { Badge } from '~/components/ui/badge';
 import Lobby from './components/Lobby';
 import ProblemPanel from './components/ProblemPanel';
 import CodeEditor from './components/CodeEditor';
