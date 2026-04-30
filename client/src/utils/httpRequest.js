@@ -5,6 +5,7 @@ const httpRequest = axios.create({
 	baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
 });
 
+/*
 httpRequest.interceptors.request.use(
 	(config) => {
 		const token = localStorage.getItem('token');
@@ -17,5 +18,6 @@ httpRequest.interceptors.request.use(
 		return Promise.reject(error);
 	}
 );
+*/
 
 export default httpRequest;
