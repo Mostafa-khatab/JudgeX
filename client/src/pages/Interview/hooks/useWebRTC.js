@@ -240,29 +240,45 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
   }, [interviewId, socketHandlers]);
 
   // Toggles
-  const toggleAudio = useCallback(() => {
-    if (localStream) {
-      const state = !isAudioEnabled;
-      localStream.getAudioTracks().forEach(t => t.enabled = state);
-      setIsAudioEnabled(state);
+  const toggleAudio = useCallback(async () => {
+    if (localStream && isAudioEnabled) {
+      localStream.getAudioTracks().forEach(t => t.stop());
+      setIsAudioEnabled(false);
       socketHandlers?.emit('interview-media-state', {
         interviewId,
-        mediaState: { audio: state, video: isVideoEnabled }
+        mediaState: { audio: false, video: isVideoEnabled }
       });
+    } else {
+      const stream = await startMedia({ audio: true, video: isVideoEnabled });
+      if (stream) {
+        setIsAudioEnabled(true);
+        // Replace tracks in peer connection
+        const audioTrack = stream.getAudioTracks()[0];
+        const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'audio');
+        if (sender) sender.replaceTrack(audioTrack);
+      }
     }
-  }, [localStream, isAudioEnabled, isVideoEnabled, interviewId, socketHandlers]);
+  }, [localStream, isAudioEnabled, isVideoEnabled, interviewId, socketHandlers, startMedia]);
 
-  const toggleVideo = useCallback(() => {
-    if (localStream) {
-      const state = !isVideoEnabled;
-      localStream.getVideoTracks().forEach(t => t.enabled = state);
-      setIsVideoEnabled(state);
+  const toggleVideo = useCallback(async () => {
+    if (localStream && isVideoEnabled) {
+      localStream.getVideoTracks().forEach(t => t.stop());
+      setIsVideoEnabled(false);
       socketHandlers?.emit('interview-media-state', {
         interviewId,
-        mediaState: { audio: isAudioEnabled, video: state }
+        mediaState: { audio: isAudioEnabled, video: false }
       });
+    } else {
+      const stream = await startMedia({ audio: isAudioEnabled, video: true });
+      if (stream) {
+        setIsVideoEnabled(true);
+        // Replace tracks in peer connection
+        const videoTrack = stream.getVideoTracks()[0];
+        const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'video');
+        if (sender) sender.replaceTrack(videoTrack);
+      }
     }
-  }, [localStream, isAudioEnabled, isVideoEnabled, interviewId, socketHandlers]);
+  }, [localStream, isAudioEnabled, isVideoEnabled, interviewId, socketHandlers, startMedia]);
 
   // Lifecycle
   useEffect(() => {

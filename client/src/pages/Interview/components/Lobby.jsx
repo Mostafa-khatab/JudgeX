@@ -94,23 +94,28 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
   };
 
   const toggleVideo = async () => {
-    if (!stream) {
+    if (stream && isVideoOn) {
+      // Hardware Off: Stop all video tracks to turn off the light
+      stream.getVideoTracks().forEach(t => t.stop());
+      setIsVideoOn(false);
+      // We don't set stream to null yet to keep audio if active, 
+      // but we'll need to re-init for video
+      setIsPreviewActive(false); 
+    } else {
+      // Hardware On: Re-request stream
       await startPreview(selectedDevices.video, selectedDevices.audio);
-      return;
+      setIsVideoOn(true);
     }
-    const state = !isVideoOn;
-    stream.getVideoTracks().forEach(t => t.enabled = state);
-    setIsVideoOn(state);
   };
 
   const toggleMic = async () => {
-    if (!stream) {
+    if (stream && isMicOn) {
+      stream.getAudioTracks().forEach(t => t.stop());
+      setIsMicOn(false);
+    } else {
       await startPreview(selectedDevices.video, selectedDevices.audio);
-      return;
+      setIsMicOn(true);
     }
-    const state = !isMicOn;
-    stream.getAudioTracks().forEach(t => t.enabled = state);
-    setIsMicOn(state);
   };
 
   const handleJoin = () => {
@@ -290,12 +295,16 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
             <Separator className="bg-neutral-800" />
             
             {role === 'interviewer' && (
-              <div className="space-y-3">
-                <Label className="text-neutral-500 text-[10px] uppercase tracking-widest font-black ml-1">Candidate Access</Label>
+              <div className="space-y-3 p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-blue-400" />
+                  <Label className="text-blue-400 text-[10px] uppercase tracking-widest font-black">Share with Candidate</Label>
+                </div>
+                <p className="text-[10px] text-neutral-500 leading-tight">Send this link to the person you are interviewing. They do not need to log in.</p>
                 <Button 
                   variant="outline" 
                   onClick={copyInviteLink}
-                  className="w-full h-12 border-dashed border-neutral-700 bg-neutral-900/50 hover:bg-neutral-800 text-neutral-300 rounded-xl"
+                  className="w-full h-12 border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-xl"
                 >
                   <Copy className="h-4 w-4 mr-2" />
                   Copy Invite Link
