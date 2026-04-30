@@ -3,8 +3,9 @@ import authMiddlewares from '../middlewares/authMiddlewares.js';
 
 const { isAuth } = authMiddlewares;
 
-// Anyone can create an interview now, removed isInstructor middleware
-import {
+import interviewController from '../controllers/interviewController.js';
+
+const {
   createInterview,
   getInterviews,
   getInterview,
@@ -21,7 +22,7 @@ import {
   getResults,
   deleteInterview,
   addQuestion
-} from '../controllers/interviewController.js';
+} = interviewController;
 
 const router = express.Router();
 

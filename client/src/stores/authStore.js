@@ -14,7 +14,7 @@ const useAuthStore = create((set) => ({
 
 	async getInfo() {
 		useLoadingStore.setState({ isLoading: true }); //global loading state
-		set({ user: null, error: null, msg: null, isLoading: true }); //self loading state
+		set({ error: null, msg: null, isLoading: true }); //self loading state
 
 		try {
 			const res = await httpRequest.get('/auth');
@@ -22,7 +22,7 @@ const useAuthStore = create((set) => ({
 			useLoadingStore.setState({ isLoading: false });
 		} catch (err) {
 			console.error(err);
-			set({ /*error: err.response.data.msg,*/ isAuth: false, isLoading: false });
+			set({ user: null, isAuth: false, isLoading: false });
 			useLoadingStore.setState({ isLoading: false });
 		}
 	},

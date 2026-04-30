@@ -45,7 +45,7 @@ const TopUsers = () => {
                         {users.map((user, index) => (
                             <Link 
                                 key={user.id} 
-                                to={routesConfig.user.replace(':name', user.name)}
+                                to={routesConfig.user.replace(':name', user?.name || '')}
                                 className="flex items-center justify-between group"
                             >
                                 <div className="flex items-center space-x-3">
@@ -54,11 +54,11 @@ const TopUsers = () => {
                                     </span>
                                     <UserAvatar user={user} className="h-8 w-8" />
                                     <span className="text-sm font-medium group-hover:text-sky-500 dark:text-gray-200">
-                                        {user.name}
+                                        {user?.name}
                                     </span>
                                 </div>
                                 <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
-                                    {user.totalScore}
+                                    {user?.totalScore}
                                 </span>
                             </Link>
                         ))}

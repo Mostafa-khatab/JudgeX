@@ -4,8 +4,8 @@
  */
 
 import jwt from 'jsonwebtoken';
-import User from './models/user.js';
-import Interview from './models/interview.js';
+import User from '../models/user.js';
+import Interview from '../models/interview.js';
 
 /**
  * Socket.IO Authentication Middleware

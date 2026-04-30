@@ -39,7 +39,7 @@ const AvatarWithMenu = () => {
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="mr-8 mt-4 w-[296px] space-y-4 rounded-2xl border-none p-4 shadow-lg dark:bg-[#303030]">
 				<DropdownMenuItem asChild className="cursor-pointer hover:!bg-transparent">
-					<Link className="flex gap-2" to={routesConfig.user.replace(':name', user.name)}>
+					<Link className="flex gap-2" to={routesConfig.user.replace(':name', user?.name || '')}>
 						<UserAvatar user={user} className="size-14"></UserAvatar>
 						<span className="h-14 space-y-[2px] py-[2px]">
 							<h2 className="relative text-lg font-medium">
@@ -58,17 +58,17 @@ const AvatarWithMenu = () => {
 					{[
 						{
 							title: t('problem'),
-							path: `${routesConfig.user.replace(':name', user.name)}?tab=2`,
+							path: `${routesConfig.user.replace(':name', user?.name || '')}?tab=2`,
 							img: list,
 						},
 						{
 							title: t('submission'),
-							path: `${routesConfig.submissions}?author=${user.name}`,
+							path: `${routesConfig.submissions}?author=${user?.name || ''}`,
 							img: answer,
 						},
 						{
 							title: t('contest'),
-							path: `${routesConfig.user.replace(':name', user.name)}?tab=4`,
+							path: `${routesConfig.user.replace(':name', user?.name || '')}?tab=4`,
 							img: contest,
 						},
 					].map((item, index) => (
@@ -85,7 +85,7 @@ const AvatarWithMenu = () => {
 					))}
 				</div>
 				<div className="w-full">
-					{user.permission === 'Admin' && (
+					{user?.permission === 'Admin' && (
 						<DropdownMenuItem
 							asChild
 							className="flex h-[42px] cursor-pointer rounded-md bg-gradient-to-r from-sky-300 to-purple-400 px-4 !text-white dark:from-sky-500 dark:to-purple-500"

@@ -23,7 +23,6 @@ export const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: false,
-  store: new MemoryStore(), // Consider Redis in production
 });
 
 /**
