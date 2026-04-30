@@ -99,25 +99,58 @@ const authMiddlewares = {
 		}
 	},
 
-	/**
-	 * Admin permission check middleware
-	 */
-	requireAd(req, res, next) {
-		try {
-			if (req.userPermission !== 'admin') {
-				return res.status(403).json({ success: false, msg: 'Unauthorized - admin permission required' });
-			}
+  async isInterviewParticipant(req, res, next) {
+    try {
+      // 1. Check for regular User Auth
+      let token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+      
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          const user = await User.findById(decoded.userId);
+          if (user && user.isVerified) {
+            req.userId = decoded.userId;
+            req.userPermission = user.permission.toLowerCase();
+            req.user = user;
+            return next();
+          }
+        } catch (e) {
+          // Fallback to candidate token if user auth fails
+        }
+      }
 
-			next();
-		} catch (err) {
-			res.status(500).json({ success: false, msg: 'Server error' });
+      // 2. Check for Candidate Token
+      const candidateToken = req.headers['x-candidate-token'] || req.cookies.candidateToken;
+      if (candidateToken) {
+        req.isCandidate = true;
+        req.candidateToken = candidateToken;
+        return next();
+      }
 
-			console.error(`Error in checking user permission: ${err.message}`);
-		}
-	},
+      return res.status(401).json({ success: false, msg: 'Unauthorized - please login or use a valid invite link' });
+    } catch (err) {
+      console.error('[isInterviewParticipant] Error:', err);
+      res.status(500).json({ success: false, msg: 'Server error during authentication' });
+    }
+  },
+
+  /**
+   * Admin permission check middleware
+   */
+  requireAd(req, res, next) {
+    try {
+      if (req.userPermission !== 'admin') {
+        return res.status(403).json({ success: false, msg: 'Unauthorized - admin permission required' });
+      }
+      next();
+    } catch (err) {
+      res.status(500).json({ success: false, msg: 'Server error' });
+      console.error(`Error in checking user permission: ${err.message}`);
+    }
+  },
 };
 
 // Compose middleware for admin requirement
-authMiddlewares.requireAd = [authMiddlewares.isAuth, authMiddlewares.requireAd];
+authMiddlewares.isAuthAdmin = [authMiddlewares.isAuth, authMiddlewares.requireAd];
 
 export default authMiddlewares;

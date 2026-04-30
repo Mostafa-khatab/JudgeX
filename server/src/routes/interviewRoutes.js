@@ -1,7 +1,7 @@
 import express from 'express';
 import authMiddlewares from '../middlewares/authMiddlewares.js';
 
-const { isAuth } = authMiddlewares;
+const { isAuth, isInterviewParticipant } = authMiddlewares;
 
 import interviewController from '../controllers/interviewController.js';
 
@@ -44,7 +44,7 @@ router.post('/join/:token', joinInterview);
 // CRUD
 router.post('/', isAuth, createInterview);
 router.get('/', isAuth, getInterviews);
-router.get('/:id', isAuth, getInterview);
+router.get('/:id', isInterviewParticipant, getInterview); // Allow candidate
 router.delete('/:id', isAuth, deleteInterview);
 
 // Session control
@@ -54,23 +54,23 @@ router.post('/:id/resume', isAuth, resumeInterview);
 router.post('/:id/end', isAuth, endInterview);
 
 // State sync
-router.post('/:id/state', isAuth, updateState);
+router.post('/:id/state', isInterviewParticipant, updateState); // Allow candidate
 
 // Questions
 router.post('/:id/questions', isAuth, addQuestion);
 
 // Chat
-router.post('/:id/messages', isAuth, addMessage);
+router.post('/:id/messages', isInterviewParticipant, addMessage); // Allow candidate
 
 // Feedback (interviewer only)
 router.post('/:id/feedback', isAuth, saveFeedback);
 router.get('/:id/results', isAuth, getResults);
 
 // Snapshots
-router.post('/:id/snapshot', isAuth, takeSnapshot);
+router.post('/:id/snapshot', isInterviewParticipant, takeSnapshot); // Allow candidate
 
 // Proctoring
-router.post('/:id/tab-switch', trackTabSwitch);
+router.post('/:id/tab-switch', isInterviewParticipant, trackTabSwitch); // Allow candidate
 
 export default router;
 

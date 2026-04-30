@@ -69,10 +69,13 @@ const createInterview = async (req, res) => {
 
     return sendSuccess(res, {
       ...interview.toObject(),
-      inviteLink: `${process.env.CLIENT_URL}/interview/join/${interview.inviteToken}`
+      inviteLink: `${process.env.CLIENT_URL || 'https://judgex-site.vercel.app'}/interview/join/${interview.inviteToken}`
     }, 'Interview created successfully', 201);
   } catch (err) {
-    return handleError(res, err, 'CreateInterview', 500);
+    console.error('[CreateInterview] Detailed Error:', err);
+    // Return the specific validation error if available
+    const errorMessage = err.message || 'Failed to create interview';
+    return sendError(res, errorMessage, 400);
   }
 };
 
