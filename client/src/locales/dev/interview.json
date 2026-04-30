@@ -71,6 +71,7 @@
     "noMessagesInSession": "No messages in this session",
     "noProctoringEvents": "No proctoring events recorded",
     "interviewResultsTitle": "Interview Results",
-    "dateNotAvailable": "N/A"
+    "dateNotAvailable": "N/A",
+    "linkCopied": "Invite link copied to clipboard!"
   }
 }

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router';
 import { toast } from 'react-toastify';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Copy, Check, Share2 } from 'lucide-react';
 import httpRequest from '~/utils/httpRequest';
 
 import { motion, AnimatePresence } from 'framer-motion';
@@ -239,6 +239,20 @@ const InterviewRoom = () => {
             </div>
             
             <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const url = `${window.location.origin}/interview/join/${inviteToken || interview?.inviteToken}`;
+                  navigator.clipboard.writeText(url);
+                  toast.success(t('messages.linkCopied') || 'Invite link copied!');
+                }}
+                className="bg-blue-600/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 gap-2"
+              >
+                <Share2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Copy Invite Link</span>
+              </Button>
+
               <div className="flex items-center gap-2 px-3 py-1 bg-neutral-900 rounded-full border border-neutral-800">
                 <div className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                 <span className="text-[10px] font-bold uppercase text-neutral-400">
