@@ -3,7 +3,7 @@ import {
   Video, VideoOff, Mic, MicOff, 
   Settings, ArrowRight, Camera, 
   User, CheckCircle2, ShieldCheck,
-  ChevronDown, Volume2
+  ChevronDown, Volume2, Copy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '~/components/ui/button';
@@ -87,24 +87,35 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
     );
   }, [selectedDevices, startPreview]);
 
-  const toggleVideo = () => {
-    if (stream) {
-      const state = !isVideoOn;
-      stream.getVideoTracks().forEach(t => t.enabled = state);
-      setIsVideoOn(state);
-    }
+  const copyInviteLink = () => {
+    const link = `${window.location.origin}/interview/join/${interview.inviteToken}`;
+    navigator.clipboard.writeText(link);
+    toast.success('Invite link copied to clipboard!');
   };
 
-  const toggleMic = () => {
-    if (stream) {
-      const state = !isMicOn;
-      stream.getAudioTracks().forEach(t => t.enabled = state);
-      setIsMicOn(state);
+  const toggleVideo = async () => {
+    if (!stream) {
+      await startPreview(selectedDevices.video, selectedDevices.audio);
+      return;
     }
+    const state = !isVideoOn;
+    stream.getVideoTracks().forEach(t => t.enabled = state);
+    setIsVideoOn(state);
+  };
+
+  const toggleMic = async () => {
+    if (!stream) {
+      await startPreview(selectedDevices.video, selectedDevices.audio);
+      return;
+    }
+    const state = !isMicOn;
+    stream.getAudioTracks().forEach(t => t.enabled = state);
+    setIsMicOn(state);
   };
 
   const handleJoin = () => {
     if (role === 'candidate' && !candidateToken && (!name.trim() || !email.trim())) {
+      toast.error('Please enter your name and email');
       return;
     }
     // Pass the existing stream and settings
@@ -277,6 +288,20 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
             </div>
 
             <Separator className="bg-neutral-800" />
+            
+            {role === 'interviewer' && (
+              <div className="space-y-3">
+                <Label className="text-neutral-500 text-[10px] uppercase tracking-widest font-black ml-1">Candidate Access</Label>
+                <Button 
+                  variant="outline" 
+                  onClick={copyInviteLink}
+                  className="w-full h-12 border-dashed border-neutral-700 bg-neutral-900/50 hover:bg-neutral-800 text-neutral-300 rounded-xl"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy Invite Link
+                </Button>
+              </div>
+            )}
 
             {role === 'candidate' && !candidateToken && (
               <div className="space-y-5">
