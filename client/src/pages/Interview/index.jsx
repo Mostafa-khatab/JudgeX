@@ -86,8 +86,8 @@ const InterviewDashboard = () => {
   };
 
   const handleCreate = async () => {
-    if (!title.trim()) {
-      toast.warning('Please enter a title');
+    if (!title.trim() || title.trim().length < 3) {
+      toast.warning('Title must be at least 3 characters');
       return;
     }
     if (allowedLanguages.length === 0) {
