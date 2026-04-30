@@ -67,7 +67,7 @@ const DailyChallenge = () => {
 		return () => clearInterval(interval);
 	}, []);
 
-	const confidencePercent = challenge ? Math.round(challenge.predictedScore * 100) : 0;
+	const confidencePercent = challenge ? Math.round((challenge.predictedScore || 0) * 100) : 0;
 
 	if (loading) {
 		return (
