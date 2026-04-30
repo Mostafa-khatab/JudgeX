@@ -3,7 +3,7 @@ import { Lock, Mail, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
 import isEmail from 'validator/lib/isEmail';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { toast } from 'react-toastify';
 import { Button } from '~/components/ui/button';
 
@@ -14,6 +14,7 @@ import useAuthStore from '~/stores/authStore';
 
 const Login = () => {
 	const { t } = useTranslation('login');
+	const navigate = useNavigate();
 
 	const { login, isLoading, msg, error, clearLog } = useAuthStore();
 
@@ -40,14 +41,19 @@ const Login = () => {
 	};
 
 	useEffect(() => {
-		toast.error(error);
-		clearLog();
-	}, [error, clearLog, t]);
+		if (error) {
+			toast.error(error);
+			clearLog();
+		}
+	}, [error, clearLog]);
 
 	useEffect(() => {
-		toast.success(msg);
-		clearLog();
-	}, [msg, clearLog]);
+		if (msg) {
+			toast.success(msg);
+			navigate(routesConfig.home);
+			clearLog();
+		}
+	}, [msg, clearLog, navigate]);
 
 	return (
 		<div className="flex flex-1 items-center justify-center pb-24">

@@ -13,12 +13,12 @@ const useAuthStore = create((set) => ({
 	setIsAuth: (isAuth) => set({ isAuth }),
 
 	async getInfo() {
-		useLoadingStore.setState({ isLoading: true }); //global loading state
-		set({ error: null, msg: null, isLoading: true }); //self loading state
+		useLoadingStore.setState({ isLoading: true });
+		set({ error: null, msg: null, isLoading: true });
 
 		try {
 			const res = await httpRequest.get('/auth');
-			set({ user: res.data.user, isAuth: true, isLoading: false });
+			set({ user: res.data.data, isAuth: true, isLoading: false });
 			useLoadingStore.setState({ isLoading: false });
 		} catch (err) {
 			console.error(err);
@@ -30,10 +30,10 @@ const useAuthStore = create((set) => ({
 	async reload() {
 		try {
 			const res = await httpRequest.get('/auth');
-			set({ user: res.data.user, isAuth: true });
+			set({ user: res.data.data, isAuth: true });
 		} catch (err) {
 			console.error(err);
-			set({ /*error: err.response.data.msg,*/ isAuth: false });
+			set({ isAuth: false });
 		}
 	},
 
@@ -42,10 +42,10 @@ const useAuthStore = create((set) => ({
 
 		try {
 			const res = await httpRequest.post('/auth/login', { email, password });
-			set({ user: res.data.user, isAuth: true, msg: res.data.msg, isLoading: false });
+			set({ user: res.data.data, isAuth: true, msg: res.data.msg, isLoading: false });
 		} catch (err) {
 			console.error(err);
-			set({ error: err.response.data.msg, isAuth: false, isLoading: false });
+			set({ error: err.response?.data?.msg, isAuth: false, isLoading: false });
 		}
 	},
 
@@ -57,7 +57,7 @@ const useAuthStore = create((set) => ({
 			set({ msg: res.data.msg, isLoading: false });
 		} catch (err) {
 			console.error(err);
-			set({ error: err.response.data.msg, isLoading: false });
+			set({ error: err.response?.data?.msg, isLoading: false });
 		}
 	},
 
@@ -65,12 +65,11 @@ const useAuthStore = create((set) => ({
 		set({ error: null, msg: null, isLoading: true });
 
 		try {
-			// eslint-disable-next-line no-unused-vars
 			const res = await httpRequest.post('/auth/logout');
-			set({ isAuth: false, user: null, isLoading: false /*msg: res.data.msg*/ });
+			set({ isAuth: false, user: null, isLoading: false });
 		} catch (err) {
 			console.error(err);
-			set({ /*error: err.message,*/ isLoading: false });
+			set({ isLoading: false });
 		}
 	},
 
@@ -82,7 +81,7 @@ const useAuthStore = create((set) => ({
 			set({ isLoading: false, msg: res.data.msg });
 		} catch (err) {
 			console.error(err);
-			set({ error: err.response.data.msg, isLoading: false });
+			set({ error: err.response?.data?.msg, isLoading: false });
 		}
 	},
 
@@ -94,7 +93,7 @@ const useAuthStore = create((set) => ({
 			set({ isLoading: false, msg: res.data.msg });
 		} catch (err) {
 			console.error(err);
-			set({ error: err.response.data.msg, isLoading: false });
+			set({ error: err.response?.data?.msg, isLoading: false });
 		}
 	},
 
@@ -106,7 +105,7 @@ const useAuthStore = create((set) => ({
 			set({ isLoading: false, msg: res.data.msg });
 		} catch (err) {
 			console.error(err);
-			set({ error: err.response.data.msg, isLoading: false });
+			set({ error: err.response?.data?.msg, isLoading: false });
 		}
 	},
 
@@ -118,7 +117,7 @@ const useAuthStore = create((set) => ({
 			set({ isLoading: false, msg: res.data.msg });
 		} catch (err) {
 			console.error(err);
-			set({ error: err.response.data.msg, isLoading: false });
+			set({ error: err.response?.data?.msg, isLoading: false });
 		}
 	},
 

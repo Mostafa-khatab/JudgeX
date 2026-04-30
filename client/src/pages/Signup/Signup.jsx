@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { Mail, User, Lock, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import isEmail from 'validator/lib/isEmail';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { Button } from '~/components/ui/button';
@@ -15,6 +15,7 @@ import useAuthStore from '~/stores/authStore';
 
 const Signup = () => {
 	const { t } = useTranslation('signup');
+	const navigate = useNavigate();
 	const { signup, msg, error, isLoading, clearLog } = useAuthStore();
 
 	const [username, setUsername] = useState('');
@@ -53,14 +54,19 @@ const Signup = () => {
 	}, [email]);
 
 	useEffect(() => {
-		toast.error(error);
-		clearLog();
+		if (error) {
+			toast.error(error);
+			clearLog();
+		}
 	}, [error, clearLog]);
 
 	useEffect(() => {
-		toast.success(msg);
-		clearLog();
-	}, [msg, clearLog]);
+		if (msg) {
+			toast.success(msg + ' Please verify your email.');
+			navigate(routesConfig.verifyEmail);
+			clearLog();
+		}
+	}, [msg, clearLog, navigate]);
 
 	return (
 		<div className="flex flex-1 items-center justify-center">
