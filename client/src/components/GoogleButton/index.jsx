@@ -6,12 +6,10 @@ import useAuthStore from '~/stores/authStore';
 import httpRequest from '~/utils/httpRequest';
 import { toast } from 'react-toastify';
 
-const GoogleButton = () => {
+
+const GoogleButtonInner = () => {
 	const { t } = useTranslation('auth');
 	const { setUser, setIsAuth } = useAuthStore();
-
-	// Don't render if Google OAuth is not configured
-	if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) return null;
 
 	const login = useGoogleLogin({
 		onSuccess: async (tokenResponse) => {
@@ -82,6 +80,13 @@ const GoogleButton = () => {
 			</div>
 		</div>
 	);
+};
+
+const GoogleButton = () => {
+	// Render nothing if Google OAuth is not configured.
+	// This wrapper has no hooks, so it won't violate Rules of Hooks.
+	if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) return null;
+	return <GoogleButtonInner />;
 };
 
 export default GoogleButton;

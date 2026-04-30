@@ -111,20 +111,6 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     }
   }, [interviewId, role, socketHandlers]);
 
-  // If we were asked to connect before we had media, initiate once ready.
-  useEffect(() => {
-    if (role !== 'interviewer') return;
-    if (!localStream) return;
-    if (!shouldInitiateRef.current) return;
-
-    shouldInitiateRef.current = false;
-    // Delay slightly to let the other peer finish joining the room.
-    const t = setTimeout(() => {
-      initiateCall();
-    }, 300);
-    return () => clearTimeout(t);
-  }, [localStream, role, initiateCall]);
-
   const createPeerConnection = useCallback((stream) => {
     if (pcRef.current) pcRef.current.close();
     
@@ -185,6 +171,20 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
       offer
     });
   }, [localStream, startMedia, createPeerConnection, interviewId, socketHandlers]);
+
+  // If we were asked to connect before we had media, initiate once ready.
+  useEffect(() => {
+    if (role !== 'interviewer') return;
+    if (!localStream) return;
+    if (!shouldInitiateRef.current) return;
+
+    shouldInitiateRef.current = false;
+    // Delay slightly to let the other peer finish joining the room.
+    const t = setTimeout(() => {
+      initiateCall();
+    }, 300);
+    return () => clearTimeout(t);
+  }, [localStream, role, initiateCall]);
 
   // Signaling Handlers
   const handleOffer = useCallback(async (offer) => {

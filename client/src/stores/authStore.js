@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 
 import httpRequest from '~/utils/httpRequest';
-import useLoadingStore from './loadingStore';
 
 const getErrorMessage = (err) => {
 	if (err.response?.status === 401) return 'Invalid email or password';

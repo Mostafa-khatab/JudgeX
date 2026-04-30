@@ -15,6 +15,7 @@ const App = () => {
 	const { i18n } = useTranslation();
 	const { theme } = useThemeStore();
 	const { getInfo } = useAuthStore();
+	const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 
 	const { isLoading } = useLoadingStore();
@@ -59,12 +60,19 @@ const App = () => {
 
 	return (
 		<React.Suspense fallback={<Loading />}>
-			<GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+			{googleClientId ? (
+				<GoogleOAuthProvider clientId={googleClientId}>
+					<TooltipProvider>
+						<AppRouter />
+						<ToastContainer position="bottom-right" theme={theme} newestOnTop draggable></ToastContainer>
+					</TooltipProvider>
+				</GoogleOAuthProvider>
+			) : (
 				<TooltipProvider>
 					<AppRouter />
 					<ToastContainer position="bottom-right" theme={theme} newestOnTop draggable></ToastContainer>
 				</TooltipProvider>
-			</GoogleOAuthProvider>
+			)}
 		</React.Suspense>
 	);
 };
