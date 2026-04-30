@@ -19,9 +19,14 @@ const ReviewMode = ({ interview, role }) => {
   const currentSnapshot = snapshots[activeSnapshotIdx] || { code: interview?.state?.code, language: interview?.state?.language };
 
   const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
+    if (!date) return '...';
+    try {
+      return new Date(date).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+    } catch (e) {
+      return '...';
+    }
   };
 
   return (
@@ -177,7 +182,7 @@ const ReviewMode = ({ interview, role }) => {
                         {msg.role}
                       </span>
                       <span className="text-[10px] text-neutral-700">
-                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}
                       </span>
                     </div>
                     <p className="text-sm text-neutral-300 leading-relaxed bg-neutral-800/40 p-3 rounded-xl border border-white/5">

@@ -117,7 +117,7 @@ const InterviewRoom = () => {
           }
         }
       } catch (err) {
-        toast.error(t(err.message.includes('interview:') ? err.message : 'errors.failedFetchInterview'));
+        toast.error(t(err?.message?.includes?.('interview:') ? err.message : 'errors.failedFetchInterview'));
       } finally {
         setLoading(false);
       }
@@ -282,7 +282,7 @@ const InterviewRoom = () => {
                     <SelectValue placeholder="Select Question" />
                   </SelectTrigger>
                   <SelectContent className="bg-neutral-900 border-neutral-800 text-white">
-                    {interview.questions.map((q, i) => (
+                    {interview?.questions?.map((q, i) => (
                       <SelectItem key={q.problemId._id} value={q.problemId._id} className="text-xs">
                         {i + 1}. {q.problemId.name}
                       </SelectItem>

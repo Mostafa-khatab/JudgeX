@@ -38,7 +38,7 @@ const ChatPanel = ({ messages, onSendMessage, role }) => {
               {msg.content}
             </div>
             <span className="text-[10px] text-neutral-500 mt-1 uppercase tracking-wider">
-              {msg.role} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {msg.role} • {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}
             </span>
           </div>
         ))}
