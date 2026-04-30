@@ -16,9 +16,10 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      console.log('Rendering ErrorBoundary screen...');
       return (
         <div style={{
-          minHeight: '100-vh',
+          minHeight: '100vh',
           backgroundColor: '#050505',
           display: 'flex',
           alignItems: 'center',
