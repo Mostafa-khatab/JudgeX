@@ -4,10 +4,10 @@ import { useParams, useNavigate } from 'react-router';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 import { 
-  ChevronLeft, Clock, CheckCircle2, XCircle, 
+  ChevronLeft, CheckCircle2,
   Code2, MessageSquare, BarChart3, Loader2,
-  Trophy, Calendar, User, AlertTriangle, Star,
-  Copy, Eye, FileText
+  Trophy, Calendar, User, Star,
+  Copy, FileText
 } from 'lucide-react';
 import httpRequest from '~/utils/httpRequest';
 
@@ -15,6 +15,8 @@ import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+
+import ClayIcon from './components/ClayIcon';
 
 // ============ API ============
 const api = {
@@ -113,7 +115,7 @@ const InterviewResults = () => {
 
   // ============ Render ============
   return (
-    <div className="dark min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 text-white p-8">
+    <div className="dark min-h-screen text-white p-8 bg-[radial-gradient(1200px_700px_at_15%_-10%,rgba(59,130,246,0.22),transparent_55%),radial-gradient(900px_600px_at_92%_12%,rgba(168,85,247,0.18),transparent_55%),radial-gradient(900px_700px_at_60%_120%,rgba(16,185,129,0.12),transparent_50%),linear-gradient(to_br,rgba(10,10,10,1),rgba(4,4,6,1))]">
       <div className="max-w-5xl mx-auto space-y-8">
         
         {/* Header */}
@@ -131,7 +133,9 @@ const InterviewResults = () => {
               </Badge>
               <h1 className="text-2xl font-bold">{data?.title || t('messages.interviewResultsTitle')}</h1>
               <p className="text-neutral-500 text-sm flex items-center gap-2 mt-1">
-                <Calendar className="h-3.5 w-3.5" />
+                <ClayIcon size={20} tint="neutral" className="rounded-xl shadow-none">
+                  <Calendar className="h-3.5 w-3.5" />
+                </ClayIcon>
                 {data?.createdAt ? formatDate(data.createdAt) : t('messages.dateNotAvailable')}
               </p>
             </div>
@@ -139,9 +143,11 @@ const InterviewResults = () => {
         </div>
 
         {/* Score Overview */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Main Score */}
-          <Card className="col-span-2 bg-gradient-to-br from-blue-600/20 to-indigo-600/20 border-blue-500/30 p-8">
+          <Card className="lg:col-span-2 jx-glass-strong p-8 overflow-hidden relative">
+            <div className="pointer-events-none absolute -top-16 -right-20 h-64 w-64 rounded-full bg-blue-500/15 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-violet-500/12 blur-3xl" />
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-neutral-400 text-sm uppercase tracking-wider">{t('labels.overallScore')}</p>
@@ -155,15 +161,17 @@ const InterviewResults = () => {
                   </Badge>
                 )}
               </div>
-              <div className="h-28 w-28 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-blue-500/20">
+              <ClayIcon size={112} tint="violet" className="rounded-[34px] ring-white/15">
                 <Trophy className="h-14 w-14 text-white" />
-              </div>
+              </ClayIcon>
             </div>
           </Card>
           
           {/* Candidate Info */}
-          <Card className="bg-neutral-900/50 border-neutral-800 p-6">
-            <User className="h-5 w-5 text-blue-400 mb-4" />
+          <Card className="jx-glass p-6">
+            <ClayIcon size={40} tint="blue" className="rounded-2xl shadow-none ring-white/10 mb-4">
+              <User className="h-5 w-5" />
+            </ClayIcon>
             <h3 className="font-bold text-lg">{data?.candidate?.name || t('roles.candidate')}</h3>
             <p className="text-sm text-neutral-500 mt-1">{data?.candidate?.email || t('labels.noEmail')}</p>
             <div className="mt-4 pt-4 border-t border-neutral-800">
@@ -183,20 +191,20 @@ const InterviewResults = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="feedback" className="space-y-4">
-          <TabsList className="bg-neutral-900 border border-neutral-800">
-            <TabsTrigger value="feedback" className="data-[state=active]:bg-blue-600">
+          <TabsList className="jx-glass border border-white/10">
+            <TabsTrigger value="feedback" className="data-[state=active]:bg-white/[0.10] data-[state=active]:text-white">
               <Star className="h-4 w-4 mr-2" />
               {t('sections.feedback')}
             </TabsTrigger>
-            <TabsTrigger value="snapshots" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="snapshots" className="data-[state=active]:bg-white/[0.10] data-[state=active]:text-white">
               <Code2 className="h-4 w-4 mr-2" />
               {t('labels.snapshotsPrefix')}{data?.snapshots?.length || 0}{t('labels.closeParen')}
             </TabsTrigger>
-            <TabsTrigger value="chat" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="chat" className="data-[state=active]:bg-white/[0.10] data-[state=active]:text-white">
               <MessageSquare className="h-4 w-4 mr-2" />
               {t('labels.chatPrefix')}{data?.messages?.length || 0}{t('labels.closeParen')}
             </TabsTrigger>
-            <TabsTrigger value="events" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="events" className="data-[state=active]:bg-white/[0.10] data-[state=active]:text-white">
               <BarChart3 className="h-4 w-4 mr-2" />
               {t('labels.eventsPrefix')}{data?.events?.length || 0}{t('labels.closeParen')}
             </TabsTrigger>
@@ -219,9 +227,9 @@ const InterviewResults = () => {
                   <Card className="bg-neutral-900/50 border-neutral-800 p-5">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-blue-600/20 flex items-center justify-center">
-                          <item.icon className="h-5 w-5 text-blue-400" />
-                        </div>
+                        <ClayIcon size={40} tint="blue" className="rounded-2xl shadow-none ring-white/10">
+                          <item.icon className="h-5 w-5" />
+                        </ClayIcon>
                         <span className="font-bold">{t(`categories.${item.key}`)}</span>
                       </div>
                       {renderStars(data?.feedback?.[item.key]?.score || 0)}
@@ -289,7 +297,7 @@ const InterviewResults = () => {
             
             {/* Active Snapshot Detail */}
             {activeSnapshot !== null && data?.snapshots?.[activeSnapshot] && (
-              <Card className="bg-neutral-900 border-neutral-800 mt-4 overflow-hidden">
+              <Card className="jx-glass-strong mt-4 overflow-hidden">
                 <div className="flex items-center justify-between p-4 border-b border-neutral-800">
                   <div className="flex items-center gap-3">
                     <Badge variant="outline">{data.snapshots[activeSnapshot].language}</Badge>
@@ -308,7 +316,7 @@ const InterviewResults = () => {
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
-                <pre className="p-4 text-sm font-mono text-neutral-300 overflow-auto max-h-80 bg-neutral-950">
+                <pre className="p-4 text-sm font-mono text-neutral-300 overflow-auto max-h-80 bg-black/40">
                   {data.snapshots[activeSnapshot].code}
                 </pre>
               </Card>

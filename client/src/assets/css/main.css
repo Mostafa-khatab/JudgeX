@@ -74,6 +74,23 @@
 	.input-error {
 		@apply !border-red-500 !text-red-500 !caret-red-500 !ring-red-500 focus-within:!border-red-500 focus-within:!ring-red-500;
 	}
+
+	/* Modern Playful: subtle glass + bento surfaces (used by Interview UI) */
+	.jx-glass {
+		@apply rounded-3xl border border-white/10 bg-white/[0.06] backdrop-blur-xl shadow-2xl shadow-black/40;
+	}
+	.jx-glass-strong {
+		@apply rounded-3xl border border-white/10 bg-white/[0.08] backdrop-blur-2xl shadow-2xl shadow-black/50;
+	}
+	.jx-glass-header {
+		@apply border-b border-white/10 bg-black/30 backdrop-blur-xl;
+	}
+	.jx-tile-title {
+		@apply text-[11px] font-black uppercase tracking-[0.22em] text-neutral-400;
+	}
+	.jx-tile-subtitle {
+		@apply text-xs text-neutral-500;
+	}
 }
 
 :root {

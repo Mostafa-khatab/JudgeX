@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
-  Code2, MessageSquare, Clock, 
+  MessageSquare,
   ChevronLeft, ChevronRight, History,
-  FileText, Star, User, Calendar
+  Star, User, Calendar
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Editor } from '@monaco-editor/react';
 import { Card } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+
+import ClayIcon from './ClayIcon';
 
 const ReviewMode = ({ interview, role }) => {
   const { t } = useTranslation('interview');
@@ -30,9 +31,10 @@ const ReviewMode = ({ interview, role }) => {
   };
 
   return (
-    <div className="dark h-screen bg-[#050505] text-white flex flex-col overflow-hidden">
+    <div className="dark h-screen text-white flex flex-col overflow-hidden bg-[radial-gradient(1200px_700px_at_15%_-10%,rgba(59,130,246,0.18),transparent_55%),radial-gradient(900px_600px_at_92%_12%,rgba(168,85,247,0.16),transparent_55%),linear-gradient(to_br,rgba(10,10,10,1),rgba(4,4,6,1))]">
       {/* Header */}
-      <header className="h-16 border-b border-neutral-800 bg-black/50 backdrop-blur-md flex items-center justify-between px-8 shrink-0">
+      <header className="h-16 px-5 sm:px-7 shrink-0">
+        <div className="jx-glass-header h-full rounded-b-3xl border border-white/10 border-t-0 flex items-center justify-between px-5 sm:px-7">
         <div className="flex items-center gap-6">
           <Badge className="bg-neutral-800 text-neutral-400 border-neutral-700">{t('status.finished')}</Badge>
           <div className="h-4 w-px bg-neutral-800" />
@@ -40,19 +42,27 @@ const ReviewMode = ({ interview, role }) => {
         </div>
         
         <div className="flex items-center gap-4 text-neutral-500 text-sm">
-          <Calendar className="h-4 w-4" />
+          <ClayIcon size={22} tint="neutral" className="rounded-xl shadow-none">
+            <Calendar className="h-4 w-4" />
+          </ClayIcon>
           {formatDate(interview?.endedAt)}
+        </div>
         </div>
       </header>
 
-      <main className="flex-1 flex overflow-hidden p-6 gap-6">
+      <main className="flex-1 flex overflow-hidden p-4 sm:p-6 gap-6">
         {/* Left: Timeline & Code (70%) */}
         <div className="flex-[3] flex flex-col gap-4">
-          <Card className="flex-1 bg-neutral-900/50 border-neutral-800 overflow-hidden flex flex-col">
-            <div className="p-4 border-b border-neutral-800 bg-neutral-900/50 flex items-center justify-between">
+          <Card className="jx-glass-strong flex-1 overflow-hidden flex flex-col">
+            <div className="jx-glass-header px-5 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <History className="h-4 w-4 text-blue-400" />
-                <span className="font-bold text-sm">{t('sections.codeTimeline')}</span>
+                <ClayIcon size={34} tint="violet" className="rounded-2xl shadow-none ring-white/10">
+                  <History className="h-4 w-4" />
+                </ClayIcon>
+                <div>
+                  <div className="text-[11px] font-black uppercase tracking-[0.22em] text-neutral-400">{t('sections.codeTimeline')}</div>
+                  <div className="text-xs text-neutral-500">Snapshot playback</div>
+                </div>
                 <Badge variant="outline" className="text-[10px]">{currentSnapshot.language}</Badge>
               </div>
               
@@ -96,7 +106,7 @@ const ReviewMode = ({ interview, role }) => {
           </Card>
 
           {/* Timeline Slider / Markers */}
-          <Card className="p-4 bg-neutral-900/50 border-neutral-800">
+          <Card className="jx-glass p-4">
             <div className="flex items-center gap-4">
               <span className="text-[10px] font-bold text-neutral-500 uppercase">{t('labels.playback')}</span>
               <input 
@@ -114,17 +124,17 @@ const ReviewMode = ({ interview, role }) => {
         {/* Right: Info & Chat (30%) */}
         <div className="flex-1 flex flex-col gap-6">
           <Tabs defaultValue="info" className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="bg-neutral-900 border-neutral-800 w-full">
+            <TabsList className="jx-glass border border-white/10 w-full">
               <TabsTrigger value="info" className="flex-1">{t('sections.overview')}</TabsTrigger>
               <TabsTrigger value="chat" className="flex-1">{t('sections.chatLogs')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="info" className="flex-1 mt-4 space-y-4 overflow-y-auto pr-2">
-              <Card className="bg-neutral-900/50 border-neutral-800 p-6 space-y-6">
+              <Card className="jx-glass p-6 space-y-6">
                 <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-full bg-neutral-800 flex items-center justify-center">
-                    <User className="h-6 w-6 text-neutral-500" />
-                  </div>
+                  <ClayIcon size={48} tint="blue" className="rounded-[22px] shadow-none ring-white/10">
+                    <User className="h-6 w-6" />
+                  </ClayIcon>
                   <div>
                     <h3 className="font-bold text-lg">{interview?.candidate?.name || t('roles.candidate')}</h3>
                     <p className="text-xs text-neutral-500">{interview?.candidate?.email || t('labels.noEmail')}</p>
@@ -148,9 +158,11 @@ const ReviewMode = ({ interview, role }) => {
               </Card>
 
               {role === 'interviewer' && interview?.feedback && (
-                <Card className="bg-neutral-900/50 border-neutral-800 p-6 space-y-4">
+                <Card className="jx-glass p-6 space-y-4">
                   <h4 className="font-bold flex items-center gap-2">
-                    <Star className="h-4 w-4 text-yellow-500" />
+                    <ClayIcon size={26} tint="amber" className="rounded-2xl shadow-none ring-white/10">
+                      <Star className="h-4 w-4" />
+                    </ClayIcon>
                     {t('sections.evaluation')}
                   </h4>
                   <div className="space-y-4">
@@ -174,7 +186,7 @@ const ReviewMode = ({ interview, role }) => {
             </TabsContent>
 
             <TabsContent value="chat" className="flex-1 mt-4 overflow-hidden flex flex-col">
-              <Card className="flex-1 bg-neutral-900/50 border-neutral-800 p-4 overflow-y-auto space-y-4">
+              <Card className="jx-glass flex-1 p-4 overflow-y-auto space-y-4">
                 {interview?.messages?.map((msg, i) => (
                   <div key={i} className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
@@ -185,7 +197,7 @@ const ReviewMode = ({ interview, role }) => {
                         {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}
                       </span>
                     </div>
-                    <p className="text-sm text-neutral-300 leading-relaxed bg-neutral-800/40 p-3 rounded-xl border border-white/5">
+                    <p className="text-sm text-neutral-200 leading-relaxed bg-white/[0.06] p-3 rounded-2xl border border-white/10">
                       {msg.content}
                     </p>
                   </div>
@@ -202,7 +214,7 @@ const ReviewMode = ({ interview, role }) => {
 
           <Button 
             variant="ghost" 
-            className="w-full h-12 border border-neutral-800 hover:bg-neutral-800 text-neutral-500 hover:text-white"
+            className="w-full h-12 rounded-2xl border border-white/10 hover:bg-white/[0.06] text-neutral-400 hover:text-white"
             onClick={() => window.close()}
           >
             {t('buttons.closeSession')}

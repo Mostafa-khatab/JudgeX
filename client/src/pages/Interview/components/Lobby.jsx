@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Video, VideoOff, Mic, MicOff, 
-  Settings, ArrowRight, Camera, 
+  ArrowRight, Camera, 
   User, CheckCircle2, ShieldCheck,
-  ChevronDown, Volume2, Copy, AlertCircle
+  Volume2, Copy, AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -17,6 +17,8 @@ import {
   Select, SelectContent, SelectItem, 
   SelectTrigger, SelectValue 
 } from '~/components/ui/select';
+
+import ClayIcon from './ClayIcon';
 
 const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
   const [name, setName] = useState(() => localStorage.getItem('candidateName') || '');
@@ -136,7 +138,7 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="dark min-h-screen bg-[#050505] text-white flex items-center justify-center p-6"
+      className="dark min-h-screen text-white flex items-center justify-center p-6 bg-[radial-gradient(1200px_700px_at_15%_-10%,rgba(59,130,246,0.22),transparent_55%),radial-gradient(900px_600px_at_92%_12%,rgba(168,85,247,0.18),transparent_55%),radial-gradient(900px_700px_at_60%_120%,rgba(16,185,129,0.12),transparent_50%),linear-gradient(to_br,rgba(10,10,10,1),rgba(4,4,6,1))]"
     >
       <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-5 gap-12 items-center">
         
@@ -154,7 +156,7 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
             <p className="text-neutral-500 text-lg">Check your camera and microphone before entering.</p>
           </div>
 
-          <Card className="aspect-video relative bg-neutral-900 border-neutral-800 rounded-[2.5rem] overflow-hidden shadow-2xl group ring-1 ring-neutral-800">
+          <Card className="jx-glass-strong aspect-video relative overflow-hidden">
             <video
               ref={videoRef}
               autoPlay
@@ -168,11 +170,11 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="absolute inset-0 bg-neutral-900/90 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center"
+                  className="absolute inset-0 bg-black/40 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center"
                 >
-                  <div className="h-20 w-20 rounded-3xl bg-blue-600/20 flex items-center justify-center mb-4 ring-1 ring-blue-500/30">
-                    <Video className="h-10 w-10 text-blue-400" />
-                  </div>
+                  <ClayIcon size={72} tint="blue" className="rounded-[28px] mb-4 ring-white/15">
+                    <Video className="h-9 w-9" />
+                  </ClayIcon>
                   <h3 className="text-xl font-bold mb-2">
                     {permissionError ? 'Permission Denied' : 'Camera is off'}
                   </h3>
@@ -184,7 +186,7 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
                       setPermissionError(null);
                       startPreview();
                     }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-8"
+                    className="rounded-2xl px-8 bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400 text-white shadow-xl shadow-blue-500/20"
                   >
                     {permissionError ? 'Try Again' : 'Enable Devices'}
                   </Button>
@@ -205,12 +207,12 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
             </AnimatePresence>
 
             {/* Floating Controls */}
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/40 backdrop-blur-2xl p-3 rounded-3xl border border-white/10 shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/35 backdrop-blur-2xl p-3 rounded-3xl border border-white/10 shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
               <Button
                 variant={isMicOn ? "ghost" : "destructive"}
                 size="icon"
                 onClick={toggleMic}
-                className="h-14 w-14 rounded-2xl hover:bg-white/10 transition-colors"
+                className="h-14 w-14 rounded-2xl hover:bg-white/[0.08] transition-colors"
               >
                 {isMicOn ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
               </Button>
@@ -218,7 +220,7 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
                 variant={isVideoOn ? "ghost" : "destructive"}
                 size="icon"
                 onClick={toggleVideo}
-                className="h-14 w-14 rounded-2xl hover:bg-white/10 transition-colors"
+                className="h-14 w-14 rounded-2xl hover:bg-white/[0.08] transition-colors"
               >
                 {isVideoOn ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
               </Button>
@@ -230,7 +232,7 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
                   <SelectTrigger className="w-10 h-10 p-0 border-none bg-transparent hover:bg-white/10 rounded-xl flex items-center justify-center">
                     <Camera className="h-5 w-5 text-neutral-400" />
                   </SelectTrigger>
-                  <SelectContent className="bg-neutral-900 border-neutral-800 text-white">
+                  <SelectContent className="bg-neutral-950/85 border-white/10 text-white backdrop-blur-2xl">
                     {devices.video.map(d => (
                       <SelectItem key={d.deviceId} value={d.deviceId} className="text-xs">{d.label || 'Camera'}</SelectItem>
                     ))}
@@ -240,7 +242,7 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
                   <SelectTrigger className="w-10 h-10 p-0 border-none bg-transparent hover:bg-white/10 rounded-xl flex items-center justify-center">
                     <Volume2 className="h-5 w-5 text-neutral-400" />
                   </SelectTrigger>
-                  <SelectContent className="bg-neutral-900 border-neutral-800 text-white">
+                  <SelectContent className="bg-neutral-950/85 border-white/10 text-white backdrop-blur-2xl">
                     {devices.audio.map(d => (
                       <SelectItem key={d.deviceId} value={d.deviceId} className="text-xs">{d.label || 'Microphone'}</SelectItem>
                     ))}
@@ -269,7 +271,7 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
           transition={{ delay: 0.3 }}
           className="lg:col-span-2 space-y-8"
         >
-          <Card className="bg-neutral-900/40 border-neutral-800 p-10 rounded-[2.5rem] space-y-8 backdrop-blur-md shadow-2xl relative overflow-hidden ring-1 ring-white/5">
+          <Card className="jx-glass-strong p-10 space-y-8 relative overflow-hidden ring-1 ring-white/5">
             <div className="absolute top-0 right-0 p-6 opacity-10">
               <Video className="h-24 w-24 -rotate-12" />
             </div>
@@ -287,9 +289,9 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
               </div>
               <h2 className="text-3xl font-black leading-tight tracking-tight">{interview?.title || 'Interview Session'}</h2>
               <div className="flex items-center gap-3 text-neutral-400">
-                <div className="h-8 w-8 rounded-full bg-neutral-800 flex items-center justify-center">
+                <ClayIcon size={32} tint="neutral" className="rounded-2xl shadow-none">
                   <User className="h-4 w-4" />
-                </div>
+                </ClayIcon>
                 <div className="flex flex-col">
                   <span className="text-[10px] text-neutral-600 uppercase font-black tracking-widest">Host</span>
                   <span className="text-sm font-bold text-neutral-300">{interview?.instructor?.username || 'JudgeX Host'}</span>
@@ -340,13 +342,13 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
               </div>
             )}
 
-            <Button 
-              onClick={handleJoin}
-              className="w-full h-16 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xl font-black rounded-2xl shadow-xl shadow-blue-600/30 group transition-all"
-            >
-              Join Room
-              <ArrowRight className="h-6 w-6 ml-3 group-hover:translate-x-1 transition-transform" />
-            </Button>
+              <Button 
+                onClick={handleJoin}
+                className="w-full h-16 rounded-3xl bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400 text-white text-xl font-black shadow-xl shadow-blue-600/25 group transition-all"
+              >
+                Join Room
+                <ArrowRight className="h-6 w-6 ml-3 group-hover:translate-x-1 transition-transform" />
+              </Button>
             
             <p className="text-[10px] text-center text-neutral-600 px-4 leading-relaxed uppercase tracking-widest font-black opacity-60">
               Secured & Powered by JudgeX Engine
