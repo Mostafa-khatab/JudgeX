@@ -30,15 +30,15 @@ const router = express.Router();
  * Interview Routes
  * 
  * Public routes:
- * - GET /join/:token - Join interview via invite link
+ * - POST /join/:token - Join interview via invite link (POST body required)
  * 
  * Protected routes (require auth):
  * - All other routes
  */
 
 // ==================== PUBLIC ====================
-// Join interview via invite token
-router.get('/join/:token', joinInterview);
+// Join interview via invite token (FIXED: Changed from GET to POST for CSRF protection)
+router.post('/join/:token', joinInterview);
 
 // ==================== PROTECTED (Auth required) ====================
 // CRUD

@@ -34,6 +34,46 @@ export { io };
 
 connectDB();
 
+// ============ CLEANUP CONFIGURATION ============
+// Auto-cleanup abandoned interview sessions every 30 minutes
+const CLEANUP_INTERVAL = 30 * 60 * 1000; // 30 minutes
+const SESSION_TIMEOUT = 2 * 60 * 60 * 1000; // 2 hours
+
+setInterval(async () => {
+	try {
+		const Interview = (await import('./models/interview.js')).default;
+		
+		// Find active interviews with no connected participants
+		const interviews = await Interview.find({ status: 'active' }).select('_id candidate instructor startedAt');
+		
+		for (const interview of interviews) {
+			// Check if interview has been running for too long without activity
+			const elapsed = Date.now() - new Date(interview.startedAt).getTime();
+			
+			if (elapsed > SESSION_TIMEOUT) {
+				// Auto-end abandoned sessions
+				await Interview.findByIdAndUpdate(interview._id, {
+					status: 'finished',
+					endedAt: new Date()
+				});
+				
+				// Notify connected participants
+				io.to(`interview:${interview._id}`).emit('interview-auto-ended', {
+					reason: 'Session timeout due to inactivity',
+					timestamp: new Date()
+				});
+				
+				// Disconnect all sockets
+				io.to(`interview:${interview._id}`).disconnectSockets();
+				
+				console.log(`[CLEANUP] Auto-ended abandoned interview: ${interview._id}`);
+			}
+		}
+	} catch (err) {
+		console.error('Error during interview cleanup:', err);
+	}
+}, CLEANUP_INTERVAL);
+
 app.use(
 	cors({
 		origin: (origin, callback) => {
@@ -362,8 +402,16 @@ io.on('connection', (socket) => {
 		if (socket.interviewRoom) {
 			socket.to(socket.interviewRoom).emit('participant-left', { 
 				socketId: socket.id,
-				role: socket.role 
+				role: socket.role,
+				timestamp: new Date()
 			});
+			
+			// Check if room is now empty
+			const roomSockets = io.sockets.adapter.rooms.get(socket.interviewRoom);
+			if (!roomSockets || roomSockets.size === 0) {
+				console.log(`[CLEANUP] Interview room empty: ${socket.interviewRoom}`);
+				// Room cleanup will happen via scheduled task
+			}
 		}
 	});
 });

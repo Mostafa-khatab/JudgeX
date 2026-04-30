@@ -341,10 +341,12 @@ const resumeInterview = async (req, res) => {
 /**
  * End interview
  * POST /interview/:id/end
+ * FIX: Added session cleanup and proper state finalization
  */
 const endInterview = async (req, res) => {
   try {
     const { id } = req.params;
+    const { io } = req.app.locals; // Socket.IO instance
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return sendError(res, 'Invalid interview ID', 400);
@@ -360,7 +362,7 @@ const endInterview = async (req, res) => {
       return sendError(res, 'Only interviewer can end', 403);
     }
 
-    // Take final snapshot
+    // 1. Take final snapshot before closing
     await interview.addSnapshot(
       interview.state.code,
       interview.state.language,
@@ -369,14 +371,29 @@ const endInterview = async (req, res) => {
       true
     );
 
+    // 2. Update status and timestamps
     interview.status = 'finished';
     interview.endedAt = new Date();
+    interview.candidate.isConnected = false;
 
     await interview.save();
 
-    console.log(`[AUDIT] Interview ended: ${interview._id}`);
+    // 3. CLEANUP: Emit finished event to all participants
+    if (io) {
+      io.to(`interview:${id}`).emit('interview-finished', {
+        status: 'finished',
+        endedAt: interview.endedAt,
+        message: 'Interview session has ended'
+      });
 
-    return sendSuccess(res, interview.toObject(), 'Interview ended');
+      // 4. Disconnect all sockets in this room
+      io.to(`interview:${id}`).disconnectSockets();
+    }
+
+    // 5. Log audit
+    console.log(`[AUDIT] Interview ended: ${interview._id}, instructor: ${interview.instructor}`);
+
+    return sendSuccess(res, interview.toObject(), 'Interview ended successfully');
   } catch (err) {
     return handleError(res, err, 'EndInterview', 500);
   }

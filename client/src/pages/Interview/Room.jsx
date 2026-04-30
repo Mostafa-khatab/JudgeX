@@ -23,10 +23,16 @@ const api = {
   getInterview: async (id, candidateToken) => {
     const headers = candidateToken ? { 'x-candidate-token': candidateToken } : {};
     const res = await fetch(`${API_URL}/interview/${id}`, { credentials: 'include', headers });
+    if (!res.ok) throw new Error('Failed to fetch interview');
     return res.json();
   },
   joinInterview: async (token, name, email) => {
-    const res = await fetch(`${API_URL}/interview/join/${token}?name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`);
+    const res = await fetch(`${API_URL}/interview/join/${token}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email })
+    });
+    if (!res.ok) throw new Error('Failed to join interview');
     return res.json();
   },
   updateState: async (id, state, candidateToken) => {
@@ -40,6 +46,7 @@ const api = {
       headers,
       body: JSON.stringify(state)
     });
+    if (!res.ok) throw new Error('Failed to update state');
     return res.json();
   },
   runCode: async (code, language, input, candidateToken) => {
@@ -53,6 +60,7 @@ const api = {
       headers,
       body: JSON.stringify({ code, language, input })
     });
+    if (!res.ok) throw new Error('Failed to run code');
     return res.json();
   },
   addMessage: async (id, content, role) => {
@@ -62,6 +70,7 @@ const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content, role })
     });
+    if (!res.ok) throw new Error('Failed to add message');
     return res.json();
   }
 };
