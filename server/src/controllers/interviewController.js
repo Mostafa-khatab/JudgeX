@@ -265,6 +265,14 @@ const getInterviewByToken = async (req, res) => {
       return sendError(res, 'This interview has already ended', 400);
     }
 
+    const isInstructor = req.userId && interview.instructor._id.toString() === req.userId.toString();
+    const role = isInstructor ? 'interviewer' : 'candidate';
+
+    // Filter questions based on role
+    const filteredQuestions = isInstructor 
+      ? (interview.questions || []) 
+      : (interview.questions || []).filter(q => q?.isVisible);
+
     return sendSuccess(res, {
       _id: interview._id,
       title: interview.title,
@@ -275,8 +283,9 @@ const getInterviewByToken = async (req, res) => {
       allowedLanguages: interview.allowedLanguages,
       instructor: interview.instructor,
       candidate: { name: interview.candidate?.name || '', joinedAt: interview.candidate?.joinedAt || null, isConnected: interview.candidate?.isConnected || false },
-      questions: (interview.questions || []).filter(q => q?.isVisible),
+      questions: filteredQuestions,
       messages: interview.messages || [],
+      role: role
     }, 'Interview retrieved');
   } catch (err) {
     return handleError(res, err, 'GetInterviewByToken', 500);

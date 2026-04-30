@@ -138,10 +138,18 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     pc.oniceconnectionstatechange = () => {
       console.log('[WebRTC] ICE Connection State:', pc.iceConnectionState);
       setIsConnected(pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed');
+      
+      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+        console.warn('[WebRTC] ICE Connection failed/disconnected, requesting reconnect...');
+        socketHandlers?.emit('interview-webrtc-reconnect', { interviewId });
+      }
     };
 
     pc.onconnectionstatechange = () => {
       console.log('[WebRTC] Peer Connection state:', pc.connectionState);
+      if (pc.connectionState === 'failed') {
+        socketHandlers?.emit('interview-webrtc-reconnect', { interviewId });
+      }
     };
 
     pcRef.current = pc;
@@ -267,9 +275,26 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     socketHandlers?.emit('interview-screen-stopped', { interviewId });
   }, [screenStream, interviewId, socketHandlers]);
 
+  const handleScreenAnswer = useCallback(async (answer) => {
+    if (screenPcRef.current) {
+      await screenPcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+    }
+  }, []);
+
+  const handleScreenIce = useCallback(async (candidate) => {
+    const pc = screenPcRef.current;
+    if (pc) {
+      await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    }
+  }, []);
+
   const handleScreenOffer = useCallback(async (offer) => {
+    console.log('[WebRTC] Received screen share offer');
     const pc = new RTCPeerConnection(ICE_SERVERS);
-    pc.ontrack = (event) => setRemoteScreenStream(event.streams[0]);
+    pc.ontrack = (event) => {
+      console.log('[WebRTC] Remote screen track received');
+      setRemoteScreenStream(event.streams[0]);
+    };
     pc.onicecandidate = (event) => {
       if (event.candidate) {
         socketHandlers?.emit('interview-screen-ice', { interviewId, candidate: event.candidate });
@@ -277,11 +302,6 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     };
     
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
-    isScreenRemoteDescriptionSet.current = true;
-    while (screenIceQueue.current.length > 0) {
-      await pc.addIceCandidate(new RTCIceCandidate(screenIceQueue.current.shift()));
-    }
-    
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     socketHandlers?.emit('interview-screen-answer', { interviewId, answer });
@@ -336,7 +356,13 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     const u1 = socketHandlers.on('webrtc-offer', ({ offer }) => handleOffer(offer));
     const u2 = socketHandlers.on('webrtc-answer', ({ answer }) => handleAnswer(answer));
     const u3 = socketHandlers.on('webrtc-ice', ({ candidate }) => handleIce(candidate));
+    const u3b = socketHandlers.on('webrtc-reconnect-request', () => {
+      console.log('[WebRTC] Reconnect requested by peer');
+      if (role === 'interviewer') initiateCall();
+    });
     const u4 = socketHandlers.on('screen-offer', ({ offer }) => handleScreenOffer(offer));
+    const u4b = socketHandlers.on('screen-answer', ({ answer }) => handleScreenAnswer(answer));
+    const u4c = socketHandlers.on('screen-ice', ({ candidate }) => handleScreenIce(candidate));
     const u5 = socketHandlers.on('screen-stopped', () => setRemoteScreenStream(null));
     const u6 = socketHandlers.on('media-state-updated', ({ mediaState }) => {
       setRemoteMediaState(mediaState);
@@ -373,7 +399,7 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
       console.log('[WebRTC] Received participant info:', data);
     });
     
-    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u7b(); u7c(); u8(); };
+    return () => { u1(); u2(); u3(); u3b(); u4(); u4b(); u4c(); u5(); u6(); u7(); u7b(); u7c(); u8(); };
   }, [socketHandlers, handleOffer, handleAnswer, handleIce, handleScreenOffer]);
 
   return {
