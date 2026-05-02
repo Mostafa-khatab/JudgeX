@@ -13,3 +13,9 @@
 2026-05-02T09:02:42Z INF Initial protocol quic
 2026-05-02T09:02:42Z INF ICMP proxy will use 192.168.1.4 as source for IPv4
 2026-05-02T09:02:42Z INF ICMP proxy will use fe80::bd02:29b5:9633:bfc9 in zone WiFi as source for IPv6
+2026-05-02T09:02:43Z INF cloudflared does not support loading the system root certificate pool on Windows. Please use --origin-ca-pool <PATH> to specify the path to the certificate pool
+2026-05-02T09:02:43Z INF ICMP proxy will use 192.168.1.4 as source for IPv4
+2026-05-02T09:02:43Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.192.67
+2026-05-02T09:02:43Z INF ICMP proxy will use fe80::bd02:29b5:9633:bfc9 in zone WiFi as source for IPv6
+2026-05-02T09:02:43Z INF Starting metrics server on 127.0.0.1:20241/metrics
+2026-05-02T09:02:44Z INF Registered tunnel connection connIndex=0 connection=19a7160c-6167-43b5-bda9-ffc2bcc7b27c event=0 ip=198.41.192.67 location=mrs05 protocol=quic

@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { 
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger 
 } from '~/components/ui/tooltip';
+import { Badge } from '~/components/ui/badge';
 import Lobby from './components/Lobby';
 import ProblemPanel from './components/ProblemPanel';
 import CodeEditor from './components/CodeEditor';
