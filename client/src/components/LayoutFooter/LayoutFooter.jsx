@@ -8,35 +8,37 @@ const LayoutFooter = () => {
 	const { t } = useTranslation();
 
 	return (
-		<footer className="border-t border-t-gray-300 py-4 text-gray-600 dark:border-gray-600 dark:text-gray-300">
-			<div className="mx-auto flex max-w-6xl flex-col items-center justify-between px-4 sm:flex-row">
-				<div className="text-center sm:text-left">
-					<h2 className="text-lg font-medium text-gray-700 dark:text-gray-100">JudgeX</h2>
-					<p className="text-sm">© 2025 JudgeX. All rights reserved.</p>
+		<footer className="mt-auto py-12 px-6">
+			<div className="max-w-7xl mx-auto jx-glass p-10 flex flex-col md:flex-row items-center justify-between gap-8">
+				<div className="text-center md:text-left space-y-2">
+					<h2 className="text-2xl font-black tracking-tighter text-neutral-900 dark:text-white uppercase">JudgeX</h2>
+					<p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">© 2025 JudgeX. Advanced Coding Intelligence.</p>
 				</div>
-				<div className="mt-4 flex gap-4 sm:mt-0">
+				
+				<div className="flex items-center gap-6">
 					<Dialog>
 						<DialogTrigger asChild>
-							<button className="hover:text-gray-500 hover:dark:text-gray-100">
-								<Mail size={24} />
+							<button className="p-3 rounded-2xl bg-neutral-100 dark:bg-white/5 text-neutral-500 hover:text-blue-500 hover:scale-110 transition-all border border-transparent hover:border-blue-500/20">
+								<Mail size={20} />
 							</button>
 						</DialogTrigger>
-						<DialogContent className="sm:max-w-md dark:!border-neutral-800 dark:!bg-neutral-900">
+						<DialogContent className="sm:max-w-md jx-glass-strong border-none p-8">
 							<DialogHeader>
-								<DialogTitle className="dark:text-white">{t('oops')}</DialogTitle>
-								<DialogDescription>{t('no-mail')} ✉️❌</DialogDescription>
+								<DialogTitle className="jx-h3 text-blue-500">{t('oops')}</DialogTitle>
+								<DialogDescription className="text-sm font-medium mt-2">{t('no-mail')} ✉️❌</DialogDescription>
 							</DialogHeader>
-							<DialogFooter className="sm:justify-start">
+							<DialogFooter className="sm:justify-start mt-6">
 								<DialogClose asChild>
-									<Button type="button" variant="secondary" className="capitalize dark:!bg-neutral-800 dark:hover:!bg-neutral-700">
+									<Button type="button" className="rounded-xl bg-blue-600 hover:bg-blue-700 text-[10px] font-black uppercase tracking-widest text-white px-6">
 										{t('close')}
 									</Button>
 								</DialogClose>
 							</DialogFooter>
 						</DialogContent>
 					</Dialog>
-					<a href="https://github.com/Mostafa-khatab" target="_blank" rel="noopener noreferrer" className="hover:text-gray-500 hover:dark:text-white">
-						<Github size={24} />
+					
+					<a href="https://github.com/Mostafa-khatab" target="_blank" rel="noopener noreferrer" className="p-3 rounded-2xl bg-neutral-100 dark:bg-white/5 text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:scale-110 transition-all border border-transparent hover:border-white/10">
+						<Github size={20} />
 					</a>
 				</div>
 			</div>
