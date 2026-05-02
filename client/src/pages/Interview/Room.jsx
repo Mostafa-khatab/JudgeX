@@ -625,7 +625,7 @@ const SwitchQuestionDialog = ({ questions, activeProblemId, onSwitch }) => {
   );
 };
 
-const AddProblemDialog = ({ onAdd, api }) => {
+const AddProblemDialog = ({ onAdd, onAddWhiteboard, api }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
