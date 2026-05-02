@@ -22,6 +22,8 @@ const {
   trackTabSwitch,
   getResults,
   deleteInterview,
+  bulkDeleteInterviews,
+  cleanupInterviews,
   addQuestion
 } = interviewController;
 
@@ -29,27 +31,20 @@ const router = express.Router();
 
 /**
  * Interview Routes
- * 
- * Public routes:
- * - POST /join/:token - Join interview via invite link (POST body required)
- * 
- * Protected routes (require auth):
- * - All other routes
  */
 
 // ==================== PUBLIC ====================
-// Invite link: load session (lobby/refresh)
 router.get('/join/:token', getInterviewByToken);
-
-// Join interview via invite token
 router.post('/join/:token', joinInterview);
 
 // ==================== PROTECTED (Auth required) ====================
 // CRUD
 router.post('/', isAuth, createInterview);
 router.get('/', isAuth, getInterviews);
-router.get('/:id', isInterviewParticipant, getInterview); // Allow candidate
+router.get('/:id', isInterviewParticipant, getInterview);
 router.delete('/:id', isAuth, deleteInterview);
+router.post('/bulk-delete', isAuth, bulkDeleteInterviews);
+router.post('/cleanup', isAuth, cleanupInterviews);
 
 // Session control
 router.post('/:id/start', isAuth, startInterview);
@@ -58,23 +53,22 @@ router.post('/:id/resume', isAuth, resumeInterview);
 router.post('/:id/end', isAuth, endInterview);
 
 // State sync
-router.post('/:id/state', isInterviewParticipant, updateState); // Allow candidate
+router.post('/:id/state', isInterviewParticipant, updateState);
 
 // Questions
 router.post('/:id/questions', isAuth, addQuestion);
 
 // Chat
-router.post('/:id/messages', isInterviewParticipant, addMessage); // Allow candidate
+router.post('/:id/messages', isInterviewParticipant, addMessage);
 
 // Feedback (interviewer only)
 router.post('/:id/feedback', isAuth, saveFeedback);
 router.get('/:id/results', isAuth, getResults);
 
 // Snapshots
-router.post('/:id/snapshot', isInterviewParticipant, takeSnapshot); // Allow candidate
+router.post('/:id/snapshot', isInterviewParticipant, takeSnapshot);
 
 // Proctoring
-router.post('/:id/tab-switch', isInterviewParticipant, trackTabSwitch); // Allow candidate
+router.post('/:id/tab-switch', isInterviewParticipant, trackTabSwitch);
 
 export default router;
-

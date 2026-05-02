@@ -414,54 +414,23 @@ const resumeInterview = async (req, res) => {
 const endInterview = async (req, res) => {
   try {
     const { id } = req.params;
-    const { io } = req.app.locals; // Socket.IO instance
+    const { io } = req.app.locals;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return sendError(res, 'Invalid interview ID', 400);
     }
 
-    const interview = await Interview.findById(id);
-
-    if (!interview) {
-      return sendError(res, 'Interview not found', 404);
-    }
-
-    if (interview.instructor.toString() !== req.userId.toString()) {
-      return sendError(res, 'Only interviewer can end', 403);
-    }
-
-    // 1. Take final snapshot before closing
-    await interview.addSnapshot(
-      interview.state.code,
-      interview.state.language,
-      interview.state.activeProblemId,
-      'Final snapshot at interview end',
-      true
-    );
-
-    // 2. Update status and timestamps
-    interview.status = 'finished';
-    interview.endedAt = new Date();
-    interview.candidate.isConnected = false;
-
-    await interview.save();
-
-    // 3. CLEANUP: Emit finished event to all participants
     if (io) {
       io.to(`interview:${id}`).emit('interview-finished', {
         status: 'finished',
-        endedAt: interview.endedAt,
-        message: 'Interview session has ended'
+        message: 'Interview ended and all data has been deleted.'
       });
-
-      // 4. Disconnect all sockets in this room
       io.to(`interview:${id}`).disconnectSockets();
     }
 
-    // 5. Log audit
-    console.log(`[AUDIT] Interview ended: ${interview._id}, instructor: ${interview.instructor}`);
+    await Interview.findByIdAndDelete(id);
 
-    return sendSuccess(res, interview.toObject(), 'Interview ended successfully');
+    return sendSuccess(res, null, 'Interview ended and deleted');
   } catch (err) {
     return handleError(res, err, 'EndInterview', 500);
   }
@@ -827,6 +796,51 @@ const addQuestion = async (req, res) => {
   }
 };
 
+// ==================== BULK DELETE ====================
+/**
+ * Delete multiple interviews
+ * POST /interview/bulk-delete
+ */
+const bulkDeleteInterviews = async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return sendError(res, 'Invalid IDs provided', 400);
+    }
+    
+    const result = await Interview.deleteMany({ 
+      _id: { $in: ids }, 
+      instructor: req.userId 
+    });
+    
+    return sendSuccess(res, { deletedCount: result.deletedCount }, 'Interviews deleted successfully');
+  } catch (err) {
+    return handleError(res, err, 'BulkDeleteInterviews', 500);
+  }
+};
+
+// ==================== CLEANUP ====================
+/**
+ * Delete finished interviews older than 30 days
+ * POST /interview/cleanup
+ */
+const cleanupInterviews = async (req, res) => {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const result = await Interview.deleteMany({
+      instructor: req.userId,
+      status: 'finished',
+      updatedAt: { $lt: thirtyDaysAgo }
+    });
+
+    return sendSuccess(res, { deletedCount: result.deletedCount }, `Cleaned up ${result.deletedCount} old interviews`);
+  } catch (err) {
+    return handleError(res, err, 'CleanupInterviews', 500);
+  }
+};
+
 export default {
   createInterview,
   getInterviews,
@@ -844,5 +858,7 @@ export default {
   trackTabSwitch,
   getResults,
   deleteInterview,
+  bulkDeleteInterviews,
+  cleanupInterviews,
   addQuestion,
 };

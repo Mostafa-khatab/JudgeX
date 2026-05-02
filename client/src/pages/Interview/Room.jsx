@@ -195,7 +195,7 @@ const InterviewRoom = () => {
   };
 
   const handleEndInterview = async () => {
-    if (!window.confirm('Are you sure you want to end this interview? This will lock the session.')) return;
+    if (!window.confirm('WARNING: Ending this interview will PERMANENTLY DELETE all session data (code, chat, feedback). This action cannot be undone. Are you sure?')) return;
     try {
       const res = await api.endInterview(interview._id);
       if (res.success) {

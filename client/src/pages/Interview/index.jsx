@@ -43,6 +43,22 @@ const api = {
       credentials: 'include'
     });
     return res.json();
+  },
+  bulkDelete: async (ids) => {
+    const res = await fetch(`${API_URL}/interview/bulk-delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ ids })
+    });
+    return res.json();
+  },
+  cleanup: async () => {
+    const res = await fetch(`${API_URL}/interview/cleanup`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+    return res.json();
   }
 };
 
@@ -55,6 +71,9 @@ const InterviewDashboard = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   
+  // Selection
+  const [selectedIds, setSelectedIds] = useState([]);
+
   // Form
   const [title, setTitle] = useState('');
   const [type, setType] = useState('technical');
@@ -75,6 +94,7 @@ const InterviewDashboard = () => {
   }, []);
 
   const loadInterviews = async () => {
+    setLoading(true);
     try {
       const res = await api.getInterviews();
       if (res.success) {
@@ -92,10 +112,6 @@ const InterviewDashboard = () => {
       toast.warning('Title must be at least 3 characters');
       return;
     }
-    if (allowedLanguages.length === 0) {
-      toast.warning('Select at least one language');
-      return;
-    }
     
     setCreating(true);
     try {
@@ -106,8 +122,6 @@ const InterviewDashboard = () => {
         setIsCreateOpen(false);
         resetForm();
         navigate(`/interview/room/${res.data._id}`);
-      } else {
-        toast.error(res.msg || 'Failed to create');
       }
     } catch (err) {
       toast.error('Failed to create interview');
@@ -128,9 +142,36 @@ const InterviewDashboard = () => {
     try {
       await api.deleteInterview(id);
       setInterviews(prev => prev.filter(i => i._id !== id));
-      toast.success('Interview deleted');
+      toast.success('Deleted');
     } catch (err) {
       toast.error('Failed to delete');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Delete ${selectedIds.length} interviews?`)) return;
+    try {
+      const res = await api.bulkDelete(selectedIds);
+      if (res.success) {
+        setInterviews(prev => prev.filter(i => !selectedIds.includes(i._id)));
+        setSelectedIds([]);
+        toast.success('Bulk deleted');
+      }
+    } catch (err) {
+      toast.error('Failed to delete');
+    }
+  };
+
+  const handleCleanup = async () => {
+    if (!window.confirm('Remove all finished sessions older than 30 days?')) return;
+    try {
+      const res = await api.cleanup();
+      if (res.success) {
+        loadInterviews();
+        toast.success(`Cleaned up ${res.data.deletedCount} sessions`);
+      }
+    } catch (err) {
+      toast.error('Cleanup failed');
     }
   };
 
@@ -148,12 +189,26 @@ const InterviewDashboard = () => {
     );
   };
 
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredInterviews.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredInterviews.map(i => i._id));
+    }
+  };
+
   const getStatusColor = (status) => {
     const colors = {
-      active: 'bg-green-500/10 text-green-500 border-green-500/30',
-      finished: 'bg-neutral-500/10 text-neutral-400 border-neutral-500/30',
-      pending: 'bg-blue-500/10 text-blue-500 border-blue-500/30',
-      paused: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
+      active: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5',
+      finished: 'text-neutral-500 border-neutral-500/10 bg-neutral-500/5',
+      pending: 'text-blue-400 border-blue-500/20 bg-blue-500/5',
+      paused: 'text-amber-400 border-amber-500/20 bg-amber-500/5',
     };
     return colors[status] || colors.pending;
   };
@@ -162,284 +217,280 @@ const InterviewDashboard = () => {
     i.title?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // ============ Render ============
   return (
-    <div className="dark min-h-screen text-white bg-[radial-gradient(1200px_700px_at_15%_-10%,rgba(59,130,246,0.26),transparent_55%),radial-gradient(900px_600px_at_92%_12%,rgba(168,85,247,0.22),transparent_55%),radial-gradient(900px_700px_at_60%_120%,rgba(16,185,129,0.14),transparent_50%),linear-gradient(to_br,rgba(10,10,10,1),rgba(4,4,6,1))]">
-      <div className="max-w-6xl mx-auto p-8 space-y-8">
+    <div className="dark min-h-screen text-white bg-[#0a0a0b] relative overflow-hidden">
+      {/* Background Orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[120px] rounded-full" />
+
+      <div className="max-w-7xl mx-auto px-6 py-12 relative z-10">
         
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-black bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-500 bg-clip-text text-transparent">
-              Interview Platform
-            </h1>
-            <p className="text-neutral-500 mt-2 flex items-center gap-2">
-              <ClayIcon size={22} tint="emerald" className="rounded-xl shadow-none ring-white/10">
-                <Video className="h-3.5 w-3.5" />
-              </ClayIcon>
-              Real-time technical interviews with code collaboration
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-blue-600/20 rounded-2xl border border-blue-500/20 shadow-[0_0_20px_rgba(37,99,235,0.1)]">
+                <Video className="h-6 w-6 text-blue-400" />
+              </div>
+              <h1 className="text-4xl font-black tracking-tighter bg-gradient-to-r from-white to-neutral-400 bg-clip-text text-transparent">
+                Interviews
+              </h1>
+            </div>
+            <p className="text-neutral-500 text-sm font-medium tracking-wide uppercase opacity-70">
+              Manage your real-time technical evaluation sessions
             </p>
           </div>
           
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button className="rounded-2xl bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400 gap-2 shadow-xl shadow-blue-500/20">
-                <Plus className="h-5 w-5" />
-                New Interview
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-neutral-950/70 border-white/10 text-white max-w-lg backdrop-blur-2xl rounded-3xl">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                  <ClayIcon size={26} tint="violet" className="rounded-2xl shadow-none ring-white/10">
-                    <Sparkles className="h-4 w-4" />
-                  </ClayIcon>
-                  Create Interview Session
-                </DialogTitle>
-                <DialogDescription className="text-neutral-500">
-                  Set up a new technical interview session
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-5 py-4">
-                {/* Title */}
-                <div className="space-y-2">
-                  <Label className="text-neutral-300">Session Title *</Label>
-                  <Input 
-                    placeholder="e.g. Senior Backend Developer Interview"
-                    className="bg-black/30 border-white/10 h-12 rounded-2xl"
-                    value={title}
-                    onChange={e => setTitle(e.target.value)}
-                  />
-                </div>
+          <div className="flex items-center gap-3">
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger asChild>
+                <Button className="h-11 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20 font-black text-xs uppercase tracking-widest transition-all hover:scale-105 active:scale-95">
+                  <Plus className="h-5 w-5 mr-2" />
+                  Create Session
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-[#0f0f11]/90 border-white/5 text-white max-w-lg backdrop-blur-3xl rounded-[32px] p-8 shadow-2xl">
+                <DialogHeader className="mb-6">
+                  <DialogTitle className="text-2xl font-black tracking-tight">New Interview</DialogTitle>
+                  <DialogDescription className="text-neutral-500 font-medium">Configure session parameters</DialogDescription>
+                </DialogHeader>
                 
-                {/* Type */}
-                <div className="space-y-2">
-                  <Label className="text-neutral-300">Interview Type</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['technical', 'screening', 'assessment', 'mock'].map(t => (
-                      <button
-                        key={t}
-                        onClick={() => setType(t)}
-                          className={`py-3 px-4 rounded-2xl border transition-all capitalize text-sm font-medium ${
-                            type === t 
-                              ? 'bg-blue-500/20 border-blue-400/30 text-blue-200' 
-                              : 'bg-black/30 border-white/10 text-neutral-400 hover:border-white/15'
-                          }`}
-                        >
-                          {t}
-                        </button>
-                      ))}
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-neutral-500 ml-1">Candidate Name / Title</Label>
+                    <Input 
+                      placeholder="e.g. Frontend Engineer - John Doe"
+                      className="bg-white/5 border-white/5 h-14 rounded-2xl focus:ring-2 ring-blue-500/20 text-lg font-medium"
+                      value={title}
+                      onChange={e => setTitle(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-neutral-500 ml-1">Type</Label>
+                      <select 
+                        value={type} 
+                        onChange={e => setType(e.target.value)}
+                        className="w-full h-12 bg-white/5 border border-white/5 rounded-2xl px-4 text-sm font-medium focus:ring-2 ring-blue-500/20"
+                      >
+                        <option value="technical">Technical</option>
+                        <option value="screening">Screening</option>
+                        <option value="assessment">Assessment</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-neutral-500 ml-1">Duration</Label>
+                      <select 
+                        value={duration} 
+                        onChange={e => setDuration(Number(e.target.value))}
+                        className="w-full h-12 bg-white/5 border border-white/5 rounded-2xl px-4 text-sm font-medium focus:ring-2 ring-blue-500/20"
+                      >
+                        <option value={30}>30 Minutes</option>
+                        <option value={45}>45 Minutes</option>
+                        <option value={60}>60 Minutes</option>
+                        <option value={90}>90 Minutes</option>
+                        <option value={120}>120 Minutes</option>
+                      </select>
                     </div>
                   </div>
-                
-                {/* Duration */}
-                <div className="space-y-2">
-                  <Label className="text-neutral-300">Duration</Label>
-                  <div className="flex gap-2">
-                    {[30, 45, 60, 90, 120].map(d => (
-                      <button
-                        key={d}
-                        onClick={() => setDuration(d)}
-                        className={`flex-1 py-2 rounded-2xl border text-sm transition-all ${
-                          duration === d 
-                            ? 'bg-blue-500/20 border-blue-400/30 text-blue-200' 
-                            : 'bg-black/30 border-white/10 text-neutral-400 hover:border-white/15'
-                        }`}
-                      >
-                        {d}m
-                      </button>
-                    ))}
-                  </div>
                 </div>
-                
-                {/* Languages */}
-                <div className="space-y-2">
-                  <Label className="text-neutral-300">Allowed Languages</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {LANGUAGES.map(lang => (
-                      <button
-                        key={lang.id}
-                        onClick={() => toggleLanguage(lang.id)}
-                        className={`px-3 py-1.5 rounded-2xl border text-xs font-medium transition-all flex items-center gap-1.5 ${
-                          allowedLanguages.includes(lang.id)
-                            ? 'bg-blue-500/20 border-blue-400/30 text-blue-200'
-                            : 'bg-black/30 border-white/10 text-neutral-500 hover:border-white/15'
-                        }`}
-                      >
-                        <span className={`h-2 w-2 rounded-full ${lang.color}`} />
-                        {lang.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex gap-3 pt-2">
-                <DialogClose asChild>
-                  <Button variant="outline" className="flex-1 border-white/12 bg-white/[0.04] text-neutral-200 rounded-2xl hover:bg-white/[0.06]">
-                    Cancel
+
+                <div className="flex gap-4 mt-10">
+                  <DialogClose asChild>
+                    <Button variant="ghost" className="flex-1 h-12 rounded-2xl font-black text-xs uppercase tracking-widest">Cancel</Button>
+                  </DialogClose>
+                  <Button 
+                    className="flex-1 h-12 rounded-2xl bg-blue-600 hover:bg-blue-700 font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-600/20"
+                    onClick={handleCreate}
+                    disabled={creating}
+                  >
+                    {creating ? <Loader2 className="animate-spin" /> : 'Launch Session'}
                   </Button>
-                </DialogClose>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
+        {/* Action Bar */}
+        <div className="flex flex-col sm:flex-row items-center gap-4 mb-8">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
+            <Input
+              placeholder="Filter by title or candidate..."
+              className="bg-white/5 border-white/5 pl-14 h-14 text-sm font-medium rounded-2xl backdrop-blur-xl focus:ring-2 ring-blue-500/20"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button 
+              variant="outline" 
+              onClick={loadInterviews}
+              className="h-14 px-5 rounded-2xl border-white/5 bg-white/5 text-neutral-400 hover:text-white"
+            >
+              <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            
+            {selectedIds.length > 0 && (
+              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
                 <Button 
-                  className="flex-1 rounded-2xl bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400"
-                  onClick={handleCreate}
-                  disabled={creating}
+                  onClick={handleBulkDelete}
+                  className="h-14 px-8 rounded-2xl bg-rose-600/10 border border-rose-500/20 text-rose-500 hover:bg-rose-600 hover:text-white font-black text-[10px] uppercase tracking-widest transition-all"
                 >
-                  {creating && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  Create & Enter
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Selected ({selectedIds.length})
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </motion.div>
+            )}
+          </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: 'Total', value: interviews.length, icon: Calendar, color: 'from-blue-500 to-blue-600' },
-            { label: 'Active', value: interviews.filter(i => i.status === 'active').length, icon: Play, color: 'from-green-500 to-emerald-600' },
-            { label: 'Pending', value: interviews.filter(i => i.status === 'pending').length, icon: Clock, color: 'from-yellow-500 to-amber-600' },
-            { label: 'Completed', value: interviews.filter(i => i.status === 'finished').length, icon: CheckCircle2, color: 'from-purple-500 to-violet-600' },
-          ].map(stat => (
-            <Card key={stat.label} className="jx-glass p-5 hover:bg-white/[0.08] transition-all">
-              <ClayIcon size={44} tint="neutral" className={`bg-gradient-to-br ${stat.color} rounded-2xl shadow-xl shadow-black/40 ring-white/15 mb-3`}>
-                <stat.icon className="h-5 w-5 text-white" />
-              </ClayIcon>
-              <p className="text-3xl font-bold">{stat.value}</p>
-              <p className="text-xs text-neutral-500 mt-1">{stat.label} Interviews</p>
-            </Card>
-          ))}
-        </div>
-
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
-          <Input
-            placeholder="Search interviews..."
-            className="bg-black/30 border-white/10 pl-12 h-14 text-lg rounded-3xl backdrop-blur-xl"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        {/* Interview List */}
-        <div className="space-y-3">
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
-            </div>
-          ) : filteredInterviews.length === 0 ? (
-            <Card className="jx-glass border-dashed p-16 text-center">
-              <ClayIcon size={64} tint="neutral" className="mx-auto mb-4 rounded-[26px] shadow-none">
-                <Code2 className="h-8 w-8 text-white/70" />
-              </ClayIcon>
-              <h3 className="text-xl font-bold text-neutral-400">No interviews yet</h3>
-              <p className="text-neutral-500 text-sm mt-2">Create your first interview session to get started</p>
-              <Button 
-                className="mt-6 rounded-2xl bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400"
-                onClick={() => setIsCreateOpen(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Interview
-              </Button>
-            </Card>
-          ) : (
-            <AnimatePresence>
-              {filteredInterviews.map((interview, i) => (
-                <motion.div
-                  key={interview._id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ delay: i * 0.03 }}
-                >
-                  <Card className="jx-glass p-5 hover:bg-white/[0.08] transition-all group">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <ClayIcon
-                          size={56}
-                          tint={interview.status === 'active' ? 'emerald' : 'neutral'}
-                          className={
-                            interview.status === 'active'
-                              ? 'bg-gradient-to-br from-emerald-400/90 via-emerald-500/70 to-cyan-600/70'
-                              : 'bg-gradient-to-br from-neutral-300/20 via-neutral-500/15 to-neutral-900/20'
-                          }
-                        >
-                          {interview.status === 'active' ? (
-                            <Play className="h-6 w-6 text-white" />
-                          ) : (
-                            <Users className="h-6 w-6 text-neutral-500" />
-                          )}
-                        </ClayIcon>
+        {/* Content Table */}
+        <div className="jx-glass-strong rounded-[32px] overflow-hidden border border-white/5 shadow-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-white/[0.03] border-b border-white/5">
+                  <th className="px-6 py-5 w-12">
+                    <button 
+                      onClick={toggleSelectAll}
+                      className={`w-5 h-5 rounded-lg border-2 transition-all flex items-center justify-center ${selectedIds.length === filteredInterviews.length && filteredInterviews.length > 0 ? 'bg-blue-600 border-blue-600' : 'border-white/10 hover:border-white/20'}`}
+                    >
+                      {selectedIds.length === filteredInterviews.length && filteredInterviews.length > 0 && <CheckCircle2 className="h-3 w-3 text-white" />}
+                    </button>
+                  </th>
+                  <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-neutral-500">Session</th>
+                  <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-neutral-500">Status</th>
+                  <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-neutral-500">Details</th>
+                  <th className="px-6 py-5 text-right text-[10px] font-black uppercase tracking-widest text-neutral-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="5" className="py-32 text-center">
+                      <div className="flex flex-col items-center gap-4">
+                        <Loader2 className="h-12 w-12 animate-spin text-blue-500 opacity-50" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Fetching Sessions...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredInterviews.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="py-32 text-center px-6">
+                      <div className="flex flex-col items-center gap-6">
+                        <div className="p-8 bg-white/5 rounded-[40px] border border-white/5">
+                          <Code2 className="h-12 w-12 text-neutral-700" />
+                        </div>
                         <div>
-                          <h3 className="font-bold text-lg group-hover:text-blue-400 transition-colors">
-                            {interview.title}
-                          </h3>
-                          <div className="flex items-center gap-3 mt-1.5">
-                            <Badge variant="outline" className={getStatusColor(interview.status)}>
-                              {interview.status}
-                            </Badge>
-                            <span className="text-xs text-neutral-500 flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {interview.duration} min
-                            </span>
-                            {interview.candidate?.name && (
-                              <span className="text-xs text-neutral-500 flex items-center gap-1">
-                                <Users className="h-3 w-3" />
-                                {interview.candidate.name}
-                              </span>
-                            )}
-                          </div>
+                          <h3 className="text-2xl font-black tracking-tight">No Sessions Found</h3>
+                          <p className="text-neutral-500 mt-2 max-w-xs mx-auto">Create your first interview or try a different search term</p>
                         </div>
                       </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-blue-200/90 border-white/12 bg-white/[0.04] hover:bg-white/[0.08] rounded-2xl"
-                          onClick={() => copyInviteLink(interview.inviteToken)}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredInterviews.map((interview, i) => (
+                    <tr 
+                      key={interview._id} 
+                      className={`border-b border-white/5 transition-colors group hover:bg-white/[0.02] ${selectedIds.includes(interview._id) ? 'bg-blue-600/5' : ''}`}
+                    >
+                      <td className="px-6 py-5">
+                        <button 
+                          onClick={() => toggleSelect(interview._id)}
+                          className={`w-5 h-5 rounded-lg border-2 transition-all flex items-center justify-center ${selectedIds.includes(interview._id) ? 'bg-blue-600 border-blue-600' : 'border-white/10 group-hover:border-white/20'}`}
                         >
-                          <Copy className="h-4 w-4 mr-1.5" />
-                          Copy Invite Link
-                        </Button>
-                        
-                        {interview.status === 'finished' ? (
+                          {selectedIds.includes(interview._id) && <CheckCircle2 className="h-3 w-3 text-white" />}
+                        </button>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-4">
+                          <div className={`h-12 w-12 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110 ${interview.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-neutral-800 text-neutral-500'}`}>
+                             {interview.status === 'active' ? <Play className="h-5 w-5 fill-current" /> : <Users className="h-5 w-5" />}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-base tracking-tight truncate group-hover:text-blue-400 transition-colors">{interview.title}</h4>
+                            <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mt-1">ID: {interview._id.slice(-8)}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <Badge variant="outline" className={`rounded-full h-6 px-3 text-[10px] font-black uppercase tracking-widest border-none ${getStatusColor(interview.status)}`}>
+                          {interview.status}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2 text-xs font-bold text-neutral-400">
+                             <Clock className="h-3.5 w-3.5 text-blue-500" />
+                             {interview.duration} Minutes
+                          </div>
+                          <div className="text-[10px] font-medium text-neutral-500 uppercase tracking-wider tabular-nums">
+                            {new Date(interview.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-right">
+                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-white/12 bg-white/[0.04] hover:bg-white/[0.08] rounded-2xl"
-                            onClick={() => navigate(`/interview/results/${interview._id}`)}
+                            size="icon"
+                            variant="ghost"
+                            className="h-9 w-9 rounded-xl hover:bg-blue-600/20 text-blue-400"
+                            onClick={() => copyInviteLink(interview.inviteToken)}
+                            title="Copy Link"
                           >
-                            View Results
+                            <Copy className="h-4 w-4" />
                           </Button>
-                        ) : (
+                          
+                          {interview.status === 'finished' ? (
+                            <Button
+                              size="sm"
+                              className="h-9 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-black uppercase tracking-widest"
+                              onClick={() => navigate(`/interview/results/${interview._id}`)}
+                            >
+                              Results
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              className="h-9 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-black uppercase tracking-widest"
+                              onClick={() => navigate(`/interview/room/${interview._id}`)}
+                            >
+                              Enter
+                            </Button>
+                          )}
+                          
                           <Button
-                            size="sm"
-                            className="rounded-2xl bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400"
-                            onClick={() => navigate(`/interview/room/${interview._id}`)}
+                            size="icon"
+                            variant="ghost"
+                            className="h-9 w-9 rounded-xl hover:bg-rose-600/20 text-rose-500"
+                            onClick={() => handleDelete(interview._id)}
                           >
-                            <Play className="h-3.5 w-3.5 mr-1" />
-                            Enter
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                        )}
-                        
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="rounded-2xl text-rose-200/80 hover:text-rose-100 hover:bg-rose-500/10"
-                          onClick={() => handleDelete(interview._id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Footer Stats */}
+        <div className="mt-8 flex flex-wrap items-center gap-8 px-6 text-neutral-500 font-bold text-[10px] uppercase tracking-widest opacity-60">
+           <div className="flex items-center gap-2">
+             <span className="h-2 w-2 rounded-full bg-blue-500" />
+             Total: {interviews.length}
+           </div>
+           <div className="flex items-center gap-2">
+             <span className="h-2 w-2 rounded-full bg-emerald-500" />
+             Active: {interviews.filter(i => i.status === 'active').length}
+           </div>
         </div>
       </div>
     </div>
