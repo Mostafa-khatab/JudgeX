@@ -37,31 +37,31 @@ const ContestsSidebar = () => {
     };
 
     const ContestList = ({ items, type }) => (
-        <div className="space-y-3">
+        <div className="space-y-4 pt-2">
             {items.map((contest) => (
                 <Link 
                     key={contest.id} 
                     to={routesConfig.contest.replace(':id', contest.id)}
-                    className="block p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-all border border-transparent hover:border-white/5 group"
+                    className="block p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-neutral-600"
                 >
-                    <h3 className="text-sm font-black tracking-tighter mb-3 line-clamp-1 dark:text-gray-100 group-hover:text-blue-500 transition-colors">
+                    <h3 className="text-sm font-semibold mb-2 line-clamp-1 dark:text-gray-200">
                         {contest.title}
                     </h3>
-                    <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
-                            <Calendar className="size-3 text-blue-500" />
+                    <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+                            <Calendar className="size-3 text-sky-500" />
                             {formatTime(contest.startTime)}
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+                        <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
                             {type === 'upcoming' ? (
                                 <>
-                                    <Clock className="size-3 text-indigo-500" />
-                                    {Math.floor(contest.duration / (60 * 60 * 1000))}H Duration
+                                    <Clock className="size-3 text-sky-500" />
+                                    {Math.floor(contest.duration / (60 * 60 * 1000))}h duration
                                 </>
                             ) : (
                                 <>
-                                    <Trophy className="size-3 text-amber-500" />
-                                    Event Ended
+                                    <Trophy className="size-3 text-yellow-500" />
+                                    Ended
                                 </>
                             )}
                         </div>
@@ -77,55 +77,55 @@ const ContestsSidebar = () => {
     );
 
     return (
-        <div className="jx-glass p-0 overflow-hidden">
-            <div className="p-6 pb-0 flex items-center justify-between mb-4">
-                <span className="jx-label text-blue-500">Global Arenas</span>
-                <Link to={routesConfig.contests} className="text-[9px] font-black uppercase tracking-widest text-neutral-400 hover:text-white transition-colors">
-                    All Events
-                </Link>
-            </div>
-
-            <Tabs defaultValue="upcoming" className="w-full">
-                <div className="px-6">
-                    <TabsList className="w-full grid grid-cols-2 bg-neutral-100 dark:bg-white/5 p-1 rounded-xl">
+        <Card className="border-none shadow-sm dark:bg-neutral-800">
+            <CardHeader className="pb-3 border-b dark:border-neutral-700">
+                <CardTitle className="text-lg font-bold flex items-center justify-between">
+                    <span>Contests</span>
+                    <Link to={routesConfig.contests} className="text-xs font-normal text-sky-500 hover:underline">
+                        View All
+                    </Link>
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+                <Tabs defaultValue="upcoming" className="w-full">
+                    <TabsList className="w-full grid grid-cols-2 rounded-none bg-transparent border-b dark:border-neutral-700">
                         <TabsTrigger 
                             value="upcoming" 
-                            className="text-[10px] font-black uppercase tracking-widest rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 dark:data-[state=active]:text-white transition-all"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-sky-500 data-[state=active]:bg-transparent dark:text-gray-400 dark:data-[state=active]:text-white"
                         >
                             Upcoming
                         </TabsTrigger>
                         <TabsTrigger 
                             value="previous"
-                            className="text-[10px] font-black uppercase tracking-widest rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 dark:data-[state=active]:text-white transition-all"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-sky-500 data-[state=active]:bg-transparent dark:text-gray-400 dark:data-[state=active]:text-white"
                         >
                             Previous
                         </TabsTrigger>
                     </TabsList>
-                </div>
-
-                <div className="p-6 pt-2">
-                    {loading ? (
-                        <div className="space-y-4 pt-4">
-                            {[1, 2, 3].map((i) => (
-                                <div key={i} className="p-4 bg-white/5 rounded-2xl space-y-3">
-                                    <Skeleton className="h-3 w-full bg-white/10" />
-                                    <Skeleton className="h-2 w-2/3 bg-white/10" />
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <>
-                            <TabsContent value="upcoming" className="m-0 animate-in fade-in duration-500">
-                                <ContestList items={upcoming} type="upcoming" />
-                            </TabsContent>
-                            <TabsContent value="previous" className="m-0 animate-in fade-in duration-500">
-                                <ContestList items={previous} type="previous" />
-                            </TabsContent>
-                        </>
-                    )}
-                </div>
-            </Tabs>
-        </div>
+                    <div className="px-4 pb-4">
+                        {loading ? (
+                            <div className="space-y-4 pt-4">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="space-y-2">
+                                        <Skeleton className="h-4 w-full" />
+                                        <Skeleton className="h-3 w-2/3" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <>
+                                <TabsContent value="upcoming">
+                                    <ContestList items={upcoming} type="upcoming" />
+                                </TabsContent>
+                                <TabsContent value="previous">
+                                    <ContestList items={previous} type="previous" />
+                                </TabsContent>
+                            </>
+                        )}
+                    </div>
+                </Tabs>
+            </CardContent>
+        </Card>
     );
 };
 

@@ -23,76 +23,78 @@ const DefaultLayout = ({ children, footer }) => {
 	};
 
 	return (
-		<div className="h-full w-full overflow-auto bg-gray-50 dark:bg-[#050505] selection:bg-blue-500/30">
-			{/* Floating Glass Navbar */}
-			<div className="fixed top-6 left-0 w-full z-[100] px-6 pointer-events-none">
-				<header className="max-w-7xl mx-auto h-16 jx-glass flex items-center px-6 gap-8 pointer-events-auto">
-					<Link to={routesConfig.home} className="flex items-center gap-2 group">
-						<div className="p-1.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
-							<img src={Logo} className="size-6 brightness-0 invert" alt="JudgeX" />
-						</div>
-						<span className="text-lg font-black tracking-tighter text-neutral-900 dark:text-white uppercase">JudgeX</span>
-					</Link>
+		<div className="h-full w-full overflow-auto bg-gray-100 dark:bg-neutral-900">
+			<header className="flex h-16 items-center space-x-4 bg-white px-16 shadow dark:bg-neutral-800">
+				<Link to={routesConfig.home}>
+					<img src={Logo} className="size-8" alt="" />
+				</Link>
 
-					<nav className="flex items-center gap-1">
-						{[
-							{ title: t('home'), path: routesConfig.home },
-							{ title: t('problem'), path: routesConfig.problems },
-							{ title: 'Courses', path: routesConfig.courses },
-							{ title: t('submission'), path: routesConfig.submissions },
-							{ title: t('contest'), path: routesConfig.contests },
-							{ title: 'Interview', path: routesConfig.interviewDashboard },
-						].map((item, index) => (
-							<Link
-								key={index}
-								to={item.path}
-								className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all rounded-xl ${
-									isActive(item.path) 
-										? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' 
-										: 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5'
-								}`}
-							>
-								{item.title}
-							</Link>
-						))}
-					</nav>
-
-					<div className="flex items-center gap-3 ml-auto">
-						{isAuth ? (
-							<>
-								<div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 group">
-									<FontAwesomeIcon icon="fa-regular fa-star" className="text-amber-500 group-hover:scale-125 transition-transform" />
-									<span className="text-xs font-black text-amber-600 dark:text-amber-500">{user?.totalScore}</span>
-								</div>
-								<AvatarWithMenu />
-							</>
-						) : (
-							<Button className="h-10 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20 px-6" asChild>
-								<Link to={routesConfig.login} className="text-[10px] font-black uppercase tracking-widest text-white">
-									{t('login')}
-								</Link>
-							</Button>
-						)}
-						
-						<button
-							className="size-10 rounded-xl bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/5 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
-							onClick={() => setMode(theme === 'dark' ? 'light' : 'dark')}
+				{[
+					{
+						title: t('home'),
+						path: routesConfig.home,
+					},
+					{
+						title: t('problem'),
+						path: routesConfig.problems,
+					},
+					{
+						title: 'Courses',
+						path: routesConfig.courses,
+					},
+					{
+						title: t('submission'),
+						path: routesConfig.submissions,
+					},
+					{
+						title: t('contest'),
+						path: routesConfig.contests,
+					},
+					{
+						title: 'Interview',
+						path: routesConfig.interviewDashboard,
+					},
+				].map((item, index) => (
+					<Button key={index} variant="ghost" asChild>
+						<Link
+							className={`text-sm font-medium text-gray-600 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100 ${isActive(item.path) ? 'bg-zinc-200 text-gray-800 dark:!bg-zinc-900' : 'dark:hover:!bg-zinc-700'}`}
+							to={item.path}
 						>
-							{theme === 'dark' ? (
-								<MoonStar className="text-blue-400" size={18} />
+							{item.title}
+						</Link>
+					</Button>
+				))}
+				{isAuth ? (
+					<>
+						<Button variant="ghost" className="text-gray-70 group !ml-auto h-8 px-2 dark:text-gray-300 dark:hover:!bg-zinc-700">
+							<FontAwesomeIcon icon="fa-regular fa-star" className="group-hover:text-secondary" />
+							{user?.totalScore}
+						</Button>
+						<AvatarWithMenu></AvatarWithMenu>
+					</>
+				) : (
+					<>
+						<Button className="!ml-auto h-8 !bg-sky-500 dark:!bg-sky-500/20">
+							<Link to={routesConfig.login} className="text-xs font-medium text-white dark:text-sky-400">
+								{t('login')}
+							</Link>
+						</Button>
+						<button
+							className={`flex size-8 items-center justify-center rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-neutral-900 dark:hover:bg-gray-700`}
+							onClick={() => setMode(theme == 'dark' ? 'light' : 'dark')}
+						>
+							{theme == 'dark' ? (
+								// <FontAwesomeIcon icon="fa-solid fa-moon" className="text-slate-400 rotate-[-15deg]" />
+								<MoonStar className="text-slate-300" size="18px"></MoonStar>
 							) : (
-								<Sun className="text-amber-500" size={18} />
+								// <FontAwesomeIcon icon="fa-solid fa-sun" className="text-gray-600" />
+								<Sun className="text-gray-700" size="18px"></Sun>
 							)}
 						</button>
-					</div>
-				</header>
-			</div>
-
-			{/* Main Content Area */}
-			<main className="min-h-full pt-28 flex flex-col relative z-0">
-				{children}
-			</main>
-			
+					</>
+				)}
+			</header>
+			<div className="flex min-h-[calc(100%-64px)] flex-col">{children}</div>
 			{footer}
 		</div>
 	);

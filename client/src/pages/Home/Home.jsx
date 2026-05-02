@@ -42,59 +42,36 @@ const Home = () => {
     };
 
     return (
-        <div className="flex-1 min-h-screen jx-mesh-bg relative overflow-hidden">
-            {/* Ambient Background Elements */}
-            <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-                <div className="absolute top-[10%] left-[5%] w-[400px] h-[400px] bg-blue-600/10 blur-[120px] rounded-full animate-pulse" />
-                <div className="absolute bottom-[20%] right-[10%] w-[300px] h-[300px] bg-indigo-600/10 blur-[100px] rounded-full" />
-            </div>
-
-            <div className="container mx-auto px-6 py-12 max-w-7xl relative z-10">
-                {/* Hero / Header Section */}
-                <div className="mb-16 space-y-4">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="jx-pulse-dot" />
-                        <span className="jx-label text-blue-500">Live Community Feed</span>
-                    </div>
-                    <h1 className="jx-h1 mb-2">Explore the <span className="text-blue-500">JudgeX</span> Universe</h1>
-                    <p className="text-neutral-500 dark:text-neutral-400 max-w-2xl text-lg font-medium leading-relaxed">
-                        Stay updated with the latest blogs, contests, and achievements from our global community of developers.
-                    </p>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+        <div className="flex-1 bg-gray-50 dark:bg-[#1b1b1d] min-h-screen">
+            <div className="container mx-auto px-4 py-8 max-w-7xl">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     {/* Main Content */}
                     <div className="lg:col-span-8">
-                        <div className="space-y-8">
-                            <div className="flex items-center justify-between mb-2">
-                                <h2 className="jx-h3">Recent Blogs</h2>
-                                <div className="h-[1px] flex-1 mx-6 bg-neutral-200 dark:bg-white/5" />
-                            </div>
-
+                        <div className="space-y-6">
                             {blogs.map((blog) => (
                                 <BlogCard key={blog.externalId} blog={blog} />
                             ))}
 
                             {loading && (
-                                <div className="space-y-6">
-                                    <Skeleton className="h-64 w-full rounded-2xl bg-white/5" />
-                                    <Skeleton className="h-64 w-full rounded-2xl bg-white/5" />
-                                </div>
+                                <>
+                                    <Skeleton className="h-48 w-full rounded-lg" />
+                                    <Skeleton className="h-48 w-full rounded-lg" />
+                                </>
                             )}
 
                             {!loading && blogs.length === 0 && (
-                                <div className="jx-glass py-24 text-center">
-                                    <p className="jx-label">No blogs found in the universe.</p>
+                                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                                    No blogs found.
                                 </div>
                             )}
                             
                             {!loading && hasMore && (
-                                <div className="text-center mt-12">
+                                <div className="text-center mt-8">
                                     <button 
                                         onClick={loadMore}
-                                        className="group relative px-10 py-4 bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-2xl transition-all hover:scale-105 active:scale-95"
+                                        className="px-6 py-2 border border-gray-300 rounded-full hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-zinc-800 dark:text-gray-300 transition-colors"
                                     >
-                                        <span className="jx-label group-hover:text-blue-500 transition-colors">Load More Content</span>
+                                        Load More
                                     </button>
                                 </div>
                             )}
@@ -102,40 +79,11 @@ const Home = () => {
                     </div>
 
                     {/* Sidebar */}
-                    <div className="lg:col-span-4 space-y-10 lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto lg:pr-2 custom-scrollbar">
-                        <div className="space-y-8">
-                            <section>
-                                <div className="flex items-center gap-2 mb-4">
-                                    <div className="w-1 h-4 bg-blue-500 rounded-full" />
-                                    <h3 className="jx-label text-neutral-900 dark:text-white">Daily Challenge</h3>
-                                </div>
-                                <DailyChallenge />
-                            </section>
-
-                            <section>
-                                <div className="flex items-center gap-2 mb-4">
-                                    <div className="w-1 h-4 bg-indigo-500 rounded-full" />
-                                    <h3 className="jx-label text-neutral-900 dark:text-white">Statistics</h3>
-                                </div>
-                                <Statistics />
-                            </section>
-
-                            <section>
-                                <div className="flex items-center gap-2 mb-4">
-                                    <div className="w-1 h-4 bg-purple-500 rounded-full" />
-                                    <h3 className="jx-label text-neutral-900 dark:text-white">Active Contests</h3>
-                                </div>
-                                <ContestsSidebar />
-                            </section>
-
-                            <section>
-                                <div className="flex items-center gap-2 mb-4">
-                                    <div className="w-1 h-4 bg-emerald-500 rounded-full" />
-                                    <h3 className="jx-label text-neutral-900 dark:text-white">Top Performers</h3>
-                                </div>
-                                <TopUsers />
-                            </section>
-                        </div>
+                    <div className="lg:col-span-4 space-y-8 lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto lg:pr-1">
+                        <DailyChallenge />
+                        <Statistics />
+                        <ContestsSidebar />
+                        <TopUsers />
                     </div>
                 </div>
             </div>
