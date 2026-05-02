@@ -98,5 +98,3 @@ export const useSocket = (interviewId, role, userInfo) => {
 };
 
 export default useSocket;
-
-export default useSocket;
