@@ -1,17 +1,20 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import io from 'socket.io-client';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 export const useSocket = (interviewId, role, userInfo) => {
   const socketRef = useRef(null);
-  const isConnectingRef = useRef(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  // Memoize userInfo fields to avoid unnecessary re-connections
+  const userInfoStr = JSON.stringify(userInfo);
 
   const connect = useCallback(() => {
-    // Prevent multiple connection attempts
-    if (socketRef.current?.connected || isConnectingRef.current) return;
+    if (socketRef.current?.connected || isConnecting) return;
 
-    isConnectingRef.current = true;
+    setIsConnecting(true);
 
     socketRef.current = io(API_URL, {
       withCredentials: true,
@@ -20,46 +23,47 @@ export const useSocket = (interviewId, role, userInfo) => {
         inviteToken: localStorage.getItem('candidateToken') || userInfo?.inviteToken
       },
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       timeout: 10000,
     });
 
     socketRef.current.on('connect', () => {
       console.log('[Socket] Connected:', socketRef.current.id);
-      isConnectingRef.current = false;
+      setIsConnected(true);
+      setIsConnecting(false);
+      
+      const info = JSON.parse(userInfoStr || '{}');
       socketRef.current.emit('join-interview', {
         interviewId,
         role,
-        ...userInfo
+        ...info
       });
-      // Initial presence query
       socketRef.current.emit('participant-request', { interviewId });
     });
 
     socketRef.current.on('connect_error', (err) => {
       console.error('[Socket] Connection error:', err.message);
-      isConnectingRef.current = false;
+      setIsConnecting(false);
+      setIsConnected(false);
     });
 
     socketRef.current.on('disconnect', (reason) => {
       console.warn('[Socket] Disconnected:', reason);
-      isConnectingRef.current = false;
-    });
-
-    socketRef.current.on('reconnect_attempt', () => {
-      console.log('[Socket] Reconnecting...');
+      setIsConnected(false);
+      setIsConnecting(false);
     });
 
     return socketRef.current;
-  }, [interviewId, role, userInfo]);
+  }, [interviewId, role, userInfoStr]);
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
     }
-    isConnectingRef.current = false;
+    setIsConnected(false);
+    setIsConnecting(false);
   }, []);
 
   const emit = useCallback((event, data) => {
@@ -88,9 +92,11 @@ export const useSocket = (interviewId, role, userInfo) => {
     socket: socketRef.current,
     emit,
     on,
-    isConnected: socketRef.current?.connected || false,
-    isConnecting: isConnectingRef.current
+    isConnected,
+    isConnecting
   };
 };
+
+export default useSocket;
 
 export default useSocket;

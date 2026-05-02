@@ -20,7 +20,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { 
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger 
 } from '~/components/ui/tooltip';
+import { 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger 
+} from '~/components/ui/dialog';
 import { Badge } from '~/components/ui/badge';
+import { Input } from '~/components/ui/input';
+import { Search, Loader2, Plus } from 'lucide-react';
 import Lobby from './components/Lobby';
 import ProblemPanel from './components/ProblemPanel';
 import CodeEditor from './components/CodeEditor';
@@ -66,6 +71,14 @@ const api = {
   },
   endInterview: async (id) => {
     const res = await httpRequest.post(`/interview/${id}/end`);
+    return res.data;
+  },
+  searchProblems: async (q) => {
+    const res = await httpRequest.get(`/problem/search-for-interview`, { params: { q } });
+    return res.data;
+  },
+  addQuestion: async (id, problemId) => {
+    const res = await httpRequest.post(`/interview/${id}/questions`, { problemId });
     return res.data;
   }
 };
@@ -368,6 +381,22 @@ const InterviewRoom = () => {
                         </SelectContent>
                       </Select>
                     )}
+                    
+                    <AddProblemDialog 
+                      onAdd={async (problemId) => {
+                        try {
+                          const res = await api.addQuestion(interview._id, problemId);
+                          if (res.success) {
+                            setInterview(prev => ({ ...prev, questions: res.data }));
+                            toast.success('Problem added to session');
+                          }
+                        } catch (err) {
+                          toast.error('Failed to add problem');
+                        }
+                      }}
+                      api={api}
+                    />
+
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -551,6 +580,109 @@ const InterviewRoom = () => {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+};
+
+// ============ Subcomponents ============
+
+const AddProblemDialog = ({ onAdd, api }) => {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setSearch('');
+      setResults([]);
+      return;
+    }
+    const delayDebounceFn = setTimeout(async () => {
+      if (search.length < 2) {
+        setResults([]);
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await api.searchProblems(search);
+        if (res.success) setResults(res.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [search, open, api]);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl bg-neutral-100 dark:bg-white/5 border-none">
+          <Plus className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[500px] bg-[#0f0f11] border-white/10 text-white rounded-2xl p-0 overflow-hidden">
+        <DialogHeader className="p-6 pb-0">
+          <DialogTitle className="text-xl font-black tracking-tight">Add Problem</DialogTitle>
+        </DialogHeader>
+        <div className="p-6 space-y-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
+            <Input 
+              placeholder="Search by name or ID..." 
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-10 h-12 bg-white/5 border-none rounded-xl text-sm focus:ring-blue-500/40"
+            />
+          </div>
+
+          <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+            {loading ? (
+              <div className="py-12 flex flex-col items-center justify-center space-y-3 opacity-50">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                <p className="text-[10px] font-black uppercase tracking-widest">Searching bank...</p>
+              </div>
+            ) : results.length > 0 ? (
+              results.map(prob => (
+                <div 
+                  key={prob._id} 
+                  className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-transparent hover:border-white/5 transition-all group"
+                >
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold truncate max-w-[250px]">{prob.name}</h4>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className={`text-[9px] h-4 px-1.5 border-none ${
+                        prob.difficulty === 'easy' ? 'text-emerald-400 bg-emerald-400/10' :
+                        prob.difficulty === 'medium' ? 'text-amber-400 bg-amber-400/10' : 'text-rose-400 bg-rose-400/10'
+                      }`}>
+                        {prob.difficulty.toUpperCase()}
+                      </Badge>
+                      <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">{prob.id}</span>
+                    </div>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    onClick={() => {
+                      onAdd(prob._id);
+                      setOpen(false);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 h-8 px-4 rounded-lg text-[10px] font-black uppercase tracking-widest"
+                  >
+                    Add
+                  </Button>
+                </div>
+              ))
+            ) : search.length >= 2 ? (
+              <div className="py-12 text-center text-neutral-500 text-[10px] font-black uppercase tracking-widest">No problems found</div>
+            ) : (
+              <div className="py-12 text-center text-neutral-500 text-[10px] font-black uppercase tracking-widest">Type to search the bank</div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
