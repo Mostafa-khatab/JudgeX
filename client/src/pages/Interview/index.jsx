@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, Trash2, Play, Copy, Clock, Users, 
   Calendar, CheckCircle2, Loader2,
-  Search, Sparkles, Code2, Video, Share2, Info
+  Search, Sparkles, Code2, Video, Share2, Info, FileText
 } from 'lucide-react';
 
 import { Button } from '~/components/ui/button';
