@@ -169,10 +169,6 @@ const joinInterview = async (req, res) => {
       return sendError(res, 'Invalid interview token', 400);
     }
 
-    // NOTE: Avoid MongoDB transactions here.
-    // Many deployments run MongoDB without replica-set support (transactions would hard-fail).
-    // Also: joining via invite should not permanently lock the session.
-    // We treat "join" as recording candidate identity; real-time connectivity is tracked by sockets.
     const now = new Date();
     const interview = await Interview.findOneAndUpdate(
       {
@@ -184,14 +180,12 @@ const joinInterview = async (req, res) => {
           'candidate.name': name,
           'candidate.email': email,
           'candidate.joinedAt': now,
-          // Do NOT set isConnected here. This is updated by socket lifecycle.
         },
       },
       { new: true }
     );
 
     if (!interview) {
-      // Provide a more accurate error message.
       const existing = await Interview.findOne({ inviteToken: token })
         .select('status candidate.email candidate.isConnected')
         .lean();
@@ -203,14 +197,12 @@ const joinInterview = async (req, res) => {
       return sendError(res, 'Unable to join interview', 400);
     }
 
-    // Populate for UI (candidate needs problem details; lobby needs instructor info)
     await interview.populate([
       { path: 'instructor', select: 'username avatar' },
       { path: 'questions.problemId', select: 'name difficulty task description examples constraints timeLimit memoryLimit' },
       { path: 'state.activeProblemId', select: 'name difficulty task description examples constraints timeLimit memoryLimit' },
     ]);
 
-    // Return interview data (filtered for candidate)
     const responseData = {
       _id: interview._id,
       title: interview.title,
@@ -268,7 +260,6 @@ const getInterviewByToken = async (req, res) => {
     const isInstructor = req.userId && interview.instructor._id.toString() === req.userId.toString();
     const role = isInstructor ? 'interviewer' : 'candidate';
 
-    // Filter questions based on role
     const filteredQuestions = isInstructor 
       ? (interview.questions || []) 
       : (interview.questions || []).filter(q => q?.isVisible);
@@ -499,7 +490,6 @@ const updateState = async (req, res) => {
       if (qIndex !== -1) {
         interview.questions[qIndex].isVisible = true;
       }
-
     }
 
     if (remainingTime !== undefined && remainingTime >= 0) {
@@ -760,6 +750,8 @@ const addQuestion = async (req, res) => {
   try {
     const { id } = req.params;
     const { problemId, customContent } = req.body;
+    
+    console.log('[DEBUG] addQuestion body:', req.body);
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return sendError(res, 'Invalid interview ID', 400);
