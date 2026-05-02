@@ -310,43 +310,71 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
 
   // Toggles
   const toggleAudio = useCallback(async () => {
-    if (localStream && isAudioEnabled) {
-      localStream.getAudioTracks().forEach(t => t.stop());
-      setIsAudioEnabled(false);
-      socketHandlers?.emit('interview-media-state', {
-        interviewId,
-        mediaState: { audio: false, video: isVideoEnabled }
-      });
-    } else {
-      const stream = await startMedia({ audio: true, video: isVideoEnabled });
-      if (stream) {
-        setIsAudioEnabled(true);
-        // Replace tracks in peer connection
-        const audioTrack = stream.getAudioTracks()[0];
+    if (!interviewId) return;
+    if (!localStreamRef.current) {
+      await startMedia({ audio: true, video: isVideoEnabledRef.current });
+      return;
+    }
+
+    const stream = localStreamRef.current;
+    const next = !isAudioEnabledRef.current;
+
+    const existing = stream.getAudioTracks()[0];
+    if (existing) {
+      // Avoid stopping tracks: stopping can tear down capture and destabilize the peer connection.
+      existing.enabled = next;
+      setIsAudioEnabled(next);
+      isAudioEnabledRef.current = next;
+    } else if (next) {
+      // If audio track doesn't exist (started muted), request audio-only and attach.
+      const newStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const track = newStream.getAudioTracks()[0];
+      if (track) {
+        stream.addTrack(track);
         const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'audio');
-        if (sender) sender.replaceTrack(audioTrack);
+        if (sender) await sender.replaceTrack(track);
+        setIsAudioEnabled(true);
+        isAudioEnabledRef.current = true;
       }
     }
+
+    socketHandlers?.emit('interview-media-state', {
+      interviewId,
+      mediaState: { audio: isAudioEnabledRef.current, video: isVideoEnabledRef.current }
+    });
   }, [localStream, isAudioEnabled, isVideoEnabled, interviewId, socketHandlers, startMedia]);
 
   const toggleVideo = useCallback(async () => {
-    if (localStream && isVideoEnabled) {
-      localStream.getVideoTracks().forEach(t => t.stop());
-      setIsVideoEnabled(false);
-      socketHandlers?.emit('interview-media-state', {
-        interviewId,
-        mediaState: { audio: isAudioEnabled, video: false }
-      });
-    } else {
-      const stream = await startMedia({ audio: isAudioEnabled, video: true });
-      if (stream) {
-        setIsVideoEnabled(true);
-        // Replace tracks in peer connection
-        const videoTrack = stream.getVideoTracks()[0];
+    if (!interviewId) return;
+    if (!localStreamRef.current) {
+      await startMedia({ audio: isAudioEnabledRef.current, video: true });
+      return;
+    }
+
+    const stream = localStreamRef.current;
+    const next = !isVideoEnabledRef.current;
+
+    const existing = stream.getVideoTracks()[0];
+    if (existing) {
+      existing.enabled = next;
+      setIsVideoEnabled(next);
+      isVideoEnabledRef.current = next;
+    } else if (next) {
+      const newStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+      const track = newStream.getVideoTracks()[0];
+      if (track) {
+        stream.addTrack(track);
         const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'video');
-        if (sender) sender.replaceTrack(videoTrack);
+        if (sender) await sender.replaceTrack(track);
+        setIsVideoEnabled(true);
+        isVideoEnabledRef.current = true;
       }
     }
+
+    socketHandlers?.emit('interview-media-state', {
+      interviewId,
+      mediaState: { audio: isAudioEnabledRef.current, video: isVideoEnabledRef.current }
+    });
   }, [localStream, isAudioEnabled, isVideoEnabled, interviewId, socketHandlers, startMedia]);
 
   // Lifecycle

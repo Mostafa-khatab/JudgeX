@@ -19,6 +19,7 @@ const CodeEditor = ({
   onCursorChange,
   remoteCursors,
 }) => {
+  const isDark = theme && theme !== 'light';
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const decorationsRef = useRef({});
@@ -97,24 +98,24 @@ const CodeEditor = ({
   }, [cursorList]);
 
   return (
-    <div className="h-full flex flex-col min-h-0 bg-white">
+    <div className={isDark ? 'h-full flex flex-col min-h-0 bg-[#0f0f14] text-white' : 'h-full flex flex-col min-h-0 bg-white'}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 bg-neutral-50/50">
+      <div className={isDark ? 'flex items-center justify-between px-6 py-4 border-b border-white/10 bg-white/5 backdrop-blur-xl' : 'flex items-center justify-between px-6 py-4 border-b border-neutral-100 bg-neutral-50/50'}>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg">
+            <div className={isDark ? 'p-1.5 bg-emerald-500/15 text-emerald-200 rounded-xl' : 'p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg'}>
               <Code2 className="h-4 w-4" />
             </div>
-            <div className="text-[11px] font-black uppercase tracking-widest text-neutral-400">Editor</div>
+            <div className={isDark ? 'text-[11px] font-black uppercase tracking-widest text-white/60' : 'text-[11px] font-black uppercase tracking-widest text-neutral-400'}>Editor</div>
           </div>
           
           <Select value={language} onValueChange={onLanguageChange}>
-            <SelectTrigger className="w-[140px] h-9 bg-white border border-neutral-200 text-[10px] font-black uppercase tracking-tight rounded-xl shadow-sm">
+            <SelectTrigger className={isDark ? 'w-[140px] h-9 bg-white/10 border border-white/10 text-white text-[10px] font-black uppercase tracking-tight rounded-2xl shadow-sm' : 'w-[140px] h-9 bg-white border border-neutral-200 text-[10px] font-black uppercase tracking-tight rounded-xl shadow-sm'}>
               <SelectValue placeholder="Language" />
             </SelectTrigger>
-            <SelectContent className="bg-white border-neutral-100 text-neutral-900 rounded-xl">
+            <SelectContent className={isDark ? 'bg-[#0f0f11] border-white/10 text-white rounded-2xl' : 'bg-white border-neutral-100 text-neutral-900 rounded-xl'}>
               {allowedLanguages?.map(lang => (
-                <SelectItem key={lang} value={lang} className="text-[10px] uppercase font-bold focus:bg-neutral-100">
+                <SelectItem key={lang} value={lang} className={isDark ? 'text-[10px] uppercase font-bold focus:bg-white/10' : 'text-[10px] uppercase font-bold focus:bg-neutral-100'}>
                   {lang}
                 </SelectItem>
               ))}
@@ -136,7 +137,11 @@ const CodeEditor = ({
             )}
             {isRunning ? 'Running' : 'Run Code'}
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={isDark ? 'h-9 w-9 rounded-2xl text-white/60 hover:text-white hover:bg-white/10 transition-colors' : 'h-9 w-9 rounded-xl text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors'}
+          >
             <Settings className="h-4 w-4" />
           </Button>
         </div>
@@ -191,9 +196,9 @@ const CodeEditor = ({
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="absolute bottom-0 left-0 right-0 h-1/3 bg-white border-t border-neutral-200 flex flex-col z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]"
+              className={isDark ? 'absolute bottom-0 left-0 right-0 h-1/3 bg-[#0b0b0f] border-t border-white/10 flex flex-col z-20 shadow-[0_-20px_60px_rgba(0,0,0,0.55)]' : 'absolute bottom-0 left-0 right-0 h-1/3 bg-white border-t border-neutral-200 flex flex-col z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]'}
             >
-              <div className="flex items-center justify-between px-5 py-2.5 bg-neutral-50/80 backdrop-blur-md border-b border-neutral-100">
+              <div className={isDark ? 'flex items-center justify-between px-5 py-2.5 bg-white/5 backdrop-blur-xl border-b border-white/10' : 'flex items-center justify-between px-5 py-2.5 bg-neutral-50/80 backdrop-blur-md border-b border-neutral-100'}>
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-neutral-500">
                   <Terminal className="h-4 w-4 text-emerald-500" />
                   Console Output
@@ -202,14 +207,14 @@ const CodeEditor = ({
                   variant="ghost" 
                   size="sm" 
                   onClick={onCloseOutput}
-                  className="h-7 w-7 p-0 rounded-lg hover:bg-neutral-200 text-neutral-400 hover:text-neutral-900"
+                  className={isDark ? 'h-7 w-7 p-0 rounded-xl hover:bg-white/10 text-white/50 hover:text-white' : 'h-7 w-7 p-0 rounded-lg hover:bg-neutral-200 text-neutral-400 hover:text-neutral-900'}
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="flex-1 p-6 font-mono text-sm overflow-y-auto bg-white">
+              <div className={isDark ? 'flex-1 p-6 font-mono text-sm overflow-y-auto bg-[#0b0b0f] text-white' : 'flex-1 p-6 font-mono text-sm overflow-y-auto bg-white'}>
                 {output ? (
-                  <pre className="text-neutral-800 leading-relaxed whitespace-pre-wrap selection:bg-blue-500/30">{output}</pre>
+                  <pre className={isDark ? 'text-white/90 leading-relaxed whitespace-pre-wrap selection:bg-blue-500/30' : 'text-neutral-800 leading-relaxed whitespace-pre-wrap selection:bg-blue-500/30'}>{output}</pre>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center space-y-3 opacity-40">
                     <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent animate-spin rounded-full" />

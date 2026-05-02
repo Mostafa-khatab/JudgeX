@@ -244,6 +244,36 @@ const InterviewRoom = () => {
     }
   };
 
+  const refreshInterview = useCallback(async () => {
+    try {
+      if (!interview?._id) return;
+      const res = await api.getInterview(interview._id, candidateToken);
+      if (res?.success) setInterview(res.data || null);
+    } catch {
+      // best-effort
+    }
+  }, [interview?._id, candidateToken]);
+
+  const handleAddQuestion = useCallback(async (problemId) => {
+    try {
+      if (!interview?._id) return;
+      const res = await api.addQuestion(interview._id, problemId);
+      if (res?.success) {
+        toast.success('Question added');
+        await refreshInterview();
+      } else {
+        toast.error(res?.message || 'Failed to add question');
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.msg || err.message || 'Failed to add question');
+    }
+  }, [interview?._id, refreshInterview]);
+
+  const handleSwitchProblem = useCallback((problemId) => {
+    if (!interview?._id || !problemId) return;
+    emit('interview-problem-switch', { interviewId: interview._id, problemId, language });
+  }, [emit, interview?._id, language]);
+
   // Sync private notes
   useEffect(() => {
     if (id) localStorage.setItem(`notes_${id}`, privateNotes);
@@ -379,8 +409,34 @@ const InterviewRoom = () => {
           <main className="flex-1 overflow-hidden grid grid-cols-12 gap-4 p-4">
             {/* Problem Description (Glassy Light) */}
             <div className="col-span-12 lg:col-span-3 min-h-0 jx-glass-strong bg-white/10 border-white/10 overflow-hidden rounded-3xl">
-              <div className="h-full min-h-0">
-                <ProblemPanel problem={activeProblem} />
+              <div className="h-full min-h-0 flex flex-col">
+                <div className="shrink-0 px-4 py-3 border-b border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-white/60">Problem</div>
+                    {activeProblem?.difficulty && (
+                      <Badge className="bg-purple-500/15 border border-purple-500/20 text-purple-200 text-[10px]">
+                        {activeProblem.difficulty}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {role === 'interviewer' && (
+                      <SwitchQuestionDialog
+                        questions={interview?.questions || []}
+                        activeProblemId={activeProblem?._id}
+                        onSwitch={handleSwitchProblem}
+                      />
+                    )}
+                    {role === 'interviewer' && (
+                      <AddProblemDialog onAdd={handleAddQuestion} api={api} />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 min-h-0">
+                  <ProblemPanel problem={activeProblem} />
+                </div>
               </div>
             </div>
 
@@ -439,6 +495,80 @@ const InterviewRoom = () => {
 };
 
 // ============ Subcomponents ============
+
+const SwitchQuestionDialog = ({ questions, activeProblemId, onSwitch }) => {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState(activeProblemId || '');
+
+  useEffect(() => {
+    setSelected(activeProblemId || '');
+  }, [activeProblemId, open]);
+
+  const opts = (questions || [])
+    .map(q => ({
+      id: q?.problemId?._id || q?.problemId,
+      name: q?.problemId?.name || q?.problemName || 'Untitled',
+      difficulty: q?.problemId?.difficulty || q?.problemDifficulty,
+      visible: q?.isVisible,
+    }))
+    .filter(x => x.id);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="h-10 rounded-2xl bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10">
+          <FileText className="h-4 w-4 mr-2" />
+          Switch
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[560px] jx-glass-strong border-white/10 text-white rounded-3xl p-0 overflow-hidden">
+        <DialogHeader className="p-6 pb-0">
+          <DialogTitle className="text-xl font-black tracking-tight">Switch Question</DialogTitle>
+        </DialogHeader>
+        <div className="p-6 space-y-4">
+          <div className="text-[11px] font-black uppercase tracking-widest text-white/60">Question</div>
+          <Select value={selected} onValueChange={setSelected}>
+            <SelectTrigger className="h-12 rounded-2xl bg-white/10 border-white/10 text-white">
+              <SelectValue placeholder="Select a question" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#0f0f11] border-white/10 text-white rounded-2xl">
+              {opts.map(o => (
+                <SelectItem key={o.id} value={o.id} className="text-sm">
+                  <div className="flex items-center justify-between w-full gap-3">
+                    <span className="truncate max-w-[360px] font-bold">{o.name}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/50">
+                      {o.difficulty || 'n/a'}{o.visible ? ' • visible' : ''}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button
+              variant="secondary"
+              className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white hover:bg-white/15"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="h-11 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-95 font-black"
+              disabled={!selected}
+              onClick={() => {
+                onSwitch?.(selected);
+                setOpen(false);
+              }}
+            >
+              Switch
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const AddProblemDialog = ({ onAdd, api }) => {
   const [open, setOpen] = useState(false);

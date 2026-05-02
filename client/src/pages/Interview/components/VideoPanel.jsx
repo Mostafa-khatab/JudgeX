@@ -44,7 +44,7 @@ const VideoPanel = ({
   return (
     <div className="flex flex-col gap-4 h-full">
       {/* Remote View */}
-      <div className="relative flex-1 bg-neutral-950/60 rounded-2xl overflow-hidden group shadow-inner border border-white/10">
+      <div className={`relative ${compact ? 'flex-none h-40' : 'flex-1'} bg-neutral-950/60 rounded-2xl overflow-hidden group shadow-inner border border-white/10`}>
         {remoteStream ? (
           <video
             ref={remoteVideoRef}
@@ -105,7 +105,7 @@ const VideoPanel = ({
 
       {/* Local Preview & Controls */}
       <div className="flex items-end gap-3 shrink-0">
-        <div className={`relative ${compact ? 'w-28' : 'w-32'} aspect-video bg-neutral-950/60 rounded-2xl overflow-hidden border border-white/10 shadow-lg group`}>
+        <div className={`relative ${compact ? 'w-24' : 'w-32'} aspect-video bg-neutral-950/60 rounded-2xl overflow-hidden border border-white/10 shadow-lg group`}>
           <video
             ref={localVideoRef}
             autoPlay
