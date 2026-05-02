@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router';
 import { toast } from 'react-toastify';
@@ -100,6 +100,7 @@ const InterviewRoom = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [peerInfo, setPeerInfo] = useState(null);
   const [privateNotes, setPrivateNotes] = useState(() => localStorage.getItem(`notes_${id}`) || '');
+  const [remoteCursors, setRemoteCursors] = useState([]);
 
   // 1. Socket Hook
   const { emit, on, isConnected: isSocketConnected } = useSocket(interview?._id, role, {
@@ -193,6 +194,28 @@ const InterviewRoom = () => {
       setIsRunning(false);
     }
   };
+
+  const handleCursorChange = useCallback((position) => {
+    if (!interview?._id) return;
+    if (!position?.lineNumber || !position?.column) return;
+    emit('interview-cursor-update', { interviewId: interview._id, role, position });
+  }, [emit, interview?._id, role]);
+
+  useEffect(() => {
+    if (!on) return;
+    const cleanup = on('cursor-updated', (data) => {
+      const r = data?.role;
+      const p = data?.position;
+      if (!r || !p) return;
+
+      setRemoteCursors((prev) => {
+        const next = prev.filter(x => x?.role !== r);
+        next.push({ role: r, position: p, timestamp: data?.timestamp || Date.now() });
+        return next;
+      });
+    });
+    return () => cleanup?.();
+  }, [on]);
 
   const handleSendMessage = async (content) => {
     try {
@@ -307,25 +330,25 @@ const InterviewRoom = () => {
           key="room"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="h-screen flex flex-col bg-[#f0f0f0] text-neutral-900"
+          className="h-screen flex flex-col bg-[#0b0b0f] text-white"
         >
           {/* Header */}
-          <header className="h-14 px-4 shrink-0 bg-white border-b border-neutral-200 flex items-center justify-between z-50">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer">
-                 <ChevronRight className="h-4 w-4 rotate-180" />
-                 <div className="flex items-center gap-2 bg-neutral-100 px-3 py-1 rounded-lg border border-neutral-200">
-                    <Monitor className="h-4 w-4" />
-                    <span className="text-sm font-medium">WhiteBoard 1</span>
-                    <ChevronRight className="h-3 w-3 rotate-90 opacity-40" />
-                 </div>
-              </div>
-              <Plus className="h-4 w-4 text-neutral-400 cursor-pointer" />
-            </div>
+          <header className="h-14 px-4 shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-between z-50">
+             <div className="flex items-center gap-4">
+               <div className="flex items-center gap-2 text-white/60 hover:text-white transition-colors cursor-pointer">
+                  <ChevronRight className="h-4 w-4 rotate-180" />
+                  <div className="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-2xl border border-white/10 backdrop-blur-md">
+                     <Monitor className="h-4 w-4" />
+                     <span className="text-sm font-medium">WhiteBoard 1</span>
+                     <ChevronRight className="h-3 w-3 rotate-90 opacity-40" />
+                  </div>
+               </div>
+              <Plus className="h-4 w-4 text-white/40 cursor-pointer" />
+             </div>
 
-            <div className="flex items-center gap-8">
-               <div className="flex items-center gap-2 text-neutral-500 font-mono text-sm tabular-nums">
-                 <Clock className="h-4 w-4" />
+             <div className="flex items-center gap-8">
+                <div className="flex items-center gap-2 text-white/60 font-mono text-sm tabular-nums">
+                  <Clock className="h-4 w-4" />
                  <Countdown 
                     date={timerDeadline} 
                     renderer={({ hours, minutes, seconds }) => (
@@ -333,111 +356,80 @@ const InterviewRoom = () => {
                     )}
                   />
                </div>
-               <div className="flex items-center gap-3">
-                 <Button variant="ghost" size="icon" className="h-8 w-8 text-neutral-500"><Share2 className="h-4 w-4" /></Button>
-                 <Button variant="ghost" size="icon" className="h-8 w-8 text-neutral-500"><TimerIcon className="h-4 w-4" /></Button>
-                 <div className="size-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs">B</div>
-                 <Button 
-                   onClick={() => {
-                      const url = `${window.location.origin}/interview/join/${inviteToken || interview?.inviteToken}`;
-                      navigator.clipboard.writeText(url);
-                      toast.success('Invite link copied!');
-                   }}
-                   className="h-9 px-4 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-100 rounded-lg text-sm font-medium flex items-center gap-2"
-                 >
-                   <Users className="h-4 w-4" />
-                   Invite
-                 </Button>
-               </div>
-            </div>
+                <div className="flex items-center gap-3">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10"><Share2 className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10"><TimerIcon className="h-4 w-4" /></Button>
+                  <div className="size-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-lg shadow-blue-500/25">B</div>
+                  <Button 
+                    onClick={() => {
+                       const url = `${window.location.origin}/interview/join/${inviteToken || interview?.inviteToken}`;
+                       navigator.clipboard.writeText(url);
+                       toast.success('Invite link copied!');
+                    }}
+                    className="h-9 px-4 bg-white/10 text-white hover:bg-white/15 border border-white/10 rounded-2xl text-sm font-bold flex items-center gap-2 backdrop-blur-md"
+                  >
+                    <Users className="h-4 w-4" />
+                    Invite
+                  </Button>
+                </div>
+             </div>
           </header>
 
           {/* Workspace Layout */}
-          <main className="flex-1 overflow-hidden grid grid-cols-12 gap-[1px] bg-neutral-200">
-            {/* Editor Column */}
-            <div className="col-span-12 lg:col-span-5 bg-white flex flex-col min-h-0 relative">
-               <div className="h-10 border-b border-neutral-100 flex items-center px-4 bg-neutral-50/50">
-                  <div className="bg-white px-4 h-full flex items-center border-x border-neutral-100 text-xs font-bold text-blue-600">
-                    C
-                    <ChevronRight className="h-3 w-3 rotate-90 ml-2 opacity-50" />
-                  </div>
-                  <Plus className="h-3 w-3 ml-4 text-neutral-400" />
-               </div>
-               <div className="flex-1 min-h-0">
-                  <CodeEditor
-                    code={code}
-                    language={language}
-                    onCodeChange={setCode}
-                    onLanguageChange={setLanguage}
-                    onRun={handleRunCode}
-                    isRunning={isRunning}
-                    allowedLanguages={interview?.allowedLanguages}
-                    output={output}
-                    showOutput={false} // Hidden as output is in the center column
-                  />
-               </div>
+          <main className="flex-1 overflow-hidden grid grid-cols-12 gap-4 p-4">
+            {/* Problem Description (Glassy Light) */}
+            <div className="col-span-12 lg:col-span-3 min-h-0 jx-glass-strong bg-white/10 border-white/10 overflow-hidden rounded-3xl">
+              <div className="h-full min-h-0">
+                <ProblemPanel problem={activeProblem} />
+              </div>
             </div>
 
-            {/* Output Column */}
-            <div className="col-span-12 lg:col-span-4 bg-white flex flex-col min-h-0">
-               <div className="h-10 border-b border-neutral-100 flex items-center justify-between px-4 bg-neutral-50/50">
-                  <span className="text-xs font-bold text-neutral-400">Output:</span>
-                  <Button variant="ghost" size="sm" onClick={() => setOutput('')} className="h-7 px-3 text-[10px] font-bold uppercase tracking-widest text-blue-500">Clear</Button>
-               </div>
-               <div className="flex-1 min-h-0 p-6 overflow-auto font-mono text-sm text-neutral-600 bg-white">
-                  {output || "Run code to see output..."}
-               </div>
-               <div className="p-4 border-t border-neutral-100 flex justify-end">
-                  <Button 
-                    onClick={handleRunCode}
-                    disabled={isRunning}
-                    className="h-10 px-8 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg shadow-blue-500/20"
-                  >
-                    {isRunning ? <Loader2 className="animate-spin" /> : "Run Code"}
-                  </Button>
-               </div>
+            {/* Code Editor (Deep Focus Dark) */}
+            <div className="col-span-12 lg:col-span-6 min-h-0 rounded-3xl overflow-hidden border border-white/10 bg-[#0f0f14] shadow-[0_30px_120px_rgba(0,0,0,0.6)]">
+              <div className="h-full min-h-0">
+                <CodeEditor
+                  code={code}
+                  language={language}
+                  onCodeChange={setCode}
+                  onLanguageChange={setLanguage}
+                  onRun={() => {
+                    setShowOutput(true);
+                    handleRunCode();
+                  }}
+                  isRunning={isRunning}
+                  allowedLanguages={interview?.allowedLanguages}
+                  output={output}
+                  showOutput={showOutput}
+                  onCloseOutput={() => setShowOutput(false)}
+                  theme="vs-dark"
+                  onCursorChange={handleCursorChange}
+                  remoteCursors={remoteCursors}
+                />
+              </div>
             </div>
 
-            {/* Interaction Column */}
-            <div className="col-span-12 lg:col-span-3 bg-white flex flex-col min-h-0">
-               <div className="h-14 flex items-center justify-center gap-6 border-b border-neutral-100 px-4">
-                  <Button variant="ghost" className="h-full border-b-2 border-emerald-500 rounded-none text-neutral-900 font-bold flex items-center gap-2">
-                     <div className="p-1 bg-emerald-50 text-emerald-600 rounded-md"><MessageSquare size={14} /></div>
-                     Chat
-                  </Button>
-                  <Button variant="ghost" className="h-full border-b-2 border-transparent rounded-none text-neutral-400 font-bold flex items-center gap-2">
-                     <div className="p-1 bg-blue-50 text-blue-600 rounded-md"><FileText size={14} /></div>
-                     Evaluation
-                  </Button>
-               </div>
-               
-               <div className="flex-1 min-h-0 flex flex-col">
-                  {/* Participant Preview Placeholder */}
-                  <div className="px-4 py-3 flex items-center justify-between border-b border-neutral-50">
-                     <span className="text-xs font-bold text-neutral-400">Participants <span className="ml-1 text-neutral-300">1</span></span>
-                     <ChevronRight className="h-4 w-4 rotate-90 text-neutral-300" />
-                  </div>
-                  
-                  {/* Video Panel */}
-                  <div className="p-4">
-                     <VideoPanel
-                       {...webrtc}
-                       isSocketConnected={isSocketConnected}
-                       peerInfo={peerInfo || { name: role === 'interviewer' ? 'Candidate' : 'Interviewer' }}
-                       theme="light"
-                     />
-                  </div>
-
-                  {/* Chat Area */}
-                  <div className="flex-1 min-h-0 mt-auto flex flex-col border-t border-neutral-100">
-                    <ChatPanel
-                      messages={messages}
-                      onSendMessage={handleSendMessage}
-                      role={role}
-                      theme="light"
-                    />
-                  </div>
-               </div>
+            {/* Video & Chat (Glassy Light) */}
+            <div className="col-span-12 lg:col-span-3 min-h-0 flex flex-col gap-4">
+              <div className="jx-glass-strong bg-white/10 border-white/10 rounded-3xl p-4">
+                <VideoPanel
+                  {...webrtc}
+                  isSocketConnected={isSocketConnected}
+                  peerInfo={peerInfo || { name: role === 'interviewer' ? 'Candidate' : 'Interviewer' }}
+                  onLeave={() => {
+                    emit('leave-interview', { interviewId: interview?._id });
+                    navigate('/interview');
+                  }}
+                  compact
+                />
+              </div>
+              <div className="jx-glass-strong bg-white/10 border-white/10 rounded-3xl overflow-hidden flex-1 min-h-0">
+                <ChatPanel
+                  messages={messages}
+                  onSendMessage={handleSendMessage}
+                  role={role}
+                  theme="light"
+                />
+              </div>
             </div>
           </main>
         </motion.div>
@@ -486,7 +478,7 @@ const AddProblemDialog = ({ onAdd, api }) => {
           <Plus className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] bg-[#0f0f11] border-white/10 text-white rounded-2xl p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[560px] jx-glass-strong border-white/10 text-white rounded-3xl p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="text-xl font-black tracking-tight">Add Problem</DialogTitle>
         </DialogHeader>

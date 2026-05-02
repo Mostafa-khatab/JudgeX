@@ -80,7 +80,7 @@
 		@apply rounded-xl border border-neutral-200 bg-white/80 shadow-sm backdrop-blur-md transition-all duration-300 dark:border-neutral-800/50 dark:bg-neutral-900/80 dark:shadow-[0px_4px_20px_rgba(0,0,0,0.3)];
 	}
 	.jx-glass-strong {
-		@apply rounded-xl border border-neutral-200 bg-neutral-50 shadow-md dark:border-neutral-700/30 dark:bg-neutral-900 dark:shadow-[0px_8px_30px_rgba(0,0,0,0.4)];
+		@apply rounded-2xl border border-neutral-200/80 bg-white/70 shadow-lg backdrop-blur-2xl transition-all duration-300 dark:border-white/10 dark:bg-neutral-900/60 dark:shadow-[0px_18px_60px_rgba(0,0,0,0.55)];
 	}
 	.jx-glass-header {
 		@apply border-b border-neutral-200 bg-neutral-50/50 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-950/50 rounded-t-xl;
@@ -104,6 +104,38 @@
 						  radial-gradient(at 50% 0%, hsla(225,100%,10%,1) 0, transparent 50%), 
 						  radial-gradient(at 100% 0%, hsla(250,100%,10%,1) 0, transparent 50%);
 	}
+
+	/* Monaco remote cursor visuals */
+	.jx-remote-caret {
+		@apply relative;
+		border-left: 2px solid rgba(255, 255, 255, 0.85);
+	}
+	.jx-remote-caret--mod {
+		border-left-color: rgba(59, 130, 246, 0.95); /* Electric Blue */
+		box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+	}
+	.jx-remote-caret--cand {
+		border-left-color: rgba(168, 85, 247, 0.95); /* Deep Purple */
+		box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.15);
+	}
+	.jx-remote-label {
+		@apply pointer-events-none select-none;
+		position: absolute;
+		transform: translate(6px, -22px);
+		padding: 2px 8px;
+		border-radius: 999px;
+		font-size: 10px;
+		font-weight: 800;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: rgba(255,255,255,0.95);
+		background: rgba(17, 17, 19, 0.65);
+		backdrop-filter: blur(10px);
+		border: 1px solid rgba(255,255,255,0.12);
+		box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+	}
+	.jx-remote-label--mod { background: rgba(59, 130, 246, 0.25); border-color: rgba(59, 130, 246, 0.35); }
+	.jx-remote-label--cand { background: rgba(168, 85, 247, 0.25); border-color: rgba(168, 85, 247, 0.35); }
 }
 
 :root {

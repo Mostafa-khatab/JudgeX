@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { 
   Video, VideoOff, Mic, MicOff, 
-  Monitor, PhoneOff, User
+  Monitor, PhoneOff, User, LogOut
 } from 'lucide-react';
 import { Button } from '~/components/ui/button';
 import { Badge } from '~/components/ui/badge';
@@ -16,6 +16,8 @@ const VideoPanel = ({
   remoteMediaState,
   isScreenSharing, startScreenShare, stopScreenShare,
   remoteScreenStream,
+  onLeave,
+  compact,
 }) => {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -42,7 +44,7 @@ const VideoPanel = ({
   return (
     <div className="flex flex-col gap-4 h-full">
       {/* Remote View */}
-      <div className="relative flex-1 bg-neutral-900 rounded-xl overflow-hidden group shadow-inner">
+      <div className="relative flex-1 bg-neutral-950/60 rounded-2xl overflow-hidden group shadow-inner border border-white/10">
         {remoteStream ? (
           <video
             ref={remoteVideoRef}
@@ -51,8 +53,8 @@ const VideoPanel = ({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-neutral-100 dark:bg-neutral-900/50 backdrop-blur-sm">
-            <div className="p-5 bg-neutral-200 dark:bg-neutral-800 rounded-full animate-pulse">
+          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-white/5 backdrop-blur-md">
+            <div className="p-5 bg-white/10 rounded-full animate-pulse border border-white/10">
               <User className="h-8 w-8 text-neutral-500 dark:text-neutral-400" />
             </div>
             <p className="text-neutral-500 dark:text-neutral-400 text-xs font-medium tracking-wide uppercase">
@@ -103,7 +105,7 @@ const VideoPanel = ({
 
       {/* Local Preview & Controls */}
       <div className="flex items-end gap-3 shrink-0">
-        <div className="relative w-32 aspect-video bg-neutral-900 rounded-lg overflow-hidden border border-white/5 shadow-lg group">
+        <div className={`relative ${compact ? 'w-28' : 'w-32'} aspect-video bg-neutral-950/60 rounded-2xl overflow-hidden border border-white/10 shadow-lg group`}>
           <video
             ref={localVideoRef}
             autoPlay
@@ -127,7 +129,8 @@ const VideoPanel = ({
               variant={isAudioEnabled ? "secondary" : "destructive"}
               size="icon"
               onClick={toggleAudio}
-              className="flex-1 h-9 rounded-lg shadow-sm"
+              className="flex-1 h-9 rounded-2xl shadow-sm"
+              title="Mute"
             >
               {isAudioEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
             </Button>
@@ -135,29 +138,44 @@ const VideoPanel = ({
               variant={isVideoEnabled ? "secondary" : "destructive"}
               size="icon"
               onClick={toggleVideo}
-              className="flex-1 h-9 rounded-lg shadow-sm"
+              className="flex-1 h-9 rounded-2xl shadow-sm"
+              title="Camera"
             >
               {isVideoEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
             </Button>
           </div>
           <div className="flex gap-2">
             <Button
-              variant={isScreenSharing ? "default" : "secondary"}
-              className={`flex-1 h-9 rounded-lg text-[11px] font-bold uppercase tracking-tight shadow-sm ${isScreenSharing ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
-              onClick={isScreenSharing ? stopScreenShare : startScreenShare}
+              variant="secondary"
+              className="flex-1 h-9 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-sm"
+              onClick={onLeave}
+              title="Leave"
             >
-              <Monitor className="h-3.5 w-3.5 mr-1.5" />
-              {isScreenSharing ? 'Stop' : 'Share'}
+              <LogOut className="h-3.5 w-3.5 mr-1.5" />
+              Leave
             </Button>
             <Button
               variant="outline"
-              className="w-10 h-9 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-white dark:border-neutral-800"
+              className="w-10 h-9 rounded-2xl text-white/70 hover:text-white border-white/10 bg-white/5 hover:bg-white/10"
               onClick={initiateCall}
               title="Reconnect"
             >
               <PhoneOff className="h-3.5 w-3.5 rotate-[135deg]" />
             </Button>
           </div>
+
+          {!compact && (
+            <div className="flex gap-2">
+              <Button
+                variant={isScreenSharing ? "default" : "secondary"}
+                className={`flex-1 h-9 rounded-2xl text-[11px] font-bold uppercase tracking-tight shadow-sm ${isScreenSharing ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                onClick={isScreenSharing ? stopScreenShare : startScreenShare}
+              >
+                <Monitor className="h-3.5 w-3.5 mr-1.5" />
+                {isScreenSharing ? 'Stop' : 'Share'}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

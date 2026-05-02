@@ -9,12 +9,93 @@ import {
   Select, SelectContent, SelectItem, 
   SelectTrigger, SelectValue 
 } from '~/components/ui/select';
+import { useEffect, useMemo, useRef } from 'react';
 
 const CodeEditor = ({ 
   code, language, onCodeChange, onLanguageChange, 
   onRun, isRunning, allowedLanguages,
-  output, showOutput, onCloseOutput
+  output, showOutput, onCloseOutput,
+  theme = 'vs-dark',
+  onCursorChange,
+  remoteCursors,
 }) => {
+  const editorRef = useRef(null);
+  const monacoRef = useRef(null);
+  const decorationsRef = useRef({});
+  const widgetsRef = useRef({});
+
+  const cursorList = useMemo(() => {
+    return Array.isArray(remoteCursors) ? remoteCursors : [];
+  }, [remoteCursors]);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
+
+    const model = editor.getModel();
+    if (!model) return;
+
+    // Apply decorations + content widgets for remote cursors.
+    cursorList.forEach((c) => {
+      const role = c?.role;
+      const pos = c?.position;
+      if (!role || !pos) return;
+
+      const className = role === 'interviewer' ? 'jx-remote-caret jx-remote-caret--mod' : 'jx-remote-caret jx-remote-caret--cand';
+      const labelClass = role === 'interviewer' ? 'jx-remote-label jx-remote-label--mod' : 'jx-remote-label jx-remote-label--cand';
+      const labelText = role === 'interviewer' ? 'Moderator' : 'Candidate';
+
+      const lineNumber = Math.max(1, Math.min(model.getLineCount(), pos.lineNumber || 1));
+      const maxCol = model.getLineMaxColumn(lineNumber);
+      const column = Math.max(1, Math.min(maxCol, pos.column || 1));
+
+      const range = new monaco.Range(lineNumber, column, lineNumber, column);
+      const nextDeco = [{ range, options: { className } }];
+
+      decorationsRef.current[role] = editor.deltaDecorations(decorationsRef.current[role] || [], nextDeco);
+
+      // Content widget (label bubble).
+      const id = `jx-remote-label-${role}`;
+      if (!widgetsRef.current[role]) {
+        const node = document.createElement('div');
+        node.className = labelClass;
+        node.textContent = labelText;
+
+        const widget = {
+          getId: () => id,
+          getDomNode: () => node,
+          getPosition: () => ({
+            position: { lineNumber, column },
+            preference: [monaco.editor.ContentWidgetPositionPreference.ABOVE],
+          }),
+        };
+        widgetsRef.current[role] = widget;
+        editor.addContentWidget(widget);
+      } else {
+        const node = widgetsRef.current[role].getDomNode();
+        // Ensure class updates if role mapping changes.
+        node.className = labelClass;
+        node.textContent = labelText;
+      }
+
+      editor.layoutContentWidget(widgetsRef.current[role]);
+    });
+
+    // Remove widgets/decorations for roles no longer present.
+    const rolesPresent = new Set(cursorList.map(c => c?.role).filter(Boolean));
+    Object.keys(widgetsRef.current).forEach((role) => {
+      if (rolesPresent.has(role)) return;
+      try {
+        editor.removeContentWidget(widgetsRef.current[role]);
+      } catch {
+        // ignore
+      }
+      delete widgetsRef.current[role];
+      decorationsRef.current[role] = editor.deltaDecorations(decorationsRef.current[role] || [], []);
+    });
+  }, [cursorList]);
+
   return (
     <div className="h-full flex flex-col min-h-0 bg-white">
       {/* Toolbar */}
@@ -68,7 +149,20 @@ const CodeEditor = ({
           language={language === 'cpp' ? 'cpp' : language}
           value={code}
           onChange={onCodeChange}
-          theme="light"
+          theme={theme}
+          onMount={(editor, monaco) => {
+            editorRef.current = editor;
+            monacoRef.current = monaco;
+
+            const disposable = editor.onDidChangeCursorPosition((e) => {
+              onCursorChange?.({ lineNumber: e.position.lineNumber, column: e.position.column });
+            });
+
+            // Cleanup when editor unmounts.
+            editor.onDidDispose(() => {
+              try { disposable.dispose(); } catch { /* noop */ }
+            });
+          }}
           options={{
             fontSize: 14,
             minimap: { enabled: false },
