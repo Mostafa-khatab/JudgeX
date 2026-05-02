@@ -1,4 +1,5 @@
 import { Editor } from '@monaco-editor/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, Code2,
   Terminal, Settings, X
