@@ -146,188 +146,197 @@ const InterviewDashboard = () => {
     toast.success('Invite link copied!');
   };
 
-  const latestInterview = interviews[0];
-  const pastInterviews = interviews.slice(1);
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 flex items-center justify-center">
         <Loader2 className="size-8 animate-spin text-blue-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] text-[#262626] font-sans pb-20">
-      {/* Top Bar */}
-      <div className="bg-white border-b border-neutral-200 h-16 px-8 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-500 p-1.5 rounded-lg text-white">
-            <Users size={20} />
-          </div>
-          <h1 className="text-xl font-medium tracking-tight">LeetCode Interview</h1>
-        </div>
-        
-        <div className="flex items-center gap-4 text-xs text-neutral-500">
-          <span>Month's usage <Info size={14} className="inline ml-1 opacity-50" /></span>
-          <span className="text-lg font-medium text-neutral-800">0<span className="text-neutral-400 font-normal">/ 10 used</span></span>
-          <div className="w-32 h-1 bg-neutral-100 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-500 w-0" />
-          </div>
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 font-sans pb-20 transition-colors">
+      
       <div className="max-w-[1200px] mx-auto px-8 py-10">
         
-        {/* Current Interview Section */}
-        {latestInterview && (
-          <div className="mb-12">
-            <div className="bg-white border border-neutral-200 rounded-2xl p-8 shadow-sm max-w-md relative hover:shadow-md transition-shadow">
-               <div className="absolute top-8 right-8 flex items-center gap-2 text-blue-500 text-xs font-medium">
-                 <div className="size-2 rounded-full bg-blue-500" />
-                 Created
-               </div>
-               
-               <h2 className="text-2xl font-semibold mb-2">{latestInterview.title}</h2>
-               <p className="text-sm text-neutral-400 mb-6">{new Date(latestInterview.createdAt).toLocaleString()}</p>
-               
-               <div className="flex items-center gap-2 text-neutral-500 text-sm mb-10">
-                 <FileText size={16} />
-                 {latestInterview.questions?.length || 1} question
-               </div>
-
-               <div className="flex items-center justify-end gap-3">
-                 <button 
-                   onClick={() => handleEndInterview(latestInterview._id)}
-                   className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                   title="End Interview"
-                 >
-                   <Play className="size-5 rotate-90" />
-                 </button>
-                 <button 
-                   onClick={() => copyInviteLink(latestInterview.inviteToken)}
-                   className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                   title="Copy Link"
-                 >
-                   <Share2 size={5} />
-                 </button>
-               </div>
-               
-               {/* Hidden Enter Button overlaying the card or next to icons */}
-               <button 
-                 onClick={() => navigate(`/interview/room/${latestInterview._id}`)}
-                 className="absolute inset-0 z-0 opacity-0"
-               />
+        {/* Header Section */}
+        <div className="flex items-center justify-between mb-12">
+          <div className="flex items-center gap-4">
+            <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-500/20">
+              <Video size={24} />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black tracking-tighter uppercase">JudgeX Interview</h1>
+              <p className="text-sm text-neutral-500 font-medium">Manage and conduct real-time evaluations</p>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Create Button (Floating or Section) */}
-        {!latestInterview && (
-            <div className="mb-12">
-               <Button 
-                onClick={() => setIsCreateOpen(true)}
-                className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold"
-               >
-                 <Plus size={20} className="mr-2" /> New Interview
-               </Button>
+        {/* Action Grid: Create + Latest (Optional) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-16">
+          {/* Create Card */}
+          <div 
+            onClick={() => setIsCreateOpen(true)}
+            className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-blue-500 dark:hover:border-blue-500 transition-all hover:shadow-xl hover:shadow-blue-500/5 group"
+          >
+            <div className="size-14 rounded-full bg-blue-600 text-white flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/20">
+              <Plus size={32} />
             </div>
-        )}
+            <span className="font-bold text-sm text-neutral-500 group-hover:text-blue-500 transition-colors">Create an interview</span>
+          </div>
+
+          {/* Show Latest Interview if exists and active */}
+          {interviews.length > 0 && interviews[0].status !== 'finished' && (
+            <div className="md:col-span-2 lg:col-span-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-8 flex flex-col justify-between shadow-sm relative">
+               <div className="absolute top-8 right-8 flex items-center gap-2 text-blue-500 text-[10px] font-black uppercase tracking-widest">
+                 <div className="size-2 rounded-full bg-blue-500 animate-pulse" />
+                 Active Session
+               </div>
+               
+               <div>
+                 <h2 className="text-2xl font-black tracking-tight mb-1">{interviews[0].title}</h2>
+                 <p className="text-xs text-neutral-500 font-medium mb-6 uppercase tracking-wider">{new Date(interviews[0].createdAt).toLocaleString()}</p>
+                 
+                 <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2 text-neutral-500 text-xs font-bold uppercase tracking-tight">
+                      <FileText size={16} className="text-blue-500" />
+                      {interviews[0].questions?.length || 1} questions
+                    </div>
+                    <div className="flex items-center gap-2 text-neutral-500 text-xs font-bold uppercase tracking-tight">
+                      <Clock size={16} className="text-blue-500" />
+                      {interviews[0].duration || 60}m limit
+                    </div>
+                 </div>
+               </div>
+
+               <div className="flex items-center justify-end gap-3 mt-8">
+                 <Button 
+                   variant="ghost" size="icon"
+                   onClick={() => copyInviteLink(interviews[0].inviteToken)}
+                   className="rounded-xl hover:bg-blue-500/10 text-blue-500"
+                 >
+                   <Share2 size={18} />
+                 </Button>
+                 <Button 
+                   onClick={() => navigate(`/interview/room/${interviews[0]._id}`)}
+                   className="h-10 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-500/20"
+                 >
+                   Enter Room
+                 </Button>
+               </div>
+            </div>
+          )}
+        </div>
 
         {/* Past Interviews Section */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Past Interviews</h3>
+            <h3 className="text-xl font-black tracking-tight flex items-center gap-3">
+               Past Interviews
+               <Badge variant="secondary" className="rounded-lg text-[10px] font-black uppercase">{interviews.filter(i => i.status === 'finished').length}</Badge>
+            </h3>
+            
             <div className="flex items-center gap-4">
                <Select defaultValue="result">
-                 <SelectTrigger className="w-24 bg-neutral-200/50 border-none h-8 text-xs font-medium rounded-lg">
+                 <SelectTrigger className="w-32 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 h-9 text-[10px] font-black uppercase tracking-widest rounded-xl">
                     <SelectValue placeholder="Result" />
                  </SelectTrigger>
-                 <SelectContent>
-                    <SelectItem value="result">Result</SelectItem>
+                 <SelectContent className="dark:bg-neutral-900 border-neutral-800">
+                    <SelectItem value="result" className="text-[10px] font-black uppercase">Recent</SelectItem>
+                    <SelectItem value="oldest" className="text-[10px] font-black uppercase">Oldest</SelectItem>
                  </SelectContent>
                </Select>
-               <div className="flex bg-neutral-200/50 p-1 rounded-lg">
-                 <button className="p-1.5 bg-white shadow-sm rounded-md text-neutral-700"><Users size={14} /></button>
-                 <button className="p-1.5 text-neutral-500"><Plus size={14} /></button>
-               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {pastInterviews.map((interview) => (
-              <div key={interview._id} className="bg-white border border-neutral-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative">
-                 <div className="absolute top-6 right-6 h-px w-4 bg-neutral-300" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {interviews.filter(i => i.status === 'finished').map((interview) => (
+              <div key={interview._id} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all relative group">
+                 <div className="absolute top-6 right-6 opacity-20 group-hover:opacity-100 transition-opacity">
+                    <CheckCircle2 size={16} className="text-emerald-500" />
+                 </div>
                  
-                 <h4 className="text-lg font-semibold mb-1 truncate pr-8">{interview.title}</h4>
-                 <p className="text-xs text-neutral-400 mb-4">{new Date(interview.createdAt).toLocaleString()}</p>
+                 <h4 className="text-lg font-black tracking-tight mb-1 truncate pr-8 group-hover:text-blue-500 transition-colors">{interview.title}</h4>
+                 <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-4 opacity-60">{new Date(interview.createdAt).toLocaleString()}</p>
                  
-                 <div className="flex items-center gap-4 text-neutral-500 text-xs mb-8">
+                 <div className="flex items-center gap-4 text-neutral-500 text-[10px] font-black uppercase tracking-widest mb-8">
                    <div className="flex items-center gap-1.5">
-                     <FileText size={14} />
-                     {interview.questions?.length || 3} questions
+                     <FileText size={14} className="text-blue-500" />
+                     {interview.questions?.length || 3}
                    </div>
                    <div className="flex items-center gap-1.5">
-                     <Clock size={14} />
-                     3h 0m
+                     <Clock size={14} className="text-blue-500" />
+                     {interview.duration || 60}m
                    </div>
                  </div>
 
-                 <div className="flex items-center justify-between mt-auto pt-4">
+                 <div className="flex items-center justify-between mt-auto pt-4 border-t border-neutral-100 dark:border-neutral-800">
                    <div className="flex items-center gap-2">
-                     <div className="size-8 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs font-bold">
+                     <div className="size-8 rounded-full bg-blue-600/10 text-blue-600 flex items-center justify-center text-xs font-black">
                         {interview.title[0].toUpperCase()}
                      </div>
-                     <span className="text-xs font-medium text-neutral-700">{interview.title}</span>
+                     <span className="text-[10px] font-black uppercase tracking-widest text-neutral-500">{interview.title}</span>
                    </div>
                    <div className="flex items-center gap-1">
-                     <button 
+                     <Button 
+                       variant="ghost" size="icon"
                        onClick={() => handleDelete(interview._id)}
-                       className="p-2 text-rose-400 hover:text-rose-600 transition-colors"
+                       className="size-8 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
                      >
                        <Trash2 size={16} />
-                     </button>
-                     <button 
-                        onClick={() => navigate(`/interview/room/${interview._id}`)}
-                        className="p-2 text-blue-400 hover:text-blue-600 transition-colors"
+                     </Button>
+                     <Button 
+                        variant="ghost" size="icon"
+                        onClick={() => navigate(`/interview/results/${interview._id}`)}
+                        className="size-8 rounded-lg text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10"
                      >
-                       <Share2 size={16} />
-                     </button>
+                       <Code2 size={16} />
+                     </Button>
                    </div>
                  </div>
               </div>
             ))}
           </div>
 
-          {/* Pagination */}
-          <div className="flex items-center justify-end gap-2 mt-12">
-            <button className="p-2 bg-neutral-200/50 rounded-lg text-neutral-400 hover:text-neutral-600 disabled:opacity-50"><Plus size={16} className="rotate-90" /></button>
-            <div className="h-8 w-8 bg-white border border-neutral-200 rounded-lg flex items-center justify-center text-sm font-medium">1</div>
-            <button className="p-2 bg-neutral-200/50 rounded-lg text-neutral-400 hover:text-neutral-600"><Plus size={16} className="-rotate-90" /></button>
-          </div>
+          {/* Empty State for Past Interviews */}
+          {interviews.filter(i => i.status === 'finished').length === 0 && (
+            <div className="py-20 flex flex-col items-center justify-center text-center bg-white dark:bg-neutral-900 border border-dashed border-neutral-200 dark:border-neutral-800 rounded-3xl">
+               <div className="p-6 rounded-full bg-neutral-100 dark:bg-white/5 mb-4">
+                 <Clock size={32} className="text-neutral-300" />
+               </div>
+               <h4 className="text-xl font-black tracking-tight">No history yet</h4>
+               <p className="text-sm text-neutral-500 max-w-xs mx-auto mt-2">Completed interview sessions will appear here for review and analytics.</p>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>New Interview</DialogTitle>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 rounded-[32px] p-8">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-2xl font-black tracking-tight">New Interview</DialogTitle>
+            <p className="text-sm text-neutral-500 font-medium">Configure a new technical evaluation session</p>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-6">
             <div className="space-y-2">
-              <Label>Candidate Name</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-neutral-500 ml-1">Candidate Name / Identity</Label>
               <Input 
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                placeholder="e.g. John Doe"
+                placeholder="e.g. John Doe - Senior Frontend"
+                className="h-14 bg-neutral-50 dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800 rounded-2xl focus:ring-2 ring-blue-500/20 text-lg font-bold"
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={creating}>
-              {creating ? <Loader2 className="animate-spin" /> : 'Launch'}
+          <DialogFooter className="mt-10 gap-3">
+            <Button variant="ghost" className="flex-1 rounded-xl font-black text-[10px] uppercase tracking-widest" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+            <Button 
+              className="flex-1 h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-500/20" 
+              onClick={handleCreate} 
+              disabled={creating}
+            >
+              {creating ? <Loader2 className="animate-spin" /> : 'Launch Session'}
             </Button>
           </DialogFooter>
         </DialogContent>
