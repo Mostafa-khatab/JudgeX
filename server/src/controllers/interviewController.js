@@ -750,8 +750,6 @@ const addQuestion = async (req, res) => {
   try {
     const { id } = req.params;
     const { problemId, customContent } = req.body;
-    
-    console.log('[DEBUG] addQuestion body:', req.body);
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return sendError(res, 'Invalid interview ID', 400);

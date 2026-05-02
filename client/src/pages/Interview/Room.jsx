@@ -81,10 +81,6 @@ const api = {
   searchProblems: async (q) => {
     const res = await httpRequest.get(`/problem/search-for-interview`, { params: { q } });
     return res.data;
-  },
-  addQuestion: async (id, problemId) => {
-    const res = await httpRequest.post(`/interview/${id}/questions`, { problemId });
-    return res.data;
   }
 };
 
