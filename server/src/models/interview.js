@@ -100,7 +100,7 @@ const interviewSchema = new mongoose.Schema({
   questions: [{
     problemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Problem' },
     problemName: String,
-    problemDifficulty: { type: String, enum: ['Easy', 'Medium', 'Hard'] },
+    problemDifficulty: { type: String, enum: ['easy', 'medium', 'hard'] },
     isVisible: { type: Boolean, default: false }, // Only interviewer sees all
     isCustom: { type: Boolean, default: false },
     customContent: {
