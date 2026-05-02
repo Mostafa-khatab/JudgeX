@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, Trash2, Play, Copy, Clock, Users, 
   Calendar, CheckCircle2, Loader2,
-  Search, Sparkles, Code2, Video
+  Search, Sparkles, Code2, Video, Share2, Info
 } from 'lucide-react';
 
 import { Button } from '~/components/ui/button';
@@ -15,8 +15,12 @@ import { Card } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
 import { 
   Dialog, DialogContent, DialogHeader, DialogDescription,
-  DialogTitle, DialogTrigger, DialogClose 
+  DialogTitle, DialogTrigger, DialogClose, DialogFooter
 } from '~/components/ui/dialog';
+import { 
+  Select, SelectContent, SelectItem, 
+  SelectTrigger, SelectValue 
+} from '~/components/ui/select';
 
 import ClayIcon from './components/ClayIcon';
 
@@ -125,6 +129,17 @@ const InterviewDashboard = () => {
     }
   };
 
+  const handleEndInterview = async (id) => {
+    if (!window.confirm('End this interview session?')) return;
+    try {
+      await fetch(`${API_URL}/interview/${id}/end`, { method: 'POST', credentials: 'include' });
+      loadInterviews();
+      toast.success('Interview ended');
+    } catch (err) {
+      toast.error('Failed to end interview');
+    }
+  };
+
   const copyInviteLink = (token) => {
     const url = `${window.location.origin}/interview/join/${token}`;
     navigator.clipboard.writeText(url);
@@ -183,7 +198,7 @@ const InterviewDashboard = () => {
 
                <div className="flex items-center justify-end gap-3">
                  <button 
-                   onClick={handleEndInterview}
+                   onClick={() => handleEndInterview(latestInterview._id)}
                    className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                    title="End Interview"
                  >
