@@ -225,9 +225,11 @@ const InterviewRoom = () => {
           setMessages(prev => [...prev, res.data]);
         }
         emit('interview-chat-message', { interviewId: interview._id, role, content });
+      } else {
+        toast.error(res?.msg || res?.message || t('errors.failedSendMessage'));
       }
     } catch (err) {
-      toast.error(t('errors.failedSendMessage'));
+      toast.error(err?.response?.data?.msg || err?.response?.data?.message || t('errors.failedSendMessage'));
     }
   };
 
@@ -262,10 +264,10 @@ const InterviewRoom = () => {
         toast.success('Question added');
         await refreshInterview();
       } else {
-        toast.error(res?.message || 'Failed to add question');
+        toast.error(res?.msg || res?.message || 'Failed to add question');
       }
     } catch (err) {
-      toast.error(err?.response?.data?.msg || err.message || 'Failed to add question');
+      toast.error(err?.response?.data?.msg || err?.response?.data?.message || err.message || 'Failed to add question');
     }
   }, [interview?._id, refreshInterview]);
 

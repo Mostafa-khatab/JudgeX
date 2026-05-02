@@ -68,6 +68,17 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
       const wantAudio = options.audio !== false;
       const wantVideo = options.video !== false;
 
+      // Allow joining with mic+cam off without prompting for permissions.
+      if (!wantAudio && !wantVideo) {
+        setLocalStream(null);
+        localStreamRef.current = null;
+        setIsAudioEnabled(false);
+        setIsVideoEnabled(false);
+        isAudioEnabledRef.current = false;
+        isVideoEnabledRef.current = false;
+        return null;
+      }
+
       // Prefer reusing an existing lobby preview stream, but only if it actually has live tracks.
       if (existingStream) {
         const hasLiveAudio = existingStream.getAudioTracks().some(t => t.readyState === 'live');

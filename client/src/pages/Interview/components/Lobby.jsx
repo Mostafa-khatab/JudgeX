@@ -28,8 +28,8 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
   // Media Preview State
   const [stream, setStream] = useState(null);
   const [isPreviewActive, setIsPreviewActive] = useState(false);
-  const [isVideoOn, setIsVideoOn] = useState(true);
-  const [isMicOn, setIsMicOn] = useState(true);
+  const [isVideoOn, setIsVideoOn] = useState(false);
+  const [isMicOn, setIsMicOn] = useState(false);
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -97,24 +97,27 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
   };
 
   const toggleVideo = async () => {
-    if (stream && isVideoOn) {
-      stream.getVideoTracks().forEach(t => t.stop());
-      setIsVideoOn(false);
-      setIsPreviewActive(false); 
-    } else {
-      await startPreview(selectedDevices.video, selectedDevices.audio);
-      setIsVideoOn(true);
+    // Keep preview tracks alive when possible; just enable/disable.
+    if (stream?.getVideoTracks?.()?.[0]) {
+      const track = stream.getVideoTracks()[0];
+      track.enabled = !isVideoOn;
+      setIsVideoOn(!isVideoOn);
+      setIsPreviewActive(track.enabled);
+      return;
     }
+    await startPreview(selectedDevices.video, selectedDevices.audio);
+    setIsVideoOn(true);
   };
 
   const toggleMic = async () => {
-    if (stream && isMicOn) {
-      stream.getAudioTracks().forEach(t => t.stop());
-      setIsMicOn(false);
-    } else {
-      await startPreview(selectedDevices.video, selectedDevices.audio);
-      setIsMicOn(true);
+    if (stream?.getAudioTracks?.()?.[0]) {
+      const track = stream.getAudioTracks()[0];
+      track.enabled = !isMicOn;
+      setIsMicOn(!isMicOn);
+      return;
     }
+    await startPreview(selectedDevices.video, selectedDevices.audio);
+    setIsMicOn(true);
   };
 
   const handleJoin = () => {
