@@ -16,10 +16,13 @@ export const useInterviewState = (initialData, socketHandlers, apiHandlers) => {
     setCode(nextCode);
     lastEmittedCode.current = nextCode;
     setLanguage(nextLang);
+    
+    const currentActiveProblemId = initialData?.state?.activeProblemId;
+    const visibleQuestion = initialData?.questions?.find(q => q?.isVisible);
 
-    if (activeId && initialData?.questions?.length) {
+    if (currentActiveProblemId && initialData?.questions?.length) {
       const matched = initialData.questions.find(q => 
-        (q.problemId?._id || q.problemId) === activeId || q._id === activeId
+        (q.problemId?._id || q.problemId) === currentActiveProblemId || q._id === currentActiveProblemId
       );
       
       if (matched) {
@@ -30,7 +33,7 @@ export const useInterviewState = (initialData, socketHandlers, apiHandlers) => {
     } else {
       setActiveProblem(visibleQuestion?.isCustom ? { ...visibleQuestion.customContent, _id: visibleQuestion._id, isCustom: true } : visibleQuestion?.problemId || null);
     }
-  }, [initialData?._id]);
+  }, [initialData?._id, initialData?.state?.activeProblemId]);
 
   // Sync from socket
   useEffect(() => {
