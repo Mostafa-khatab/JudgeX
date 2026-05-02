@@ -7,47 +7,47 @@ const ProblemPanel = ({ problem }) => {
   if (!problem) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-neutral-500 space-y-4">
-        <FileText className="h-12 w-12 opacity-20" />
-        <p>No problem selected yet</p>
+        <div className="p-4 bg-neutral-100 dark:bg-white/5 rounded-full">
+          <FileText className="h-8 w-8 text-neutral-400" />
+        </div>
+        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">No problem selected</p>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0">
-      <div className="flex items-center justify-between px-5 py-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="h-9 w-9 rounded-2xl bg-white/[0.06] ring-1 ring-white/10 flex items-center justify-center text-blue-200/90">
-            <FileText className="h-4 w-4" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="font-black tracking-tight truncate">{problem.name}</h3>
-            <div className="flex items-center gap-4 mt-1 text-[11px] text-neutral-400">
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
+    <div className="h-full flex flex-col min-h-0 bg-transparent">
+      <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-200 dark:border-white/5 bg-neutral-50/50 dark:bg-white/5 backdrop-blur-md">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="min-w-0 space-y-1">
+            <h3 className="text-lg font-black tracking-tighter text-neutral-900 dark:text-neutral-100 truncate">{problem.name}</h3>
+            <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+              <span className="flex items-center gap-1.5">
+                <Clock className="h-3 w-3 text-blue-500" />
                 {problem.timeLimit || 1000}ms
               </span>
-              <span className="flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" />
+              <span className="flex items-center gap-1.5">
+                <AlertTriangle className="h-3 w-3 text-amber-500" />
                 {problem.memoryLimit || 256}MB
               </span>
             </div>
           </div>
         </div>
         <Badge
-          className={
+          variant="outline"
+          className={`h-6 px-3 rounded-full text-[10px] font-black uppercase tracking-widest border-none ${
             problem.difficulty === 'easy'
-              ? 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/20'
+              ? 'text-emerald-500 bg-emerald-500/10'
               : problem.difficulty === 'medium'
-                ? 'bg-amber-400/10 text-amber-300 border border-amber-400/20'
-                : 'bg-rose-400/10 text-rose-300 border border-rose-400/20'
-          }
+                ? 'text-amber-500 bg-amber-500/10'
+                : 'text-rose-500 bg-rose-500/10'
+          }`}
         >
           {problem.difficulty}
         </Badge>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6 prose prose-invert prose-sm max-w-none">
+      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-8 prose prose-neutral dark:prose-invert max-w-none prose-p:text-sm prose-p:leading-relaxed prose-headings:font-black prose-headings:tracking-tight prose-code:text-blue-500 dark:prose-code:text-blue-400">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {problem.task || problem.description}
         </ReactMarkdown>

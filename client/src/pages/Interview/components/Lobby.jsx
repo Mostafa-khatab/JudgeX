@@ -34,7 +34,6 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
 
   useEffect(() => {
     getDevices();
-    // Removed auto-startPreview to prevent camera opening automatically
     return () => {
       if (stream) stream.getTracks().forEach(t => t.stop());
     };
@@ -55,7 +54,6 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
 
   const startPreview = useCallback(async (videoDeviceId, audioDeviceId) => {
     try {
-      // Clean up existing stream first
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
@@ -100,14 +98,10 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
 
   const toggleVideo = async () => {
     if (stream && isVideoOn) {
-      // Hardware Off: Stop all video tracks to turn off the light
       stream.getVideoTracks().forEach(t => t.stop());
       setIsVideoOn(false);
-      // We don't set stream to null yet to keep audio if active, 
-      // but we'll need to re-init for video
       setIsPreviewActive(false); 
     } else {
-      // Hardware On: Re-request stream
       await startPreview(selectedDevices.video, selectedDevices.audio);
       setIsVideoOn(true);
     }
@@ -128,7 +122,6 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
       toast.error('Please enter your name and email');
       return;
     }
-    // Pass the existing stream and settings
     onJoin({ name, email, isVideoOn, isMicOn, existingStream: stream });
   };
 
@@ -136,25 +129,34 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen flex items-center justify-center p-6 bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-50"
+      className="min-h-screen flex items-center justify-center p-6 jx-mesh-bg text-neutral-900 dark:text-neutral-50 relative overflow-hidden"
     >
-      <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-5 gap-12 items-center">
+      {/* Decorative Orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
+
+      <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-5 gap-12 items-center relative z-10">
         
         {/* Left: Device Preview (3 Columns) */}
         <motion.div 
-          initial={{ x: -20, opacity: 0 }}
+          initial={{ x: -30, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="lg:col-span-3 space-y-6"
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="lg:col-span-3 space-y-8"
         >
-          <div className="space-y-2">
-            <h1 className="text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-              Ready to join?
+          <div className="space-y-3">
+            <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest">
+              Lobby Room
+            </Badge>
+            <h1 className="text-5xl font-black tracking-tighter text-white drop-shadow-2xl">
+              Ready to <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Join?</span>
             </h1>
-            <p className="text-neutral-500 text-base">Check your camera and microphone before entering.</p>
+            <p className="text-neutral-400 text-lg font-medium leading-relaxed max-w-md">
+              Optimize your setup for the best interview experience.
+            </p>
           </div>
 
-          <Card className="jx-glass aspect-video relative overflow-hidden">
+          <Card className="jx-glass-strong aspect-video relative overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] group ring-1 ring-white/10">
             <video
               ref={videoRef}
               autoPlay
@@ -168,25 +170,29 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="absolute inset-0 bg-neutral-100/80 dark:bg-neutral-900/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center"
+                  className="absolute inset-0 bg-[#0f0f11]/90 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center"
                 >
-                  <div className="p-4 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-full mb-4">
-                    <Video className="h-8 w-8" />
-                  </div>
-                  <h3 className="text-lg font-medium mb-2 text-neutral-900 dark:text-neutral-100">
-                    {permissionError ? 'Permission Denied' : 'Camera is off'}
+                  <motion.div 
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 3, repeat: Infinity }}
+                    className="p-6 bg-blue-600/20 text-blue-400 rounded-3xl mb-6 shadow-2xl shadow-blue-600/10"
+                  >
+                    <Camera className="h-12 w-12" />
+                  </motion.div>
+                  <h3 className="text-2xl font-bold mb-3 text-white">
+                    {permissionError ? 'Access Denied' : 'Camera is Disabled'}
                   </h3>
-                  <p className="text-neutral-500 text-sm max-w-xs mb-6">
-                    {permissionError || 'Enable your camera and microphone to preview your setup.'}
+                  <p className="text-neutral-400 text-sm max-w-xs mb-8 font-medium leading-relaxed">
+                    {permissionError || 'Please enable your camera and microphone to ensure you are ready for the interview.'}
                   </p>
                   <Button 
                     onClick={() => {
                       setPermissionError(null);
                       startPreview();
                     }}
-                    className="px-6"
+                    className="px-10 h-12 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm uppercase tracking-widest shadow-xl shadow-blue-600/20"
                   >
-                    {permissionError ? 'Try Again' : 'Enable Devices'}
+                    {permissionError ? 'Try Again' : 'Enable Camera'}
                   </Button>
                 </motion.div>
               )}
@@ -195,54 +201,54 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="absolute inset-0 bg-neutral-900 flex items-center justify-center"
+                  className="absolute inset-0 bg-[#0f0f11] flex items-center justify-center"
                 >
-                  <div className="h-20 w-20 rounded-full bg-neutral-800 flex items-center justify-center">
-                    <VideoOff className="h-8 w-8 text-neutral-500" />
+                  <div className="h-24 w-24 rounded-full bg-neutral-900 border border-white/5 flex items-center justify-center shadow-2xl">
+                    <VideoOff className="h-10 w-10 text-neutral-600" />
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* Floating Controls */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md p-2 rounded-lg border border-neutral-200 dark:border-neutral-800 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300">
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/60 backdrop-blur-2xl p-2.5 rounded-2xl border border-white/10 shadow-2xl transform transition-transform duration-300 group-hover:scale-105">
               <Button
                 variant={isMicOn ? "ghost" : "destructive"}
                 size="icon"
                 onClick={toggleMic}
-                className="h-10 w-10"
+                className={`h-12 w-12 rounded-xl ${isMicOn ? 'text-white hover:bg-white/10' : ''}`}
               >
-                {isMicOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+                {isMicOn ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
               </Button>
               <Button
                 variant={isVideoOn ? "ghost" : "destructive"}
                 size="icon"
                 onClick={toggleVideo}
-                className="h-10 w-10"
+                className={`h-12 w-12 rounded-xl ${isVideoOn ? 'text-white hover:bg-white/10' : ''}`}
               >
-                {isVideoOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+                {isVideoOn ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
               </Button>
-              <Separator orientation="vertical" className="h-6 mx-2" />
               
-              {/* Quick Settings Dropdown */}
-              <div className="flex items-center gap-1 pr-1">
+              <div className="h-8 w-[1px] bg-white/10 mx-1" />
+              
+              <div className="flex items-center gap-1.5 pr-1">
                 <Select value={selectedDevices.video} onValueChange={(id) => handleDeviceChange('video', id)}>
-                  <SelectTrigger className="w-9 h-9 p-0 border-none bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center justify-center">
-                    <Camera className="h-4 w-4 text-neutral-500" />
+                  <SelectTrigger className="w-12 h-12 p-0 border-none bg-transparent hover:bg-white/10 rounded-xl flex items-center justify-center transition-colors">
+                    <Camera className="h-5 w-5 text-neutral-400" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-[#0f0f11] border-white/10 text-white rounded-xl">
                     {devices.video.map(d => (
-                      <SelectItem key={d.deviceId} value={d.deviceId} className="text-xs">{d.label || 'Camera'}</SelectItem>
+                      <SelectItem key={d.deviceId} value={d.deviceId} className="text-xs focus:bg-blue-600">{d.label || 'Camera'}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <Select value={selectedDevices.audio} onValueChange={(id) => handleDeviceChange('audio', id)}>
-                  <SelectTrigger className="w-9 h-9 p-0 border-none bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center justify-center">
-                    <Volume2 className="h-4 w-4 text-neutral-500" />
+                  <SelectTrigger className="w-12 h-12 p-0 border-none bg-transparent hover:bg-white/10 rounded-xl flex items-center justify-center transition-colors">
+                    <Volume2 className="h-5 w-5 text-neutral-400" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-[#0f0f11] border-white/10 text-white rounded-xl">
                     {devices.audio.map(d => (
-                      <SelectItem key={d.deviceId} value={d.deviceId} className="text-xs">{d.label || 'Microphone'}</SelectItem>
+                      <SelectItem key={d.deviceId} value={d.deviceId} className="text-xs focus:bg-blue-600">{d.label || 'Microphone'}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -250,100 +256,103 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
             </div>
           </Card>
 
-          <div className="flex items-center gap-6 justify-center text-neutral-500 text-xs font-medium uppercase tracking-wider">
-            <span className="flex items-center gap-2">
+          <div className="flex items-center gap-8 justify-center text-neutral-500 text-[10px] font-black uppercase tracking-[0.2em]">
+            <span className="flex items-center gap-2.5">
               <ShieldCheck className="h-4 w-4 text-emerald-500" />
-              Secure Link
+              Encrypted Stream
             </span>
-            <span className="flex items-center gap-2">
+            <span className="flex items-center gap-2.5">
               <CheckCircle2 className="h-4 w-4 text-blue-500" />
-              Devices Verified
+              System Verified
             </span>
           </div>
         </motion.div>
 
         {/* Right: Info & Join (2 Columns) */}
         <motion.div 
-          initial={{ x: 20, opacity: 0 }}
+          initial={{ x: 30, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="lg:col-span-2 space-y-6"
+          transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+          className="lg:col-span-2"
         >
-          <Card className="jx-glass p-8 space-y-6">
-            <div className="space-y-4">
+          <Card className="jx-glass p-10 space-y-8 shadow-[0_30px_60px_rgba(0,0,0,0.4)] ring-1 ring-white/5 relative overflow-hidden">
+            {/* Glossy overlay */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl rounded-full" />
+            
+            <div className="space-y-5">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 dark:text-blue-400 dark:border-blue-900 dark:bg-blue-900/20 px-3 py-0.5 rounded-full text-xs font-medium">
-                  {interview?.type || 'Technical'}
+                <Badge variant="outline" className="text-blue-400 border-blue-400/30 bg-blue-400/5 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                  {interview?.type || 'Technical'} Session
                 </Badge>
-                {isConnected && (
-                   <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-900 dark:bg-emerald-900/20 px-3 py-0.5 rounded-full text-xs font-medium">
-                    Ready
-                  </Badge>
-                )}
               </div>
-              <h2 className="text-2xl font-semibold tracking-tight">{interview?.title || 'Interview Session'}</h2>
-              <div className="flex items-center gap-3 text-neutral-600 dark:text-neutral-400">
-                <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-full">
-                  <User className="h-4 w-4" />
+              <h2 className="text-3xl font-black tracking-tighter text-white">{interview?.title || 'Interview Session'}</h2>
+              <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
+                <div className="p-3 bg-blue-600/20 text-blue-400 rounded-xl shadow-inner">
+                  <User className="h-5 w-5" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-xs text-neutral-500">Host</span>
-                  <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{interview?.instructor?.username || 'JudgeX Host'}</span>
+                  <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">Host</span>
+                  <span className="text-base font-bold text-white leading-none mt-1">{interview?.instructor?.username || 'JudgeX Host'}</span>
                 </div>
               </div>
             </div>
 
-            <Separator />
+            <Separator className="bg-white/5" />
             
             {role === 'interviewer' && (
-              <div className="space-y-3 p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-800">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-blue-500" />
-                  <Label className="text-xs font-semibold">Share with Candidate</Label>
+              <div className="space-y-4 p-6 bg-blue-500/5 rounded-2xl border border-blue-500/10">
+                <div className="flex items-center gap-2.5">
+                  <AlertCircle className="h-4 w-4 text-blue-400" />
+                  <Label className="text-[11px] font-black uppercase tracking-widest text-blue-400">Share with Candidate</Label>
                 </div>
-                <p className="text-xs text-neutral-500">Send this link to the person you are interviewing. They do not need to log in.</p>
+                <p className="text-xs text-neutral-400 font-medium leading-relaxed">Send this unique link to the person you are interviewing. No login required.</p>
                 <Button 
                   variant="outline" 
                   onClick={copyInviteLink}
-                  className="w-full"
+                  className="w-full h-11 rounded-xl bg-transparent border-white/10 hover:bg-white/5 text-white font-bold text-xs uppercase tracking-tight"
                 >
                   <Copy className="h-4 w-4 mr-2" />
-                  Copy Invite Link
+                  Copy Link
                 </Button>
               </div>
             )}
 
             {role === 'candidate' && (
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Your Name</Label>
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-[0.1em] text-neutral-500 ml-1">Your Full Name</Label>
                   <Input 
-                    placeholder="Full Name" 
+                    placeholder="e.g. John Doe" 
                     value={name}
                     onChange={e => setName(e.target.value)}
+                    className="h-12 rounded-xl bg-white/5 border-white/5 text-white placeholder:text-neutral-600 focus:ring-blue-500/40"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Email Address</Label>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-[0.1em] text-neutral-500 ml-1">Email Address</Label>
                   <Input 
-                    placeholder="name@example.com" 
+                    placeholder="name@company.com" 
                     value={email}
                     onChange={e => setEmail(e.target.value)}
+                    className="h-12 rounded-xl bg-white/5 border-white/5 text-white placeholder:text-neutral-600 focus:ring-blue-500/40"
                   />
                 </div>
               </div>
             )}
 
-              <Button 
-                onClick={handleJoin}
-                className="w-full h-12 text-base font-medium transition-all"
-              >
-                Join Room
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
+            <Button 
+              onClick={handleJoin}
+              className="w-full h-14 text-sm font-black uppercase tracking-[0.15em] bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-2xl shadow-blue-600/30 group relative overflow-hidden"
+            >
+              <span className="relative z-10 flex items-center justify-center">
+                Enter Room
+                <ArrowRight className="h-5 w-5 ml-3 transition-transform duration-300 group-hover:translate-x-1" />
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-indigo-400/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </Button>
             
-            <p className="text-xs text-center text-neutral-500">
-              Secured & Powered by JudgeX
+            <p className="text-[10px] text-center text-neutral-600 font-black uppercase tracking-widest">
+              JudgeX Secure Environment
             </p>
           </Card>
         </motion.div>
