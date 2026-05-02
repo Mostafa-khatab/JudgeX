@@ -59,6 +59,11 @@ const api = {
     const res = await httpRequest.post(`/interview/${id}/state`, state, config);
     return res.data;
   },
+  addQuestion: async (id, data, candidateToken) => {
+    const config = candidateToken ? { headers: { 'x-candidate-token': candidateToken } } : {};
+    const res = await httpRequest.post(`/interview/${id}/questions`, data, config);
+    return res.data;
+  },
   runCode: async (code, language, input, candidateToken) => {
     const config = candidateToken ? { headers: { 'x-candidate-token': candidateToken } } : {};
     const res = await httpRequest.post(`/code/interview-run`, { code, language, input }, config);
@@ -259,7 +264,7 @@ const InterviewRoom = () => {
   const handleAddQuestion = useCallback(async (problemId) => {
     try {
       if (!interview?._id) return;
-      const res = await api.addQuestion(interview._id, problemId);
+      const res = await api.addQuestion(interview._id, { problemId }, candidateToken);
       if (res?.success) {
         toast.success('Question added');
         await refreshInterview();
@@ -269,12 +274,39 @@ const InterviewRoom = () => {
     } catch (err) {
       toast.error(err?.response?.data?.msg || err?.response?.data?.message || err.message || 'Failed to add question');
     }
-  }, [interview?._id, refreshInterview]);
+  }, [interview?._id, refreshInterview, candidateToken]);
 
-  const handleSwitchProblem = useCallback((problemId) => {
+  const handleAddWhiteboard = useCallback(async () => {
+    try {
+      if (!interview?._id) return;
+      const idx = (interview?.questions?.filter(q => q.isCustom).length || 0) + 1;
+      const res = await api.addQuestion(interview._id, { 
+        customContent: { 
+          title: `WhiteBoard ${idx}`,
+          description: 'Collaborative space for free-form coding and discussion.'
+        } 
+      }, candidateToken);
+      if (res?.success) {
+        toast.success('Whiteboard added');
+        await refreshInterview();
+      }
+    } catch (err) {
+      toast.error('Failed to add whiteboard');
+    }
+  }, [interview?._id, interview?.questions, refreshInterview, candidateToken]);
+
+  const handleSwitchProblem = useCallback(async (problemId) => {
     if (!interview?._id || !problemId) return;
-    emit('interview-problem-switch', { interviewId: interview._id, problemId, language });
-  }, [emit, interview?._id, language]);
+    try {
+      const res = await api.updateState(interview._id, { activeProblemId: problemId }, candidateToken);
+      if (res?.success) {
+        emit('interview-problem-switch', { interviewId: interview._id, problemId, language });
+        await refreshInterview();
+      }
+    } catch (err) {
+      toast.error('Failed to switch problem');
+    }
+  }, [interview?._id, language, emit, refreshInterview, candidateToken]);
 
   // Sync private notes
   useEffect(() => {
@@ -366,16 +398,37 @@ const InterviewRoom = () => {
         >
           {/* Header */}
           <header className="h-14 px-4 shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-between z-50">
-             <div className="flex items-center gap-4">
-               <div className="flex items-center gap-2 text-white/60 hover:text-white transition-colors cursor-pointer">
-                  <ChevronRight className="h-4 w-4 rotate-180" />
-                  <div className="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-2xl border border-white/10 backdrop-blur-md">
-                     <Monitor className="h-4 w-4" />
-                     <span className="text-sm font-medium">WhiteBoard 1</span>
-                     <ChevronRight className="h-3 w-3 rotate-90 opacity-40" />
-                  </div>
-               </div>
-              <Plus className="h-4 w-4 text-white/40 cursor-pointer" />
+             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-[50%] py-1">
+               <AnimatePresence mode="popover">
+                 {interview?.questions?.map((q, idx) => {
+                   const isSelected = activeProblem?._id === (q.problemId?._id || q.problemId);
+                   const displayName = q.isCustom ? q.customContent?.title || `WhiteBoard ${idx + 1}` : q.problemName;
+                   
+                   return (
+                     <motion.div
+                       key={q._id || idx}
+                       initial={{ opacity: 0, x: -10 }}
+                       animate={{ opacity: 1, x: 0 }}
+                       onClick={() => handleSwitchProblem(q.problemId?._id || q.problemId || q._id)}
+                       className={`flex items-center gap-2 px-4 py-1.5 rounded-xl border cursor-pointer transition-all whitespace-nowrap group ${
+                         isSelected 
+                           ? 'bg-white/15 border-white/20 text-white shadow-lg' 
+                           : 'bg-white/5 border-white/5 text-white/40 hover:text-white/60 hover:bg-white/10'
+                       }`}
+                     >
+                        {q.isCustom ? <Monitor className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
+                        <span className="text-xs font-bold tracking-tight">{displayName}</span>
+                        {role === 'interviewer' && (
+                          <ChevronRight className={`h-3 w-3 rotate-90 transition-opacity ${isSelected ? 'opacity-40' : 'opacity-0 group-hover:opacity-20'}`} />
+                        )}
+                     </motion.div>
+                   );
+                 })}
+               </AnimatePresence>
+               
+               {role === 'interviewer' && (
+                 <AddProblemDialog onAdd={handleAddQuestion} onAddWhiteboard={handleAddWhiteboard} api={api} />
+               )}
              </div>
 
              <div className="flex items-center gap-8">
@@ -605,11 +658,28 @@ const AddProblemDialog = ({ onAdd, api }) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl bg-neutral-100 dark:bg-white/5 border-none">
-          <Plus className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
+      <div className="flex items-center gap-2">
+        <DialogTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white border border-white/5 transition-all">
+            <Plus className="h-4 w-4" />
+          </Button>
+        </DialogTrigger>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onAddWhiteboard}
+                className="h-8 w-8 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white border border-white/5 transition-all"
+              >
+                <Monitor className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="bg-neutral-900 border-white/10 text-white text-[10px] font-bold uppercase tracking-widest">Add Whiteboard</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
       <DialogContent className="sm:max-w-[560px] jx-glass-strong border-white/10 text-white rounded-3xl p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="text-xl font-black tracking-tight">Add Problem</DialogTitle>

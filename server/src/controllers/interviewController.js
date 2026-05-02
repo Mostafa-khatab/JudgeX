@@ -491,6 +491,15 @@ const updateState = async (req, res) => {
         return sendError(res, 'Invalid problem ID', 400);
       }
       interview.state.activeProblemId = activeProblemId;
+      
+      const qIndex = interview.questions.findIndex(q => 
+        (q.problemId && q.problemId.toString() === activeProblemId.toString()) || 
+        q._id.toString() === activeProblemId.toString()
+      );
+      if (qIndex !== -1) {
+        interview.questions[qIndex].isVisible = true;
+      }
+
     }
 
     if (remainingTime !== undefined && remainingTime >= 0) {

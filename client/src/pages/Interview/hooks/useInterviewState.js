@@ -17,14 +17,18 @@ export const useInterviewState = (initialData, socketHandlers, apiHandlers) => {
     lastEmittedCode.current = nextCode;
     setLanguage(nextLang);
 
-    const activeId = initialData?.state?.activeProblemId;
-    const visibleQuestion = initialData?.questions?.find(q => q?.isVisible);
-
     if (activeId && initialData?.questions?.length) {
-      const matched = initialData.questions.find(q => q?.problemId?._id === activeId || q?.problemId === activeId);
-      setActiveProblem(matched?.problemId || visibleQuestion?.problemId || null);
+      const matched = initialData.questions.find(q => 
+        (q.problemId?._id || q.problemId) === activeId || q._id === activeId
+      );
+      
+      if (matched) {
+        setActiveProblem(matched.isCustom ? { ...matched.customContent, _id: matched._id, isCustom: true } : matched.problemId);
+      } else {
+        setActiveProblem(visibleQuestion?.isCustom ? { ...visibleQuestion.customContent, _id: visibleQuestion._id, isCustom: true } : visibleQuestion?.problemId || null);
+      }
     } else {
-      setActiveProblem(visibleQuestion?.problemId || null);
+      setActiveProblem(visibleQuestion?.isCustom ? { ...visibleQuestion.customContent, _id: visibleQuestion._id, isCustom: true } : visibleQuestion?.problemId || null);
     }
   }, [initialData?._id]);
 
