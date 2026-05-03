@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   MessageSquare,
   ChevronLeft, ChevronRight, History,
-  Star, User, Calendar
+  Star, User, Calendar, Play, AlertTriangle, CheckCircle2, XCircle
 } from 'lucide-react';
 import { Editor } from '@monaco-editor/react';
 import { Card } from '~/components/ui/card';
@@ -17,6 +17,25 @@ const ReviewMode = ({ interview, role }) => {
   const snapshots = interview?.snapshots || [];
   const currentSnapshot = snapshots[activeSnapshotIdx] || { code: interview?.state?.code, language: interview?.state?.language };
 
+  // Extract code run evaluation entries from snapshots
+  const evaluationRecords = useMemo(() => {
+    return snapshots
+      .map((snap, idx) => {
+        if (!snap.note) return null;
+        const match = snap.note.match(/^\[(success|error|compile_error)\]\s*(.*)/i);
+        if (!match) return null;
+        return {
+          idx,
+          status: match[1].toLowerCase(),
+          detail: match[2] || '',
+          timestamp: snap.timestamp,
+          language: snap.language,
+          code: snap.code,
+        };
+      })
+      .filter(Boolean);
+  }, [snapshots]);
+
   const formatDate = (date) => {
     if (!date) return '...';
     try {
@@ -26,6 +45,21 @@ const ReviewMode = ({ interview, role }) => {
     } catch (e) {
       return '...';
     }
+  };
+
+  const formatTime = (date) => {
+    if (!date) return '...';
+    try {
+      return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    } catch (e) {
+      return '...';
+    }
+  };
+
+  const statusConfig = {
+    success: { label: 'Success', icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-400/10 border-emerald-400/20' },
+    error: { label: 'Runtime Error', icon: XCircle, color: 'text-rose-400', bg: 'bg-rose-400/10 border-rose-400/20' },
+    compile_error: { label: 'Compile Error', icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-400/10 border-amber-400/20' },
   };
 
   return (
@@ -144,17 +178,24 @@ const ReviewMode = ({ interview, role }) => {
           </div>
         </div>
 
-        {/* Right: Info & Chat (30%) */}
+        {/* Right: Info, Evaluation & Chat (30%) */}
         <div className="flex-1 flex flex-col gap-6 min-w-0">
           <Tabs defaultValue="info" className="flex-1 flex flex-col overflow-hidden jx-glass shadow-2xl">
             <div className="jx-glass-header px-3 py-3">
               <TabsList className="w-full bg-neutral-100 dark:bg-white/5 rounded-xl p-1">
                 <TabsTrigger value="info" className="flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-white/10">{t('sections.overview')}</TabsTrigger>
+                <TabsTrigger value="evaluation" className="flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-white/10">
+                  Evaluation
+                  {evaluationRecords.length > 0 && (
+                    <Badge className="ml-1.5 h-4 px-1 text-[8px] bg-blue-500 border-none">{evaluationRecords.length}</Badge>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="chat" className="flex-1 rounded-lg text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-white/10">{t('sections.chatLogs')}</TabsTrigger>
               </TabsList>
             </div>
 
             <div className="flex-1 overflow-hidden relative">
+              {/* Overview Tab */}
               <TabsContent value="info" className="h-full m-0 p-6 space-y-6 overflow-y-auto custom-scrollbar">
                 <div className="space-y-6">
                   <div className="flex items-center gap-5 p-5 bg-neutral-50 dark:bg-white/5 rounded-2xl border border-neutral-200 dark:border-white/5 relative overflow-hidden group">
@@ -174,8 +215,8 @@ const ReviewMode = ({ interview, role }) => {
                       <span className="text-xl font-black tabular-nums">{interview?.duration}<span className="text-xs ml-1 text-neutral-500 uppercase">{t('labels.durationUnit')}</span></span>
                     </div>
                     <div className="p-4 rounded-2xl bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/5">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-neutral-500 block mb-1">Result</span>
-                      <Badge className="bg-emerald-500 text-[10px] font-black tracking-widest uppercase">Success</Badge>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-neutral-500 block mb-1">Code Runs</span>
+                      <span className="text-xl font-black tabular-nums">{evaluationRecords.length}</span>
                     </div>
                   </div>
 
@@ -206,6 +247,57 @@ const ReviewMode = ({ interview, role }) => {
                 </div>
               </TabsContent>
 
+              {/* Evaluation Record Tab */}
+              <TabsContent value="evaluation" className="h-full m-0 overflow-hidden flex flex-col relative">
+                <div className="flex-1 p-4 overflow-y-auto space-y-3 custom-scrollbar">
+                  {evaluationRecords.length > 0 ? (
+                    evaluationRecords.map((record, i) => {
+                      const cfg = statusConfig[record.status] || statusConfig.error;
+                      const Icon = cfg.icon;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setActiveSnapshotIdx(record.idx)}
+                          className={`w-full text-left p-4 rounded-2xl border transition-all hover:scale-[1.01] hover:shadow-lg ${cfg.bg} ${
+                            activeSnapshotIdx === record.idx ? 'ring-2 ring-blue-500/40 shadow-md' : ''
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <Icon className={`h-4 w-4 ${cfg.color}`} />
+                              <span className={`text-xs font-black uppercase tracking-widest ${cfg.color}`}>
+                                {cfg.label}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold text-neutral-400 tabular-nums">
+                              {formatTime(record.timestamp)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="text-[9px] h-4 px-1.5 border-white/10 text-neutral-400">
+                              {record.language}
+                            </Badge>
+                            <Play className="h-3 w-3 text-neutral-500" />
+                            <span className="text-[10px] font-bold text-neutral-500">Run #{i + 1}</span>
+                          </div>
+                          {record.detail && (
+                            <p className="text-[11px] text-neutral-400 font-mono truncate leading-relaxed mt-1">
+                              {record.detail.substring(0, 120)}
+                            </p>
+                          )}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center opacity-30 space-y-3">
+                      <Play className="h-8 w-8" />
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em]">No code runs recorded</p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Chat Logs Tab */}
               <TabsContent value="chat" className="h-full m-0 overflow-hidden flex flex-col relative">
                 <div className="flex-1 p-6 overflow-y-auto space-y-6 custom-scrollbar bg-neutral-50/50 dark:bg-black/20">
                   {interview?.messages?.map((msg, i) => (
@@ -241,4 +333,3 @@ const ReviewMode = ({ interview, role }) => {
 };
 
 export default ReviewMode;
-const Separator = ({ className }) => <div className={`h-px w-full ${className}`} />;

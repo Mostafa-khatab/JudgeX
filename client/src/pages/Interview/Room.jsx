@@ -1,14 +1,17 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router';
 import { toast } from 'react-toastify';
 import { 
   Share2, Code2, MessageSquare, Video as VideoIcon, 
   Clock, LogOut, FileText, ChevronRight,
-  Monitor, Info, AlertCircle, Timer as TimerIcon, Users
+  Monitor, Info, AlertCircle, Timer as TimerIcon, Users,
+  Play, Pause, RotateCcw
 } from 'lucide-react';
-import Countdown from 'react-countdown';
 import httpRequest from '~/utils/httpRequest';
+import {
+  Popover, PopoverContent, PopoverTrigger
+} from '~/components/ui/popover';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '~/components/ui/button';
@@ -78,6 +81,22 @@ const api = {
     const res = await httpRequest.post(`/interview/${id}/end`);
     return res.data;
   },
+  startTimer: async (id) => {
+    const res = await httpRequest.post(`/interview/${id}/start`);
+    return res.data;
+  },
+  pauseTimer: async (id, remainingTime) => {
+    const res = await httpRequest.post(`/interview/${id}/pause`, { remainingTime });
+    return res.data;
+  },
+  resumeTimer: async (id) => {
+    const res = await httpRequest.post(`/interview/${id}/resume`);
+    return res.data;
+  },
+  takeSnapshot: async (id, note) => {
+    const res = await httpRequest.post(`/interview/${id}/snapshot`, { note });
+    return res.data;
+  },
   searchProblems: async (q) => {
     const res = await httpRequest.get(`/problem/search-for-interview`, { params: { q } });
     return res.data;
@@ -102,6 +121,13 @@ const InterviewRoom = () => {
   const [peerInfo, setPeerInfo] = useState(null);
   const [privateNotes, setPrivateNotes] = useState(() => localStorage.getItem(`notes_${id}`) || '');
   const [remoteCursors, setRemoteCursors] = useState([]);
+
+  // Timer state
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [showTimerMenu, setShowTimerMenu] = useState(false);
+  const timerIntervalRef = useRef(null);
+  const [codeRunEvents, setCodeRunEvents] = useState([]);
 
   // 1. Socket Hook
   const { emit, on, isConnected: isSocketConnected } = useSocket(interview?._id, role, {
@@ -184,13 +210,38 @@ const InterviewRoom = () => {
     setOutput('');
     try {
       const res = await api.runCode(code, language, '', candidateToken);
+      let runStatus = 'success';
+      let runOutput = '';
       if (res.success) {
-        setOutput(res.output || t('messages.codeExecutedSuccessfully'));
+        runOutput = res.output || t('messages.codeExecutedSuccessfully');
+        setOutput(runOutput);
+        // Detect compile errors in output
+        if (runOutput.toLowerCase().includes('compile error') || runOutput.toLowerCase().includes('compilation')) {
+          runStatus = 'compile_error';
+        }
       } else {
+        runStatus = 'error';
+        runOutput = res.message || 'Error';
         setOutput(t('errors.errorPrefix') + res.message);
       }
+      // Emit code run event for notification + snapshot
+      const problemName = activeProblem?.name || activeProblem?.title || 'Unknown';
+      emit('interview-code-run', {
+        interviewId: interview?._id,
+        language,
+        status: runStatus,
+        output: runOutput?.substring(0, 300),
+        problemName
+      });
     } catch (err) {
       setOutput(t('errors.failedRunCodeFinal'));
+      emit('interview-code-run', {
+        interviewId: interview?._id,
+        language,
+        status: 'error',
+        output: 'Execution failed',
+        problemName: activeProblem?.name || 'Unknown'
+      });
     } finally {
       setIsRunning(false);
     }
@@ -326,16 +377,148 @@ const InterviewRoom = () => {
     });
     const u5 = on('interview-finished', () => {
       setInterview(prev => ({ ...prev, status: 'finished' }));
+      setTimerRunning(false);
       toast.info('The interview has ended.');
     });
+    // Timer sync from peer
+    const u6 = on('status-updated', ({ status, remainingTime }) => {
+      if (status === 'active') {
+        setTimerRunning(true);
+        if (remainingTime !== undefined) setRemainingSeconds(remainingTime);
+      } else if (status === 'paused') {
+        setTimerRunning(false);
+        if (remainingTime !== undefined) setRemainingSeconds(remainingTime);
+      }
+    });
+    // Code run notification
+    const u7 = on('code-run-result', (data) => {
+      setCodeRunEvents(prev => [...prev, data]);
+      if (data.role !== role) {
+        const statusColors = { success: '✅', error: '❌', compile_error: '⚠️' };
+        const icon = statusColors[data.status] || '🔵';
+        toast.info(`${icon} ${data.role === 'candidate' ? 'Candidate' : 'Interviewer'} ran code on ${data.problemName} — ${data.status.replace('_', ' ')}`, {
+          autoClose: 5000
+        });
+      }
+    });
 
-    return () => { u1(); u2(); u3(); u4(); u5(); };
-  }, [on, t]);
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); };
+  }, [on, t, role]);
 
-  const timerDeadline = useMemo(() => {
-    if (!interview?.startedAt) return Date.now() + (interview?.duration || 60) * 60 * 1000;
-    return new Date(interview.startedAt).getTime() + (interview.duration || 60) * 60 * 1000;
-  }, [interview?.startedAt, interview?.duration]);
+  // Initialize timer from interview state
+  useEffect(() => {
+    if (!interview) return;
+    const status = interview.status;
+    const rem = interview.state?.remainingTime;
+    const duration = (interview.duration || 60) * 60;
+
+    if (status === 'active' && interview.startedAt) {
+      // Calculate how much time has passed since startedAt
+      // If remainingTime is saved in DB, use it as base
+      if (rem !== null && rem !== undefined && rem > 0) {
+        // When active, remainingTime was set at start. Calculate elapsed since.
+        setRemainingSeconds(rem);
+      } else {
+        setRemainingSeconds(duration);
+      }
+      setTimerRunning(true);
+    } else if (status === 'paused' && rem !== null && rem !== undefined) {
+      setRemainingSeconds(rem);
+      setTimerRunning(false);
+    } else {
+      // pending or no state
+      setRemainingSeconds(duration);
+      setTimerRunning(false);
+    }
+  }, [interview?._id, interview?.status, interview?.state?.remainingTime, interview?.duration]);
+
+  // Timer tick
+  useEffect(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    if (timerRunning && remainingSeconds > 0) {
+      timerIntervalRef.current = setInterval(() => {
+        setRemainingSeconds(prev => {
+          if (prev <= 1) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+            setTimerRunning(false);
+            toast.warning('⏰ Time is up!');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    };
+  }, [timerRunning, remainingSeconds > 0]);
+
+  // Timer controls (interviewer only)
+  const handleStartTimer = useCallback(async () => {
+    if (!interview?._id) return;
+    try {
+      if (interview.status === 'paused') {
+        const res = await api.resumeTimer(interview._id);
+        if (res?.success) {
+          setTimerRunning(true);
+          setInterview(prev => ({ ...prev, status: 'active' }));
+          emit('interview-status-update', { interviewId: interview._id, status: 'active', remainingTime: remainingSeconds });
+        }
+      } else {
+        const res = await api.startTimer(interview._id);
+        if (res?.success) {
+          setTimerRunning(true);
+          setInterview(prev => ({ ...prev, status: 'active', startedAt: new Date().toISOString() }));
+          emit('interview-status-update', { interviewId: interview._id, status: 'active', remainingTime: remainingSeconds });
+        }
+      }
+    } catch (err) {
+      toast.error('Failed to start timer');
+    }
+  }, [interview?._id, interview?.status, emit, remainingSeconds]);
+
+  const handlePauseTimer = useCallback(async () => {
+    if (!interview?._id) return;
+    try {
+      const res = await api.pauseTimer(interview._id, remainingSeconds);
+      if (res?.success) {
+        setTimerRunning(false);
+        setInterview(prev => ({ ...prev, status: 'paused' }));
+        emit('interview-status-update', { interviewId: interview._id, status: 'paused', remainingTime: remainingSeconds });
+      }
+    } catch (err) {
+      toast.error('Failed to pause timer');
+    }
+  }, [interview?._id, remainingSeconds, emit]);
+
+  const handleResetTimer = useCallback(async () => {
+    if (!interview?._id) return;
+    const fullDuration = (interview.duration || 60) * 60;
+    try {
+      const res = await api.pauseTimer(interview._id, fullDuration);
+      if (res?.success) {
+        setRemainingSeconds(fullDuration);
+        setTimerRunning(false);
+        setInterview(prev => ({ ...prev, status: 'paused' }));
+        emit('interview-status-update', { interviewId: interview._id, status: 'paused', remainingTime: fullDuration });
+        toast.success('Timer reset');
+      }
+    } catch (err) {
+      toast.error('Failed to reset timer');
+    }
+  }, [interview?._id, interview?.duration, emit]);
+
+  // Format seconds to HH:MM:SS
+  const formatTimer = (totalSec) => {
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
 
   if (loading) {
     return (
@@ -428,18 +611,81 @@ const InterviewRoom = () => {
              </div>
 
              <div className="flex items-center gap-8">
-                <div className="flex items-center gap-2 text-white/60 font-mono text-sm tabular-nums">
-                  <Clock className="h-4 w-4" />
-                 <Countdown 
-                    date={timerDeadline} 
-                    renderer={({ hours, minutes, seconds }) => (
-                      <span>{String(hours).padStart(2, '0')}:{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}</span>
-                    )}
-                  />
-               </div>
+                <div className={`flex items-center gap-2 font-mono text-sm tabular-nums ${
+                  timerRunning 
+                    ? remainingSeconds <= 300 
+                      ? 'text-rose-400' 
+                      : 'text-emerald-400' 
+                    : 'text-amber-400'
+                }`}>
+                  <div className={`h-2 w-2 rounded-full ${
+                    timerRunning 
+                      ? remainingSeconds <= 300 
+                        ? 'bg-rose-400 animate-pulse' 
+                        : 'bg-emerald-400' 
+                      : 'bg-amber-400'
+                  }`} />
+                  <span className="font-black">{formatTimer(remainingSeconds)}</span>
+                </div>
+
+                {role === 'interviewer' ? (
+                  <div className="relative">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10"
+                      onClick={() => setShowTimerMenu(!showTimerMenu)}
+                    >
+                      <TimerIcon className="h-4 w-4" />
+                    </Button>
+                    {showTimerMenu && (
+                      <div className="absolute top-[120%] right-0 w-56 bg-[#121214] border border-white/10 text-white rounded-2xl p-4 space-y-3 z-[9999] shadow-2xl">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-white/50">Timer Controls</div>
+                        <div className={`text-2xl font-black font-mono text-center tabular-nums ${
+                          timerRunning ? 'text-emerald-400' : 'text-amber-400'
+                        }`}>
+                          {formatTimer(remainingSeconds)}
+                        </div>
+                        <div className="flex gap-2">
+                        {timerRunning ? (
+                          <Button
+                            onClick={handlePauseTimer}
+                            className="flex-1 h-10 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase tracking-widest"
+                          >
+                            <Pause className="h-3.5 w-3.5 mr-1.5" />
+                            Pause
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={handleStartTimer}
+                            className="flex-1 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-widest"
+                          >
+                            <Play className="h-3.5 w-3.5 mr-1.5" />
+                            {interview?.status === 'paused' ? 'Resume' : 'Start'}
+                          </Button>
+                        )}
+                        <Button
+                          onClick={() => { handleResetTimer(); setShowTimerMenu(false); }}
+                          variant="outline"
+                          className="h-10 w-10 rounded-xl border-white/10 text-white/60 hover:text-white hover:bg-white/10"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <div className="text-[9px] text-white/30 text-center font-bold uppercase tracking-widest">
+                        {timerRunning ? '● Running' : interview?.status === 'paused' ? '⏸ Paused' : '○ Not Started'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                ) : (
+                  <div className="text-[9px] text-white/30 font-bold uppercase tracking-widest">
+                    {timerRunning ? '● Live' : '⏸ Paused'}
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3">
                   <Button variant="ghost" size="icon" className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10"><Share2 className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10"><TimerIcon className="h-4 w-4" /></Button>
                   <div className="size-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-lg shadow-blue-500/25">B</div>
                   <Button 
                     onClick={() => {

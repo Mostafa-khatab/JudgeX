@@ -211,7 +211,6 @@ io.on('connection', (socket) => {
 
 	socket.on('interview-code-update', async ({ interviewId, code, problemId, language }) => {
 		const room = `interview:${interviewId}`;
-		// Optional: Add DB check if high security is needed, or use a local cache
 		socket.to(room).emit('code-updated', { code, problemId, language, from: socket.id });
 	});
 
@@ -233,6 +232,26 @@ io.on('connection', (socket) => {
 	socket.on('interview-paste-event', ({ interviewId, problemId, contentLength }) => {
 		const room = `interview:${interviewId}`;
 		socket.to(room).emit('paste-detected', { problemId, contentLength });
+	});
+
+	// Code run notification + auto-snapshot
+	socket.on('interview-code-run', async ({ interviewId, language, status, output, problemName }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('code-run-result', {
+			role: socket.role || 'unknown',
+			language, status, output, problemName,
+			timestamp: new Date()
+		});
+		try {
+			const Interview = (await import('./models/interview.js')).default;
+			const interview = await Interview.findById(interviewId);
+			if (interview && interview.status !== 'finished') {
+				const note = `[${status}] ${problemName || 'Unknown'} (${language}) — ${(output || '').substring(0, 200)}`;
+				await interview.addSnapshot(interview.state.code, interview.state.language || language, interview.state.activeProblemId, note, true);
+			}
+		} catch (e) {
+			console.error('[Socket] Failed to save code-run snapshot:', e);
+		}
 	});
 
 	socket.on('interview-focus-event', ({ interviewId, type }) => {

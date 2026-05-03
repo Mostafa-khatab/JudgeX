@@ -4,8 +4,11 @@ import axios from 'axios';
 const JDOODLE_LANGUAGES = {
 	'python3': { language: 'python3', versionIndex: '5' },
 	'python2': { language: 'python2', versionIndex: '0' },
+	'python': { language: 'python3', versionIndex: '5' },
 	'c': { language: 'c', versionIndex: '5' },
 	'c11': { language: 'c', versionIndex: '5' },
+	'cpp': { language: 'cpp17', versionIndex: '1' },
+	'c++': { language: 'cpp17', versionIndex: '1' },
 	'c++11': { language: 'cpp14', versionIndex: '4' },
 	'c++14': { language: 'cpp14', versionIndex: '4' },
 	'c++17': { language: 'cpp17', versionIndex: '1' },

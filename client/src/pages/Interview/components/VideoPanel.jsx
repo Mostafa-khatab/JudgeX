@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { 
   Video, VideoOff, Mic, MicOff, 
-  Monitor, PhoneOff, User, LogOut
+  Monitor, PhoneOff, User, LogOut, RefreshCw
 } from 'lucide-react';
 import { Button } from '~/components/ui/button';
 import { Badge } from '~/components/ui/badge';
@@ -11,6 +11,7 @@ const VideoPanel = ({
   isAudioEnabled, isVideoEnabled,
   toggleAudio, toggleVideo, initiateCall,
   isConnected, // WebRTC status
+  isReconnecting, // Reconnecting status
   isSocketConnected, // Socket status
   peerInfo,
   remoteMediaState,
@@ -66,7 +67,13 @@ const VideoPanel = ({
         {/* Overlay Info */}
         <div className="absolute top-4 left-4 flex items-center gap-2">
           <Badge className="bg-black/40 hover:bg-black/60 backdrop-blur-md border-white/10 text-white py-1 px-3">
-            <div className={`h-1.5 w-1.5 rounded-full mr-2 ${isConnected ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'bg-neutral-400'}`} />
+            <div className={`h-1.5 w-1.5 rounded-full mr-2 ${
+              isConnected 
+                ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' 
+                : isReconnecting 
+                  ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)] animate-pulse' 
+                  : 'bg-neutral-400'
+            }`} />
             <span className="truncate max-w-[120px] font-semibold">{peerInfo?.name || 'Remote Peer'}</span>
           </Badge>
           {!remoteMediaState?.audio && (
@@ -76,11 +83,17 @@ const VideoPanel = ({
           )}
         </div>
 
-        {/* Live Indicator */}
+        {/* Connection Status */}
         {isConnected && (
           <div className="absolute top-4 right-4 flex items-center gap-2 bg-rose-600/90 text-white px-2 py-0.5 rounded text-[10px] font-bold tracking-tighter uppercase backdrop-blur-sm">
             <div className="jx-pulse-dot bg-white shadow-none h-1.5 w-1.5" />
             Live
+          </div>
+        )}
+        {isReconnecting && (
+          <div className="absolute top-4 right-4 flex items-center gap-2 bg-amber-600/90 text-white px-2 py-0.5 rounded text-[10px] font-bold tracking-tighter uppercase backdrop-blur-sm">
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            Reconnecting
           </div>
         )}
       </div>
@@ -156,11 +169,15 @@ const VideoPanel = ({
             </Button>
             <Button
               variant="outline"
-              className="w-10 h-9 rounded-2xl text-white/70 hover:text-white border-white/10 bg-white/5 hover:bg-white/10"
+              className={`w-10 h-9 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 ${
+                isReconnecting 
+                  ? 'text-amber-400 animate-pulse' 
+                  : 'text-white/70 hover:text-white'
+              }`}
               onClick={initiateCall}
               title="Reconnect"
             >
-              <PhoneOff className="h-3.5 w-3.5 rotate-[135deg]" />
+              <PhoneOff className={`h-3.5 w-3.5 rotate-[135deg] ${isReconnecting ? 'animate-spin' : ''}`} />
             </Button>
           </div>
 
