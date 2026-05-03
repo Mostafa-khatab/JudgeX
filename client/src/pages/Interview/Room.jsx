@@ -687,6 +687,26 @@ const InterviewRoom = () => {
                 <div className="flex items-center gap-3">
                   <Button variant="ghost" size="icon" className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10"><Share2 className="h-4 w-4" /></Button>
                   <div className="size-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-lg shadow-blue-500/25">B</div>
+                  
+                  {role === 'interviewer' && (
+                    <Button 
+                      onClick={async () => {
+                        if (!window.confirm('Are you sure you want to end this interview?')) return;
+                        try {
+                          await api.endInterview(interview._id);
+                          toast.success('Interview ended');
+                          setInterview(prev => ({ ...prev, status: 'finished' }));
+                        } catch(err) {
+                          toast.error('Failed to end interview');
+                        }
+                      }}
+                      className="h-9 px-4 bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 border border-rose-500/20 rounded-2xl text-sm font-bold flex items-center gap-2 backdrop-blur-md"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      End
+                    </Button>
+                  )}
+
                   <Button 
                     onClick={() => {
                        const url = `${window.location.origin}/interview/join/${inviteToken || interview?.inviteToken}`;

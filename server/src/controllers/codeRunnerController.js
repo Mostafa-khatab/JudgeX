@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { runCodeLocally } from '../utils/localCodeRunner.js';
 
 // JDoodle language mapping
 const JDOODLE_LANGUAGES = {
@@ -22,88 +23,51 @@ export const runCode = async (req, res) => {
 	try {
 		const { code, language, input } = req.body;
 
-		console.log('Code Runner Request:', { language, codeLength: code?.length, hasInput: !!input });
+		console.log('Code Runner Request (Local):', { language, codeLength: code?.length, hasInput: !!input });
 
 		if (!code || !code.trim()) {
 			return res.status(400).json({ msg: 'Code is required' });
 		}
 
-		const langConfig = JDOODLE_LANGUAGES[language];
-		if (!langConfig) {
-			return res.status(400).json({ msg: `Unsupported language: ${language}` });
-		}
-
-		// Gather all available JDoodle keys from environment variables
-		const jdoodleKeys = [];
-		let i = 1;
-		while (process.env[`JDOODLE_CLIENT_ID_${i}`] && process.env[`JDOODLE_CLIENT_SECRET_${i}`]) {
-			jdoodleKeys.push({
-				clientId: process.env[`JDOODLE_CLIENT_ID_${i}`],
-				clientSecret: process.env[`JDOODLE_CLIENT_SECRET_${i}`]
-			});
-			i++;
-		}
-		
-		// Fallback to original variables if array-style not used yet
-		if (jdoodleKeys.length === 0 && process.env.JDOODLE_CLIENT_ID && process.env.JDOODLE_CLIENT_SECRET) {
-			jdoodleKeys.push({
-				clientId: process.env.JDOODLE_CLIENT_ID,
-				clientSecret: process.env.JDOODLE_CLIENT_SECRET
-			});
-		}
-
-		if (jdoodleKeys.length === 0) {
-			return res.status(500).json({ success: false, msg: 'JDoodle API not configured' });
-		}
-
-		// Select a random key to balance the load and save tokens
-		const randomKey = jdoodleKeys[Math.floor(Math.random() * jdoodleKeys.length)];
-
 		try {
-			const startTime = Date.now();
-			const response = await axios.post('https://api.jdoodle.com/v1/execute', {
-				clientId: randomKey.clientId,
-				clientSecret: randomKey.clientSecret,
-				script: code,
-				language: langConfig.language,
-				versionIndex: langConfig.versionIndex,
-				stdin: input || ''
-			}, { timeout: 15000 });
-
-			const elapsed = Date.now() - startTime;
-			const data = response.data;
-
+			const result = await runCodeLocally(code, language, input);
 			return res.status(200).json({
 				success: true,
-				output: data.output || '',
-				error: data.statusCode === 200 ? null : (data.output || 'Execution error'),
-				executionTime: elapsed,
+				output: result.output || '',
+				error: null,
+				executionTime: result.executionTime,
 			});
+		} catch (runErr) {
+			console.error('Local Execution Error:', runErr.message);
 
-		} catch (apiErr) {
-			console.error('JDoodle API Error:', apiErr.message);
-
-			if (apiErr.message && apiErr.message.toLowerCase().includes('timeout')) {
+			let errorMsg = runErr.message;
+			if (errorMsg.includes('Time Limit Exceeded')) {
 				return res.status(200).json({
 					success: true,
 					output: '',
-					error: 'Time Limit Exceeded',
-					executionTime: 15000
+					error: 'Time Limit Exceeded (Infinite loop or took too long)',
+					executionTime: 5000
 				});
 			}
 
-			return res.status(500).json({
-				success: false,
-				msg: 'Remote execution service unavailable',
-				error: apiErr.message
+			if (errorMsg.includes('Compilation Error')) {
+				return res.status(200).json({
+					success: true,
+					output: errorMsg,
+					error: 'Compilation Error',
+					executionTime: 0
+				});
+			}
+
+			return res.status(200).json({
+				success: true,
+				output: errorMsg,
+				error: 'Execution Error',
+				executionTime: 0
 			});
 		}
-	} catch (error) {
-		console.error('Code runner error:', error);
-		return res.status(500).json({
-			success: false,
-			msg: 'Failed to run code',
-			error: error.message
-		});
+	} catch (err) {
+		console.error('Code runner error:', err);
+		return res.status(500).json({ success: false, msg: 'Server error during execution' });
 	}
 };

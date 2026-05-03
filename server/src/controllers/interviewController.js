@@ -414,14 +414,15 @@ const endInterview = async (req, res) => {
     if (io) {
       io.to(`interview:${id}`).emit('interview-finished', {
         status: 'finished',
-        message: 'Interview ended and all data has been deleted.'
+        message: 'Interview has ended. Transitioning to Review Mode.'
       });
-      io.to(`interview:${id}`).disconnectSockets();
+      // Optionally disconnect, but might be useful to stay connected for chat during review?
+      // io.to(`interview:${id}`).disconnectSockets(); 
     }
 
-    await Interview.findByIdAndDelete(id);
+    await Interview.findByIdAndUpdate(id, { $set: { status: 'finished', endedAt: new Date() } });
 
-    return sendSuccess(res, null, 'Interview ended and deleted');
+    return sendSuccess(res, null, 'Interview ended successfully');
   } catch (err) {
     return handleError(res, err, 'EndInterview', 500);
   }

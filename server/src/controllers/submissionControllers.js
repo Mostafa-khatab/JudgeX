@@ -88,17 +88,15 @@ const submissionControllers = {
 			}
 
 			return sendSuccess(res, {
-				submissions: data,
-				stats: {
+				data: data,
+				stat: {
 					status: statusStat,
 					language: languageStat,
 				},
-				pagination: {
-					page: pageNum,
-					pageSize,
-					total: totalCount,
-					maxPage: Math.ceil(totalCount / pageSize),
-				},
+				maxPage: Math.ceil(totalCount / pageSize),
+				page: pageNum,
+				pageSize,
+				total: totalCount,
 			}, 'Submissions retrieved');
 		} catch (err) {
 			return handleError(res, err, 'GetSubmissionList', 400);

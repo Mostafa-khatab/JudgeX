@@ -357,19 +357,19 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     try {
       let pc = pcRef.current;
       if (!pc) {
-        const stream = localStreamRef.current || await startMedia();
+        const stream = localStreamRef.current || await startMedia({
+          audio: isAudioEnabledRef.current,
+          video: isVideoEnabledRef.current
+        });
         pc = createPeerConnection(stream);
       } else if (pc.signalingState !== 'stable') {
         console.warn('[WebRTC] Offer glare detected. signalingState:', pc.signalingState);
-        // If we are not stable, we already have a pending offer. 
-        // Let the interviewer's offer take precedence (candidate ignores, interviewer ignores).
         if (role === 'interviewer') return; 
       }
       
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
       isRemoteDescriptionSet.current = true;
       
-      // Flush ICE queue
       while (iceQueue.current.length > 0) {
         try {
           await pc.addIceCandidate(new RTCIceCandidate(iceQueue.current.shift()));
@@ -559,6 +559,8 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
           } else {
             // Add track to peer connection if no sender exists
             pcRef.current?.addTrack(track, stream);
+            // Trigger renegotiation so the remote peer receives the new track
+            if (isConnected) initiateCall();
           }
           setIsAudioEnabled(true);
           isAudioEnabledRef.current = true;
@@ -574,7 +576,7 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
       interviewId,
       mediaState: { audio: isAudioEnabledRef.current, video: isVideoEnabledRef.current }
     });
-  }, [localStream, isAudioEnabled, isVideoEnabled, interviewId, socketHandlers, startMedia]);
+  }, [localStream, isAudioEnabled, isVideoEnabled, interviewId, socketHandlers, startMedia, isConnected, initiateCall]);
 
   const toggleVideo = useCallback(async () => {
     if (!interviewId) return;
@@ -623,6 +625,7 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
             try { await sender.replaceTrack(track); } catch { /* ignore */ }
           } else {
             pcRef.current?.addTrack(track, stream);
+            if (isConnected) initiateCall();
           }
           setIsVideoEnabled(true);
           isVideoEnabledRef.current = true;
@@ -638,7 +641,7 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
       interviewId,
       mediaState: { audio: isAudioEnabledRef.current, video: isVideoEnabledRef.current }
     });
-  }, [localStream, isAudioEnabled, isVideoEnabled, interviewId, socketHandlers, startMedia]);
+  }, [localStream, isAudioEnabled, isVideoEnabled, interviewId, socketHandlers, startMedia, isConnected, initiateCall]);
 
   // Lifecycle
   useEffect(() => {
