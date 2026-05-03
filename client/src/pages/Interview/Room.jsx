@@ -414,10 +414,7 @@ const InterviewRoom = () => {
     const duration = (interview.duration || 60) * 60;
 
     if (status === 'active' && interview.startedAt) {
-      // Calculate how much time has passed since startedAt
-      // If remainingTime is saved in DB, use it as base
       if (rem !== null && rem !== undefined && rem > 0) {
-        // When active, remainingTime was set at start. Calculate elapsed since.
         setRemainingSeconds(rem);
       } else {
         setRemainingSeconds(duration);
@@ -427,7 +424,6 @@ const InterviewRoom = () => {
       setRemainingSeconds(rem);
       setTimerRunning(false);
     } else {
-      // pending or no state
       setRemainingSeconds(duration);
       setTimerRunning(false);
     }
@@ -581,25 +577,33 @@ const InterviewRoom = () => {
              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-[50%] py-1">
                <AnimatePresence mode="popover">
                  {interview?.questions?.map((q, idx) => {
-                   const isSelected = activeProblem?._id === (q.problemId?._id || q.problemId);
-                   const displayName = q.isCustom ? q.customContent?.title || `WhiteBoard ${idx + 1}` : q.problemName;
-                   
-                   return (
-                     <motion.div
-                       key={q._id || idx}
-                       initial={{ opacity: 0, x: -10 }}
-                       animate={{ opacity: 1, x: 0 }}
-                       className={`flex items-center gap-2 px-4 py-1.5 rounded-xl border transition-all whitespace-nowrap group ${
-                         isSelected 
-                           ? 'bg-white/15 border-white/20 text-white shadow-lg' 
-                           : 'bg-white/5 border-white/5 text-white/40'
-                       }`}
-                     >
+                    const probId = q.problemId?._id || q.problemId || q._id;
+                    const isSelected = (localViewProblemId || activeProblem?._id) === probId;
+                    const isActive = activeProblem?._id === probId;
+                    const displayName = q.isCustom ? q.customContent?.title : (q.problemName || `Problem ${idx + 1}`);
+
+                    return (
+                      <motion.div
+                        key={q._id || idx}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        onClick={() => {
+                          if (role === 'interviewer') {
+                            setLocalViewProblemId(probId === activeProblem?._id ? null : probId);
+                          }
+                        }}
+                        className={`flex items-center gap-2 px-4 py-1.5 rounded-xl border transition-all whitespace-nowrap group ${role === 'interviewer' ? 'cursor-pointer hover:bg-white/10' : ''} ${
+                          isSelected 
+                            ? 'bg-white/15 border-white/20 text-white shadow-lg' 
+                            : 'bg-white/5 border-white/5 text-white/40'
+                        }`}
+                      >
                         {q.isCustom ? <Monitor className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
                         <span className="text-xs font-bold tracking-tight">{displayName}</span>
-                     </motion.div>
-                   );
-                 })}
+                        {isActive && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] ml-1" title="Live for Candidate" />}
+                      </motion.div>
+                    );
+                  })}
                </AnimatePresence>
                
                {role === 'interviewer' && (
@@ -722,8 +726,38 @@ const InterviewRoom = () => {
           {/* Workspace Layout */}
           <main className="flex-1 overflow-hidden grid grid-cols-12 gap-4 p-4">
             {/* Problem Description (Glassy Light) */}
-            <div className="col-span-12 lg:col-span-3 min-h-0 jx-glass-strong bg-white/10 border-white/10 overflow-hidden rounded-3xl">
-              <div className="h-full min-h-0 flex flex-col">
+            <div className="col-span-12 lg:col-span-3 min-h-0 flex flex-col gap-4">
+              {localViewProblemId && localViewProblemId !== activeProblem?._id && role === 'interviewer' && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex flex-col gap-2 shadow-lg">
+                  <div className="flex items-center gap-2 text-amber-400">
+                    <EyeOff className="h-4 w-4" />
+                    <span className="text-sm font-bold">Private View Mode</span>
+                  </div>
+                  <div className="text-xs text-amber-400/80">The candidate cannot see this. They are viewing the live problem.</div>
+                  <div className="flex flex-col gap-2 mt-1">
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        handleSwitchProblem(localViewProblemId);
+                        setLocalViewProblemId(null);
+                      }}
+                      className="bg-amber-500 hover:bg-amber-600 text-black font-bold h-8"
+                    >
+                      Switch Candidate Here
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => setLocalViewProblemId(null)}
+                      className="text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 h-8"
+                    >
+                      Back to Live
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex-1 min-h-0 jx-glass-strong bg-white/10 border-white/10 overflow-hidden rounded-3xl flex flex-col">
                 <div className="shrink-0 px-4 py-3 border-b border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="text-[10px] font-black uppercase tracking-widest text-white/60">Problem</div>
@@ -733,23 +767,15 @@ const InterviewRoom = () => {
                       </Badge>
                     )}
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    {role === 'interviewer' && (
-                      <SwitchQuestionDialog
-                        questions={interview?.questions || []}
-                        activeProblemId={activeProblem?._id}
-                        onSwitch={handleSwitchProblem}
-                      />
-                    )}
-                    {role === 'interviewer' && (
-                      <AddProblemDialog onAdd={handleAddQuestion} api={api} />
-                    )}
-                  </div>
                 </div>
-
                 <div className="flex-1 min-h-0">
-                  <ProblemPanel problem={activeProblem} />
+                  <ProblemPanel
+                    problem={displayProblem}
+                    onEdit={() => {}}
+                    role={role}
+                    interviewId={interview?._id}
+                    candidateToken={candidateToken}
+                  />
                 </div>
               </div>
             </div>
@@ -757,10 +783,10 @@ const InterviewRoom = () => {
             {/* Code Editor or Whiteboard (Deep Focus Dark) */}
             <div className="col-span-12 lg:col-span-6 min-h-0 rounded-3xl overflow-hidden border border-white/10 bg-[#0f0f14] shadow-[0_30px_120px_rgba(0,0,0,0.6)] relative">
               <div className="h-full min-h-0">
-                {activeProblem?.isCustom ? (
+                {displayProblem?.isCustom ? (
                   <DrawingBoard
-                    problemId={activeProblem._id}
-                    drawingData={activeProblem.drawingData}
+                    problemId={displayProblem._id}
+                    drawingData={displayProblem.drawingData}
                     role={role}
                     on={on}
                     emit={emit}
