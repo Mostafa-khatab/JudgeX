@@ -198,7 +198,7 @@ const InterviewRoom = () => {
     setLoading(true);
     try {
       if (inviteToken && role === 'candidate') {
-        const res = await api.joinInterview(inviteToken, data.name, data.email);
+        const res = await api.joinInterview(inviteToken, { name: data.name, email: data.email });
         if (res.success) {
           const payload = res.data || {};
           setInterview(payload);

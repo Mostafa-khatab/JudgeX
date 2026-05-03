@@ -21,6 +21,14 @@ import {
 const Lobby = ({ interview, role, onJoin, candidateToken, isConnected, authUser }) => {
   const [name, setName] = useState(() => authUser?.username || localStorage.getItem('candidateName') || '');
   const [email, setEmail] = useState(() => authUser?.email || localStorage.getItem('candidateEmail') || '');
+
+  // Sync with authUser if it loads later
+  useEffect(() => {
+    if (authUser) {
+      if (!name) setName(authUser.username || '');
+      if (!email) setEmail(authUser.email || '');
+    }
+  }, [authUser]);
   const [devices, setDevices] = useState({ video: [], audio: [] });
   const [selectedDevices, setSelectedDevices] = useState({ video: '', audio: '' });
   const [permissionError, setPermissionError] = useState(null);
