@@ -12,6 +12,7 @@ import DailyChallenge from '../models/dailyChallenge.js';
 import { sendSuccess, sendError, handleError } from '../utils/response.js';
 import { validateSchema, SubmitCodeSchema } from '../utils/validation.js';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, JDOODLE_BATCH_SIZE, JDOODLE_TIMEOUT_MS } from '../constants/config.js';
+import { judgeSubmission } from '../utils/submissionJudger.js';
 
 const submissionControllers = {
 	/**
@@ -204,6 +205,11 @@ const submissionControllers = {
 			});
 
 			await submission.save();
+
+			// Trigger judging asynchronously
+			setImmediate(() => {
+				judgeSubmission(submission._id).catch(err => console.error('[JUDGER] Async error:', err));
+			});
 
 			// FIX: Return 202 Accepted for async processing
 			return sendSuccess(res, {

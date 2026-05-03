@@ -35,6 +35,7 @@ import CodeEditor from './components/CodeEditor';
 import VideoPanel from './components/VideoPanel';
 import ChatPanel from './components/ChatPanel';
 import ReviewMode from './components/ReviewMode';
+import DrawingBoard from './components/DrawingBoard';
 
 // Hooks
 import useSocket from './hooks/useSocket';
@@ -588,18 +589,14 @@ const InterviewRoom = () => {
                        key={q._id || idx}
                        initial={{ opacity: 0, x: -10 }}
                        animate={{ opacity: 1, x: 0 }}
-                       onClick={() => handleSwitchProblem(q.problemId?._id || q.problemId || q._id)}
-                       className={`flex items-center gap-2 px-4 py-1.5 rounded-xl border cursor-pointer transition-all whitespace-nowrap group ${
+                       className={`flex items-center gap-2 px-4 py-1.5 rounded-xl border transition-all whitespace-nowrap group ${
                          isSelected 
                            ? 'bg-white/15 border-white/20 text-white shadow-lg' 
-                           : 'bg-white/5 border-white/5 text-white/40 hover:text-white/60 hover:bg-white/10'
+                           : 'bg-white/5 border-white/5 text-white/40'
                        }`}
                      >
                         {q.isCustom ? <Monitor className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
                         <span className="text-xs font-bold tracking-tight">{displayName}</span>
-                        {role === 'interviewer' && (
-                          <ChevronRight className={`h-3 w-3 rotate-90 transition-opacity ${isSelected ? 'opacity-40' : 'opacity-0 group-hover:opacity-20'}`} />
-                        )}
                      </motion.div>
                    );
                  })}
@@ -757,27 +754,38 @@ const InterviewRoom = () => {
               </div>
             </div>
 
-            {/* Code Editor (Deep Focus Dark) */}
-            <div className="col-span-12 lg:col-span-6 min-h-0 rounded-3xl overflow-hidden border border-white/10 bg-[#0f0f14] shadow-[0_30px_120px_rgba(0,0,0,0.6)]">
+            {/* Code Editor or Whiteboard (Deep Focus Dark) */}
+            <div className="col-span-12 lg:col-span-6 min-h-0 rounded-3xl overflow-hidden border border-white/10 bg-[#0f0f14] shadow-[0_30px_120px_rgba(0,0,0,0.6)] relative">
               <div className="h-full min-h-0">
-                <CodeEditor
-                  code={code}
-                  language={language}
-                  onCodeChange={setCode}
-                  onLanguageChange={setLanguage}
-                  onRun={() => {
-                    setShowOutput(true);
-                    handleRunCode();
-                  }}
-                  isRunning={isRunning}
-                  allowedLanguages={interview?.allowedLanguages}
-                  output={output}
-                  showOutput={showOutput}
-                  onCloseOutput={() => setShowOutput(false)}
-                  theme="vs-dark"
-                  onCursorChange={handleCursorChange}
-                  remoteCursors={remoteCursors}
-                />
+                {activeProblem?.isCustom ? (
+                  <DrawingBoard
+                    problemId={activeProblem._id}
+                    drawingData={activeProblem.drawingData}
+                    role={role}
+                    on={on}
+                    emit={emit}
+                    interviewId={interview?._id}
+                  />
+                ) : (
+                  <CodeEditor
+                    code={code}
+                    language={language}
+                    onCodeChange={setCode}
+                    onLanguageChange={setLanguage}
+                    onRun={() => {
+                      setShowOutput(true);
+                      handleRunCode();
+                    }}
+                    isRunning={isRunning}
+                    allowedLanguages={interview?.allowedLanguages}
+                    output={output}
+                    showOutput={showOutput}
+                    onCloseOutput={() => setShowOutput(false)}
+                    theme="vs-dark"
+                    onCursorChange={handleCursorChange}
+                    remoteCursors={remoteCursors}
+                  />
+                )}
               </div>
             </div>
 

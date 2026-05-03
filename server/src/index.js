@@ -448,6 +448,200 @@ io.on('connection', (socket) => {
 		});
 	});
 
+	socket.on('interview-focus-event', ({ interviewId, type }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('focus-updated', { type, timestamp: new Date() });
+	});
+
+	socket.on('interview-status-update', ({ interviewId, status, remainingTime }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('status-updated', { status, remainingTime });
+	});
+
+	socket.on('interview-problem-update', ({ interviewId, type, problemId, problemData }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('problem-updated', { type, problemId, problemData });
+	});
+
+	// Cursor position sync
+	socket.on('interview-cursor-update', ({ interviewId, role, position }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('cursor-updated', { role, position, timestamp: new Date() });
+	});
+
+	// Language change sync
+	socket.on('interview-language-change', ({ interviewId, language }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('language-changed', { language, timestamp: new Date() });
+	});
+
+	// Tab switch tracking
+	socket.on('interview-tab-switch', ({ interviewId }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('tab-switch-detected', { timestamp: new Date() });
+	});
+
+	// Interview ended
+	socket.on('interview-ended', ({ interviewId }) => {
+		const room = `interview:${interviewId}`;
+		io.to(room).emit('interview-finished', { timestamp: new Date() });
+	});
+
+	// ===== WebRTC Signaling for Interview =====
+	socket.on('interview-webrtc-offer', ({ interviewId, offer }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('webrtc-offer', { offer, from: socket.id });
+	});
+
+	socket.on('interview-webrtc-answer', ({ interviewId, answer }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('webrtc-answer', { answer, from: socket.id });
+	});
+
+	socket.on('interview-webrtc-ice', ({ interviewId, candidate }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('webrtc-ice', { candidate, from: socket.id });
+	});
+
+	// ===== Problem Switch with Starter Code =====
+	socket.on('interview-problem-switch', async ({ interviewId, problemId, language }) => {
+		const room = `interview:${interviewId}`;
+		try {
+			// Import dynamically to avoid circular deps
+			const Problem = (await import('./models/problem.js')).default;
+			const Interview = (await import('./models/interview.js')).default;
+			
+			const problem = await Problem.findById(problemId);
+			if (!problem) return;
+
+			const interview = await Interview.findById(interviewId);
+			if (!interview || interview.status === 'finished') return;
+			
+			// Only interviewer can switch problems
+			if (socket.role !== 'interviewer' && interview.instructor.toString() !== socket.userId?.toString()) {
+				return;
+			}
+			
+			const langMap = {
+				'c': 'c',
+				'cpp': 'cpp',
+				'c++': 'cpp',
+				'c++11': 'cpp',
+				'c++14': 'cpp',
+				'c++17': 'cpp',
+				'c++20': 'cpp',
+				'python': 'python',
+				'python2': 'python',
+				'python3': 'python',
+				'javascript': 'javascript',
+				'node': 'javascript',
+				'java': 'java'
+			};
+
+			const key = langMap[language?.toLowerCase()] || 'cpp';
+			const starterCode = problem.starterCode?.[key] || problem.starterCode?.['cpp'] || '// Start coding...';
+			
+			// Update interview state
+			await Interview.findByIdAndUpdate(interviewId, {
+				'state.activeProblemId': problemId,
+				'state.code': starterCode,
+				'state.language': language
+			});
+			// Broadcast to room
+			io.to(room).emit('problem-switched', {
+				problemId,
+				problem: {
+					_id: problem._id,
+					name: problem.name,
+					task: problem.task,
+					difficulty: problem.difficulty,
+					timeLimit: problem.timeLimit,
+					memoryLimit: problem.memoryLimit
+				},
+				starterCode,
+				timestamp: new Date()
+			});
+		} catch (err) {
+			console.error('Problem switch error:', err);
+		}
+	});
+
+	// ===== Selection Sync =====
+	socket.on('interview-selection-update', ({ interviewId, role, selection }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('selection-updated', { role, selection });
+	});
+
+	// ===== Media State Sync (Mute/Video Toggle) =====
+	socket.on('interview-media-state', ({ interviewId, mediaState }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('media-state-updated', { 
+			mediaState, // { audio: boolean, video: boolean }
+			from: socket.id,
+			role: socket.role || 'unknown'
+		});
+	});
+
+	// ===== WebRTC Reconnection Request =====
+	socket.on('interview-webrtc-reconnect', async ({ interviewId }) => {
+		const room = `interview:${interviewId}`;
+		// Notify peer to restart ICE
+		socket.to(room).emit('webrtc-reconnect-request', { 
+			from: socket.id,
+			timestamp: new Date()
+		});
+	});
+
+	// ===== Screen Share =====
+	socket.on('interview-screen-offer', ({ interviewId, offer }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('screen-offer', { offer, from: socket.id });
+	});
+
+	socket.on('interview-screen-answer', ({ interviewId, answer }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('screen-answer', { answer, from: socket.id });
+	});
+
+	socket.on('interview-screen-ice', ({ interviewId, candidate }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('screen-ice', { candidate, from: socket.id });
+	});
+
+	socket.on('interview-screen-stopped', ({ interviewId }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('screen-stopped', { from: socket.id });
+	});
+
+	// ===== Participant Presence Signaling =====
+	socket.on('participant-request', ({ interviewId }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('participant-query', { from: socket.id });
+	});
+
+	socket.on('participant-response', (data) => {
+		const room = `interview:${data.interviewId}`;
+		socket.to(room).emit('participant-info', {
+			role: data.role,
+			name: data.name,
+			avatar: data.avatar,
+			socketId: socket.id
+		});
+	});
+
+	// ===== Participant Leave/Rejoin =====
+	socket.on('interview-rejoin', ({ interviewId, role, name }) => {
+		const room = `interview:${interviewId}`;
+		socket.join(room);
+		socket.interviewId = interviewId;
+		socket.role = role;
+		socket.to(room).emit('participant-rejoined', { 
+			role, 
+			name, 
+			socketId: socket.id 
+		});
+	});
+
 	// Legacy video call events
 	socket.on('offer', ({ roomId, offer }) => {
 		socket.to(roomId).emit('offer', { offer, from: socket.id });
@@ -469,12 +663,30 @@ io.on('connection', (socket) => {
 		socket.to(roomId).emit('cursor-move', { cursor, from: socket.id });
 	});
 
-	socket.on('whiteboard-draw', ({ roomId, data }) => {
-		socket.to(roomId).emit('whiteboard-draw', data);
+	socket.on('whiteboard-draw', async ({ interviewId, problemId, drawingData }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('whiteboard-draw', { problemId, drawingData, from: socket.id });
+		try {
+			const Interview = (await import('./models/interview.js')).default;
+			await Interview.updateOne(
+				{ _id: interviewId, 'questions._id': problemId },
+				{ $set: { 'questions.$.customContent.drawingData': drawingData } }
+			);
+		} catch (err) {
+			console.error('Failed to save drawing data:', err);
+		}
 	});
 
-	socket.on('whiteboard-clear', ({ roomId }) => {
-		socket.to(roomId).emit('whiteboard-clear');
+	socket.on('whiteboard-clear', async ({ interviewId, problemId }) => {
+		const room = `interview:${interviewId}`;
+		socket.to(room).emit('whiteboard-clear', { problemId });
+		try {
+			const Interview = (await import('./models/interview.js')).default;
+			await Interview.updateOne(
+				{ _id: interviewId, 'questions._id': problemId },
+				{ $unset: { 'questions.$.customContent.drawingData': 1 } }
+			);
+		} catch (err) {}
 	});
 
 	socket.on('screen-offer', ({ roomId, offer }) => {

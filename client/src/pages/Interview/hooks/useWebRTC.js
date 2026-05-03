@@ -267,6 +267,21 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
       }
     };
 
+    pc.onnegotiationneeded = async () => {
+      try {
+        console.log('[WebRTC] Negotiation needed. signalingState:', pc.signalingState);
+        if (pc.signalingState !== 'stable') return;
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socketHandlers?.emit('interview-webrtc-offer', {
+          interviewId,
+          offer
+        });
+      } catch (err) {
+        console.error('[WebRTC] Renegotiation failed:', err);
+      }
+    };
+
     pc.onconnectionstatechange = () => {
       console.log('[WebRTC] Peer Connection state:', pc.connectionState);
       if (pc.connectionState === 'failed') {
@@ -559,8 +574,6 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
           } else {
             // Add track to peer connection if no sender exists
             pcRef.current?.addTrack(track, stream);
-            // Trigger renegotiation so the remote peer receives the new track
-            if (isConnected) initiateCall();
           }
           setIsAudioEnabled(true);
           isAudioEnabledRef.current = true;
@@ -625,7 +638,6 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
             try { await sender.replaceTrack(track); } catch { /* ignore */ }
           } else {
             pcRef.current?.addTrack(track, stream);
-            if (isConnected) initiateCall();
           }
           setIsVideoEnabled(true);
           isVideoEnabledRef.current = true;

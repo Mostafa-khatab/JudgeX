@@ -28,7 +28,7 @@ const getExtension = (language) => {
     'java': 'java',
     'javascript': 'js', 'node': 'js'
   };
-  return langMap[language] || 'txt';
+  return langMap[language?.toLowerCase()] || 'txt';
 };
 
 export const runCodeLocally = async (code, language, input) => {
