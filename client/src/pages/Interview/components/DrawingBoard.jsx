@@ -1,7 +1,43 @@
-import { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { ReactSketchCanvas } from 'react-sketch-canvas';
 import { Button } from '~/components/ui/button';
 import { PenTool, Eraser, Trash2, Send, Undo2, Redo2 } from 'lucide-react';
+
+// Safe wrapper to prevent react-sketch-canvas errors from crashing the whole app
+class CanvasErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error) {
+    console.warn('[DrawingBoard] Canvas error caught:', error.message);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center h-full text-white/40 text-sm">
+          <span>Whiteboard failed to load. <button className="underline text-blue-400" onClick={() => this.setState({ hasError: false })}>Retry</button></span>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const safeLoadPaths = (canvasRef, data) => {
+  if (!canvasRef?.current || !data) return;
+  try {
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      canvasRef.current.loadPaths(parsed);
+    }
+  } catch (err) {
+    console.warn('[DrawingBoard] Failed to load paths:', err.message);
+  }
+};
 
 const DrawingBoard = ({ problemId, drawingData, onSync, onClear, role, on, emit, interviewId }) => {
   const canvasRef = useRef(null);
@@ -13,12 +49,9 @@ const DrawingBoard = ({ problemId, drawingData, onSync, onClear, role, on, emit,
   // Load initial data
   useEffect(() => {
     if (drawingData && canvasRef.current) {
-      try {
-        const parsed = typeof drawingData === 'string' ? JSON.parse(drawingData) : drawingData;
-        canvasRef.current.loadPaths(parsed);
-      } catch (err) {
-        console.error('Failed to load drawing data', err);
-      }
+      // Small delay to let canvas mount fully
+      const timer = setTimeout(() => safeLoadPaths(canvasRef, drawingData), 100);
+      return () => clearTimeout(timer);
     }
   }, [drawingData]);
 
@@ -27,18 +60,13 @@ const DrawingBoard = ({ problemId, drawingData, onSync, onClear, role, on, emit,
     if (!on) return;
     const cleanupDraw = on('whiteboard-draw', (data) => {
       if (data.problemId === problemId && canvasRef.current && data.drawingData) {
-        try {
-          const parsed = typeof data.drawingData === 'string' ? JSON.parse(data.drawingData) : data.drawingData;
-          canvasRef.current.loadPaths(parsed);
-        } catch (e) {
-          console.error(e);
-        }
+        safeLoadPaths(canvasRef, data.drawingData);
       }
     });
     
     const cleanupClear = on('whiteboard-clear', (data) => {
       if (data.problemId === problemId && canvasRef.current) {
-        canvasRef.current.clearCanvas();
+        try { canvasRef.current.clearCanvas(); } catch {}
       }
     });
 
@@ -63,7 +91,7 @@ const DrawingBoard = ({ problemId, drawingData, onSync, onClear, role, on, emit,
 
   const handleClear = () => {
     if (canvasRef.current) {
-      canvasRef.current.clearCanvas();
+      try { canvasRef.current.clearCanvas(); } catch {}
       setHasUnsyncedChanges(true);
       if (role === 'interviewer') {
         emit('whiteboard-clear', { interviewId, problemId });
@@ -141,14 +169,16 @@ const DrawingBoard = ({ problemId, drawingData, onSync, onClear, role, on, emit,
       
       {/* Canvas */}
       <div className="flex-1 relative cursor-crosshair">
-        <ReactSketchCanvas
-          ref={canvasRef}
-          strokeWidth={strokeWidth}
-          strokeColor={strokeColor}
-          canvasColor="transparent"
-          className="absolute inset-0 w-full h-full"
-          onChange={() => role === 'interviewer' && setHasUnsyncedChanges(true)}
-        />
+        <CanvasErrorBoundary>
+          <ReactSketchCanvas
+            ref={canvasRef}
+            strokeWidth={strokeWidth}
+            strokeColor={strokeColor}
+            canvasColor="transparent"
+            className="absolute inset-0 w-full h-full"
+            onChange={() => role === 'interviewer' && setHasUnsyncedChanges(true)}
+          />
+        </CanvasErrorBoundary>
       </div>
       
       {/* Candidate Notice */}

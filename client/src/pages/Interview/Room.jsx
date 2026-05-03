@@ -843,7 +843,8 @@ const InterviewRoom = () => {
                             const next = { ...prev };
                             if (!next.questions) return next;
                             
-                            const qIndex = next.questions.findIndex(q => (q.problemId?._id || q.problemId || q._id) === q._id);
+                            const targetId = q._id;
+                            const qIndex = next.questions.findIndex(item => (item.problemId?._id || item.problemId || item._id) === targetId);
                             if (qIndex !== -1 && next.questions[qIndex].customContent) {
                               next.questions = [...next.questions];
                               next.questions[qIndex] = { ...next.questions[qIndex] };
@@ -861,7 +862,8 @@ const InterviewRoom = () => {
                             const next = { ...prev };
                             if (!next.questions) return next;
                             
-                            const qIndex = next.questions.findIndex(q => (q.problemId?._id || q.problemId || q._id) === q._id);
+                            const targetId = q._id;
+                            const qIndex = next.questions.findIndex(item => (item.problemId?._id || item.problemId || item._id) === targetId);
                             if (qIndex !== -1 && next.questions[qIndex].customContent) {
                               next.questions = [...next.questions];
                               next.questions[qIndex] = { ...next.questions[qIndex] };
