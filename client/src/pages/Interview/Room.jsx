@@ -56,7 +56,9 @@ const api = {
     return res.data;
   },
   joinInterview: async (token, name, email) => {
-    const res = await httpRequest.post(`/interview/join/${token}`, { name, email });
+    // Handle both (token, name, email) and (token, { name, email })
+    const body = typeof name === 'object' ? name : { name, email };
+    const res = await httpRequest.post(`/interview/join/${token}`, body);
     return res.data;
   },
   updateState: async (id, state, candidateToken) => {
