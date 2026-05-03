@@ -115,7 +115,7 @@ const getInterview = async (req, res) => {
 
     const interview = await Interview.findById(id)
       .populate('instructor', 'username avatar')
-      .populate('questions.problemId', 'name difficulty description examples constraints')
+      .populate('questions.problemId', 'name difficulty task description examples constraints timeLimit memoryLimit')
       .lean();
 
     if (!interview) {

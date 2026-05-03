@@ -821,86 +821,90 @@ const InterviewRoom = () => {
                     )}
                   </div>
                 </div>
-                <div className="flex-1 min-h-0">
-                  <ProblemPanel
-                    problem={displayProblem}
-                    onEdit={() => {}}
-                    role={role}
-                    interviewId={interview?._id}
-                    candidateToken={candidateToken}
-                  />
+                <div className="flex-1 min-h-0 relative">
+                  <div className={`absolute inset-0 ${!displayProblem?.isCustom ? '' : 'hidden'}`}>
+                    <ProblemPanel
+                      problem={displayProblem}
+                      onEdit={() => {}}
+                      role={role}
+                      interviewId={interview?._id}
+                      candidateToken={candidateToken}
+                    />
+                  </div>
+                  
+                  {interview?.questions?.filter(q => q.isCustom).map(q => (
+                    <div key={q._id} className={`absolute inset-0 ${displayProblem?._id === q._id ? '' : 'hidden'}`}>
+                      <DrawingBoard
+                        problemId={q._id}
+                        drawingData={q.customContent?.drawingData}
+                        onSync={(data) => {
+                          setInterview(prev => {
+                            if (!prev) return prev;
+                            const next = { ...prev };
+                            if (!next.questions) return next;
+                            
+                            const qIndex = next.questions.findIndex(q => (q.problemId?._id || q.problemId || q._id) === q._id);
+                            if (qIndex !== -1 && next.questions[qIndex].customContent) {
+                              next.questions = [...next.questions];
+                              next.questions[qIndex] = { ...next.questions[qIndex] };
+                              next.questions[qIndex].customContent = {
+                                ...next.questions[qIndex].customContent,
+                                drawingData: data
+                              };
+                            }
+                            return next;
+                          });
+                        }}
+                        onClear={() => {
+                          setInterview(prev => {
+                            if (!prev) return prev;
+                            const next = { ...prev };
+                            if (!next.questions) return next;
+                            
+                            const qIndex = next.questions.findIndex(q => (q.problemId?._id || q.problemId || q._id) === q._id);
+                            if (qIndex !== -1 && next.questions[qIndex].customContent) {
+                              next.questions = [...next.questions];
+                              next.questions[qIndex] = { ...next.questions[qIndex] };
+                              next.questions[qIndex].customContent = {
+                                ...next.questions[qIndex].customContent,
+                                drawingData: null
+                              };
+                            }
+                            return next;
+                          });
+                        }}
+                        role={role}
+                        on={on}
+                        emit={emit}
+                        interviewId={interview?._id}
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
 
-            {/* Code Editor or Whiteboard (Deep Focus Dark) */}
+            {/* Code Editor (Deep Focus Dark) */}
             <div className="col-span-12 lg:col-span-6 min-h-0 rounded-3xl overflow-hidden border border-white/10 bg-[#0f0f14] shadow-[0_30px_120px_rgba(0,0,0,0.6)] relative">
               <div className="h-full min-h-0">
-                {displayProblem?.isCustom ? (
-                  <DrawingBoard
-                    problemId={displayProblem._id}
-                    drawingData={displayProblem.drawingData}
-                    onSync={(data) => {
-                      setInterview(prev => {
-                        if (!prev) return prev;
-                        const next = { ...prev };
-                        if (!next.questions) return next;
-                        
-                        const qIndex = next.questions.findIndex(q => (q.problemId?._id || q.problemId || q._id) === displayProblem._id);
-                        if (qIndex !== -1 && next.questions[qIndex].customContent) {
-                          next.questions = [...next.questions];
-                          next.questions[qIndex] = { ...next.questions[qIndex] };
-                          next.questions[qIndex].customContent = {
-                            ...next.questions[qIndex].customContent,
-                            drawingData: data
-                          };
-                        }
-                        return next;
-                      });
-                    }}
-                    onClear={() => {
-                      setInterview(prev => {
-                        if (!prev) return prev;
-                        const next = { ...prev };
-                        if (!next.questions) return next;
-                        
-                        const qIndex = next.questions.findIndex(q => (q.problemId?._id || q.problemId || q._id) === displayProblem._id);
-                        if (qIndex !== -1 && next.questions[qIndex].customContent) {
-                          next.questions = [...next.questions];
-                          next.questions[qIndex] = { ...next.questions[qIndex] };
-                          next.questions[qIndex].customContent = {
-                            ...next.questions[qIndex].customContent,
-                            drawingData: null
-                          };
-                        }
-                        return next;
-                      });
-                    }}
-                    role={role}
-                    on={on}
-                    emit={emit}
-                    interviewId={interview?._id}
-                  />
-                ) : (
-                  <CodeEditor
-                    code={code}
-                    language={language}
-                    onCodeChange={setCode}
-                    onLanguageChange={setLanguage}
-                    onRun={() => {
-                      setShowOutput(true);
-                      handleRunCode();
-                    }}
-                    isRunning={isRunning}
-                    allowedLanguages={interview?.allowedLanguages}
-                    output={output}
-                    showOutput={showOutput}
-                    onCloseOutput={() => setShowOutput(false)}
-                    theme="vs-dark"
-                    onCursorChange={handleCursorChange}
-                    remoteCursors={remoteCursors}
-                  />
-                )}
+                <CodeEditor
+                  code={code}
+                  language={language}
+                  onCodeChange={setCode}
+                  onLanguageChange={setLanguage}
+                  onRun={() => {
+                    setShowOutput(true);
+                    handleRunCode();
+                  }}
+                  isRunning={isRunning}
+                  allowedLanguages={interview?.allowedLanguages}
+                  output={output}
+                  showOutput={showOutput}
+                  onCloseOutput={() => setShowOutput(false)}
+                  theme="vs-dark"
+                  onCursorChange={handleCursorChange}
+                  remoteCursors={remoteCursors}
+                />
               </div>
             </div>
 
