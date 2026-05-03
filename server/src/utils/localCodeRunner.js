@@ -50,7 +50,7 @@ export const runCodeLocally = async (code, language, input) => {
       await fs.writeFile(inputPath, '');
     }
 
-    const runOptions = { timeout: 5000, maxBuffer: 1024 * 1024 * 5 }; // 5MB output limit, 5s timeout
+    const runOptions = { timeout: 10000, maxBuffer: 1024 * 1024 * 5 }; // 5MB output limit, 10s timeout
     const inputRedirect = `< "${inputPath}"`;
     let output = '';
     const startTime = Date.now();
@@ -58,7 +58,7 @@ export const runCodeLocally = async (code, language, input) => {
     if (ext === 'cpp' || ext === 'c') {
       const compiler = ext === 'cpp' ? 'g++' : 'gcc';
       try {
-        await execPromise(`${compiler} "${codePath}" -o "${exePath}"`, { timeout: 10000 });
+        await execPromise(`${compiler} "${codePath}" -o "${exePath}"`, { timeout: 30000 });
       } catch (err) {
         throw new Error(`Compilation Error:\n${err.message}`);
       }

@@ -207,7 +207,7 @@ const submissionControllers = {
 
 			// FIX: Return 202 Accepted for async processing
 			return sendSuccess(res, {
-				submissionId: submission._id,
+				_id: submission._id,
 				status: 'JUDGING',
 				message: 'Submission queued for judging'
 			}, 'Submission received and queued', 202);

@@ -59,7 +59,7 @@ export const SubmitCodeSchema = z.object({
   src: z.string().min(1, 'Code cannot be empty').max(50000, 'Code too large'),
   problem: z.string().min(1, 'Problem ID is required'),
   language: z.enum(['c', 'c11', 'c++11', 'c++14', 'c++17', 'c++20', 'python2', 'python3', 'java', 'javascript', 'node']),
-  contest: z.string().optional(),
+  contest: z.string().nullable().optional(),
 });
 
 // ==================== INTERVIEW SCHEMAS ====================

@@ -167,9 +167,11 @@ const Submit = () => {
 								{t('close')}
 							</Button>
 						</DialogClose>
-						<Button asChild type="button" variant="secondary" className="bg-gradient-to-r from-sky-400 to-blue-500 text-white hover:!from-sky-300 hover:!to-blue-400">
-							<Link to={routesConfig.submission.replace(':id', submission?._id)}>{t('show')}</Link>
-						</Button>
+						{submission?._id && (
+							<Button asChild type="button" variant="secondary" className="bg-gradient-to-r from-sky-400 to-blue-500 text-white hover:!from-sky-300 hover:!to-blue-400">
+								<Link to={routesConfig.submission.replace(':id', submission._id)}>{t('show')}</Link>
+							</Button>
+						)}
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
