@@ -19,13 +19,13 @@ import {
 } from '~/components/ui/select';
 
 const Lobby = ({ interview, role, onJoin, candidateToken, isConnected, authUser }) => {
-  const [name, setName] = useState(() => authUser?.username || localStorage.getItem('candidateName') || '');
+  const [name, setName] = useState(() => authUser?.name || localStorage.getItem('candidateName') || '');
   const [email, setEmail] = useState(() => authUser?.email || localStorage.getItem('candidateEmail') || '');
 
   // Sync with authUser if it loads later
   useEffect(() => {
     if (authUser) {
-      if (!name) setName(authUser.username || '');
+      if (!name) setName(authUser.name || '');
       if (!email) setEmail(authUser.email || '');
     }
   }, [authUser]);
@@ -129,7 +129,7 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected, authUser 
   };
 
   const handleJoin = () => {
-    const joinName = name.trim() || authUser?.username || '';
+    const joinName = name.trim() || authUser?.name || '';
     const joinEmail = email.trim() || authUser?.email || '';
     if (role === 'candidate' && !authUser && (!joinName || !joinEmail)) {
       toast.error('Please enter your name and email');
