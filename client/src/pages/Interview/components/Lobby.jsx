@@ -203,23 +203,23 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
               
               <div className="h-8 w-[1px] bg-white/10 mx-2" />
               
-              <Select value={selectedDevices.video} onValueChange={(id) => handleDeviceChange('video', id)}>
+              <Select value={selectedDevices.video || 'default-video'} onValueChange={(id) => handleDeviceChange('video', id)}>
                 <SelectTrigger className="w-12 h-12 p-0 border-none bg-transparent hover:bg-white/5 rounded-xl flex items-center justify-center">
                   <Camera className="h-5 w-5 text-neutral-400" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#0f0f11] border-white/10 text-white rounded-xl">
-                  {devices.video.map(d => (
-                    <SelectItem key={d.deviceId} value={d.deviceId} className="text-xs">{d.label || 'Camera'}</SelectItem>
+                  {(devices.video.length > 0 ? devices.video : [{ deviceId: 'default-video', label: 'Default Camera' }]).map((d, i) => (
+                    <SelectItem key={d.deviceId || `video-${i}`} value={d.deviceId || `video-fallback-${i}`} className="text-xs">{d.label || `Camera ${i + 1}`}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={selectedDevices.audio} onValueChange={(id) => handleDeviceChange('audio', id)}>
+              <Select value={selectedDevices.audio || 'default-audio'} onValueChange={(id) => handleDeviceChange('audio', id)}>
                 <SelectTrigger className="w-12 h-12 p-0 border-none bg-transparent hover:bg-white/5 rounded-xl flex items-center justify-center">
                   <Volume2 className="h-5 w-5 text-neutral-400" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#0f0f11] border-white/10 text-white rounded-xl">
-                  {devices.audio.map(d => (
-                    <SelectItem key={d.deviceId} value={d.deviceId} className="text-xs">{d.label || 'Microphone'}</SelectItem>
+                  {(devices.audio.length > 0 ? devices.audio : [{ deviceId: 'default-audio', label: 'Default Microphone' }]).map((d, i) => (
+                    <SelectItem key={d.deviceId || `audio-${i}`} value={d.deviceId || `audio-fallback-${i}`} className="text-xs">{d.label || `Microphone ${i + 1}`}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
