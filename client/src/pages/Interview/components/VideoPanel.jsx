@@ -47,12 +47,24 @@ const VideoPanel = ({
       {/* Remote View */}
       <div className={`relative ${compact ? 'flex-none h-40' : 'flex-1'} bg-neutral-950/60 rounded-2xl overflow-hidden group shadow-inner border border-white/10`}>
         {remoteStream ? (
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            className="w-full h-full object-cover"
-          />
+          <>
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className={`w-full h-full object-cover ${remoteMediaState?.video === false ? 'opacity-0' : 'opacity-100'}`}
+            />
+            {remoteMediaState?.video === false && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-neutral-900/90 backdrop-blur-sm z-10">
+                <div className="p-5 bg-white/5 rounded-full border border-white/10">
+                  <VideoOff className="h-8 w-8 text-neutral-500" />
+                </div>
+                <p className="text-neutral-500 text-xs font-medium tracking-wide uppercase">
+                  Camera Off
+                </p>
+              </div>
+            )}
+          </>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-white/5 backdrop-blur-md">
             <div className="p-5 bg-white/10 rounded-full animate-pulse border border-white/10">

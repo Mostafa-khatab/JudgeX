@@ -28,7 +28,7 @@ import {
 } from '~/components/ui/dialog';
 import { Badge } from '~/components/ui/badge';
 import { Input } from '~/components/ui/input';
-import { Search, Loader2, Plus } from 'lucide-react';
+import { Search, Loader2, Plus, EyeOff } from 'lucide-react';
 import Lobby from './components/Lobby';
 import ProblemPanel from './components/ProblemPanel';
 import CodeEditor from './components/CodeEditor';
@@ -130,6 +130,9 @@ const InterviewRoom = () => {
   const timerIntervalRef = useRef(null);
   const [codeRunEvents, setCodeRunEvents] = useState([]);
 
+  // Local private view tracking
+  const [localViewProblemId, setLocalViewProblemId] = useState(null);
+
   // 1. Socket Hook
   const { emit, on, isConnected: isSocketConnected } = useSocket(interview?._id, role, {
     name: role === 'interviewer' 
@@ -145,6 +148,16 @@ const InterviewRoom = () => {
     { emit, on },
     { updateState: (id, state) => api.updateState(id, state, candidateToken) }
   );
+
+  // Compute display problem for private viewing
+  const displayProblem = useMemo(() => {
+    if (!localViewProblemId) return activeProblem;
+    const q = interview?.questions?.find(q => 
+      (q.problemId?._id || q.problemId) === localViewProblemId || q._id === localViewProblemId
+    );
+    if (!q) return activeProblem;
+    return q.isCustom ? { ...q.customContent, _id: q._id, isCustom: true, drawingData: q.customContent?.drawingData } : { ...q.problemId, _id: q.problemId?._id || q.problemId };
+  }, [activeProblem, localViewProblemId, interview?.questions]);
 
   // 3. WebRTC Hook
   const webrtc = useWebRTC({ emit, on }, interview?._id, role);
