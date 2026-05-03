@@ -9,6 +9,7 @@ import {
   Play, Pause, RotateCcw
 } from 'lucide-react';
 import httpRequest from '~/utils/httpRequest';
+import useAuthStore from '~/stores/authStore';
 import {
   Popover, PopoverContent, PopoverTrigger
 } from '~/components/ui/popover';
@@ -122,6 +123,7 @@ const InterviewRoom = () => {
   const [peerInfo, setPeerInfo] = useState(null);
   const [privateNotes, setPrivateNotes] = useState(() => localStorage.getItem(`notes_${id}`) || '');
   const [remoteCursors, setRemoteCursors] = useState([]);
+  const { user: authUser } = useAuthStore();
 
   // Timer state
   const [timerRunning, setTimerRunning] = useState(false);
@@ -616,6 +618,7 @@ const InterviewRoom = () => {
             onJoin={handleJoinFromLobby} 
             candidateToken={candidateToken} 
             isConnected={isSocketConnected}
+            authUser={authUser}
           />
         </motion.div>
       ) : (

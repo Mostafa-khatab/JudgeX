@@ -18,9 +18,9 @@ import {
   SelectTrigger, SelectValue 
 } from '~/components/ui/select';
 
-const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
-  const [name, setName] = useState(() => localStorage.getItem('candidateName') || '');
-  const [email, setEmail] = useState(() => localStorage.getItem('candidateEmail') || '');
+const Lobby = ({ interview, role, onJoin, candidateToken, isConnected, authUser }) => {
+  const [name, setName] = useState(() => authUser?.username || localStorage.getItem('candidateName') || '');
+  const [email, setEmail] = useState(() => authUser?.email || localStorage.getItem('candidateEmail') || '');
   const [devices, setDevices] = useState({ video: [], audio: [] });
   const [selectedDevices, setSelectedDevices] = useState({ video: '', audio: '' });
   const [permissionError, setPermissionError] = useState(null);
@@ -121,11 +121,13 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected }) => {
   };
 
   const handleJoin = () => {
-    if (role === 'candidate' && (!name.trim() || !email.trim())) {
+    const joinName = name.trim() || authUser?.username || '';
+    const joinEmail = email.trim() || authUser?.email || '';
+    if (role === 'candidate' && !authUser && (!joinName || !joinEmail)) {
       toast.error('Please enter your name and email');
       return;
     }
-    onJoin({ name, email, isVideoOn, isMicOn, existingStream: stream });
+    onJoin({ name: joinName, email: joinEmail, isVideoOn, isMicOn, existingStream: stream });
   };
 
   return (
