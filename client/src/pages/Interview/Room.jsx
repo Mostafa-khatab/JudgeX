@@ -415,8 +415,48 @@ const InterviewRoom = () => {
         });
       }
     });
+    // Whiteboard drawing update
+    const u8 = on('whiteboard-draw', (data) => {
+      setInterview(prev => {
+        if (!prev) return prev;
+        const next = { ...prev };
+        if (!next.questions) return next;
+        
+        const qIndex = next.questions.findIndex(q => (q.problemId?._id || q.problemId || q._id) === data.problemId);
+        if (qIndex !== -1 && next.questions[qIndex].customContent) {
+          // Clone the array and the object to trigger re-render
+          next.questions = [...next.questions];
+          next.questions[qIndex] = { ...next.questions[qIndex] };
+          next.questions[qIndex].customContent = {
+            ...next.questions[qIndex].customContent,
+            drawingData: data.drawingData
+          };
+        }
+        return next;
+      });
+    });
 
-    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); };
+    // Whiteboard clear update
+    const u9 = on('whiteboard-clear', (data) => {
+      setInterview(prev => {
+        if (!prev) return prev;
+        const next = { ...prev };
+        if (!next.questions) return next;
+        
+        const qIndex = next.questions.findIndex(q => (q.problemId?._id || q.problemId || q._id) === data.problemId);
+        if (qIndex !== -1 && next.questions[qIndex].customContent) {
+          next.questions = [...next.questions];
+          next.questions[qIndex] = { ...next.questions[qIndex] };
+          next.questions[qIndex].customContent = {
+            ...next.questions[qIndex].customContent,
+            drawingData: null
+          };
+        }
+        return next;
+      });
+    });
+
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); u9(); };
   }, [on, t, role]);
 
   // Initialize timer from interview state
@@ -800,6 +840,42 @@ const InterviewRoom = () => {
                   <DrawingBoard
                     problemId={displayProblem._id}
                     drawingData={displayProblem.drawingData}
+                    onSync={(data) => {
+                      setInterview(prev => {
+                        if (!prev) return prev;
+                        const next = { ...prev };
+                        if (!next.questions) return next;
+                        
+                        const qIndex = next.questions.findIndex(q => (q.problemId?._id || q.problemId || q._id) === displayProblem._id);
+                        if (qIndex !== -1 && next.questions[qIndex].customContent) {
+                          next.questions = [...next.questions];
+                          next.questions[qIndex] = { ...next.questions[qIndex] };
+                          next.questions[qIndex].customContent = {
+                            ...next.questions[qIndex].customContent,
+                            drawingData: data
+                          };
+                        }
+                        return next;
+                      });
+                    }}
+                    onClear={() => {
+                      setInterview(prev => {
+                        if (!prev) return prev;
+                        const next = { ...prev };
+                        if (!next.questions) return next;
+                        
+                        const qIndex = next.questions.findIndex(q => (q.problemId?._id || q.problemId || q._id) === displayProblem._id);
+                        if (qIndex !== -1 && next.questions[qIndex].customContent) {
+                          next.questions = [...next.questions];
+                          next.questions[qIndex] = { ...next.questions[qIndex] };
+                          next.questions[qIndex].customContent = {
+                            ...next.questions[qIndex].customContent,
+                            drawingData: null
+                          };
+                        }
+                        return next;
+                      });
+                    }}
                     role={role}
                     on={on}
                     emit={emit}

@@ -3,7 +3,7 @@ import { ReactSketchCanvas } from 'react-sketch-canvas';
 import { Button } from '~/components/ui/button';
 import { PenTool, Eraser, Trash2, Send, Undo2, Redo2 } from 'lucide-react';
 
-const DrawingBoard = ({ problemId, drawingData, onSync, role, on, emit, interviewId }) => {
+const DrawingBoard = ({ problemId, drawingData, onSync, onClear, role, on, emit, interviewId }) => {
   const canvasRef = useRef(null);
   const [isEraser, setIsEraser] = useState(false);
   const [strokeColor, setStrokeColor] = useState('#ffffff');
@@ -67,6 +67,7 @@ const DrawingBoard = ({ problemId, drawingData, onSync, role, on, emit, intervie
       setHasUnsyncedChanges(true);
       if (role === 'interviewer') {
         emit('whiteboard-clear', { interviewId, problemId });
+        onClear?.();
       }
     }
   };

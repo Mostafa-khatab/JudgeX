@@ -510,9 +510,6 @@ io.on('connection', (socket) => {
 			// Import dynamically to avoid circular deps
 			const Problem = (await import('./models/problem.js')).default;
 			const Interview = (await import('./models/interview.js')).default;
-			
-			const problem = await Problem.findById(problemId);
-			if (!problem) return;
 
 			const interview = await Interview.findById(interviewId);
 			if (!interview || interview.status === 'finished') return;
@@ -522,25 +519,59 @@ io.on('connection', (socket) => {
 				return;
 			}
 			
-			const langMap = {
-				'c': 'c',
-				'cpp': 'cpp',
-				'c++': 'cpp',
-				'c++11': 'cpp',
-				'c++14': 'cpp',
-				'c++17': 'cpp',
-				'c++20': 'cpp',
-				'python': 'python',
-				'python2': 'python',
-				'python3': 'python',
-				'javascript': 'javascript',
-				'node': 'javascript',
-				'java': 'java'
-			};
+			const question = interview.questions.find(q => 
+				(q.problemId && q.problemId.toString() === problemId.toString()) || 
+				q._id.toString() === problemId.toString()
+			);
 
-			const key = langMap[language?.toLowerCase()] || 'cpp';
-			const starterCode = problem.starterCode?.[key] || problem.starterCode?.['cpp'] || '// Start coding...';
-			
+			if (!question) return;
+
+			let starterCode = '// Start coding...';
+			let problemData = null;
+
+			if (question.isCustom) {
+				starterCode = '// Whiteboard / Custom Problem\n';
+				problemData = {
+					_id: question._id,
+					name: question.customContent?.title || 'Custom Problem',
+					task: question.customContent?.description || '',
+					difficulty: 'easy',
+					isCustom: true,
+					customContent: question.customContent
+				};
+			} else {
+				const problem = await Problem.findById(problemId);
+				if (problem) {
+					const langMap = {
+						'c': 'c',
+						'cpp': 'cpp',
+						'c++': 'cpp',
+						'c++11': 'cpp',
+						'c++14': 'cpp',
+						'c++17': 'cpp',
+						'c++20': 'cpp',
+						'python': 'python',
+						'python2': 'python',
+						'python3': 'python',
+						'javascript': 'javascript',
+						'node': 'javascript',
+						'java': 'java'
+					};
+
+					const key = langMap[language?.toLowerCase()] || 'cpp';
+					starterCode = problem.starterCode?.[key] || problem.starterCode?.['cpp'] || '// Start coding...';
+					
+					problemData = {
+						_id: problem._id,
+						name: problem.name,
+						task: problem.task,
+						difficulty: problem.difficulty,
+						timeLimit: problem.timeLimit,
+						memoryLimit: problem.memoryLimit
+					};
+				}
+			}
+
 			// Update interview state
 			await Interview.findByIdAndUpdate(interviewId, {
 				'state.activeProblemId': problemId,
@@ -550,14 +581,7 @@ io.on('connection', (socket) => {
 			// Broadcast to room
 			io.to(room).emit('problem-switched', {
 				problemId,
-				problem: {
-					_id: problem._id,
-					name: problem.name,
-					task: problem.task,
-					difficulty: problem.difficulty,
-					timeLimit: problem.timeLimit,
-					memoryLimit: problem.memoryLimit
-				},
+				problem: problemData,
 				starterCode,
 				timestamp: new Date()
 			});
