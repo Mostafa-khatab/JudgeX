@@ -87,7 +87,9 @@ const submissionControllers = {
 				return sendSuccess(res, minimalData, 'Submissions retrieved');
 			}
 
-			return sendSuccess(res, {
+			return res.status(200).json({
+				success: true,
+				msg: 'Submissions retrieved',
 				data: data,
 				stat: {
 					status: statusStat,
@@ -97,7 +99,7 @@ const submissionControllers = {
 				page: pageNum,
 				pageSize,
 				total: totalCount,
-			}, 'Submissions retrieved');
+			});
 		} catch (err) {
 			return handleError(res, err, 'GetSubmissionList', 400);
 		}

@@ -34,7 +34,8 @@ const Submission = () => {
 				setSubmission(res.data);
 			})
 			.catch((err) => {
-				toast.error(err.response.data.msg);
+				const errorMsg = err.response?.data?.msg || err.message || 'An error occurred';
+				toast.error(errorMsg);
 			})
 			.finally(() => setLoading(false));
 	}, [id]);

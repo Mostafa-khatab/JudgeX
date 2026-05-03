@@ -66,7 +66,8 @@ const Submissions = () => {
 				setStatistic(res.stat);
 			})
 			.catch((err) => {
-				toast.error(err.response.data.msg);
+				const errorMsg = err.response?.data?.msg || err.message || 'An error occurred';
+				toast.error(errorMsg);
 			})
 			.finally(() => setLoading(false));
 	};
@@ -77,7 +78,8 @@ const Submissions = () => {
 				setLanguages(res.data);
 			})
 			.catch((err) => {
-				toast.error(err.response.data.msg);
+				const errorMsg = err.response?.data?.msg || err.message || 'An error occurred';
+				toast.error(errorMsg);
 			});
 	}, []);
 
