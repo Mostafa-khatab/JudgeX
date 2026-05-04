@@ -18,6 +18,7 @@ const CodeEditor = ({
   theme = 'vs-dark',
   onCursorChange,
   remoteCursors,
+  readOnly = false,
 }) => {
   const isDark = theme && theme !== 'light';
   const editorRef = useRef(null);
@@ -41,18 +42,18 @@ const CodeEditor = ({
     cursorList.forEach((c) => {
       const role = c?.role;
       const pos = c?.position;
+      const name = c?.name || (role === 'interviewer' ? 'Moderator' : 'Candidate');
       if (!role || !pos) return;
 
       const className = role === 'interviewer' ? 'jx-remote-caret jx-remote-caret--mod' : 'jx-remote-caret jx-remote-caret--cand';
       const labelClass = role === 'interviewer' ? 'jx-remote-label jx-remote-label--mod' : 'jx-remote-label jx-remote-label--cand';
-      const labelText = role === 'interviewer' ? 'Moderator' : 'Candidate';
 
       const lineNumber = Math.max(1, Math.min(model.getLineCount(), pos.lineNumber || 1));
       const maxCol = model.getLineMaxColumn(lineNumber);
       const column = Math.max(1, Math.min(maxCol, pos.column || 1));
 
       const range = new monaco.Range(lineNumber, column, lineNumber, column);
-      const nextDeco = [{ range, options: { className } }];
+      const nextDeco = [{ range, options: { className, stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges } }];
 
       decorationsRef.current[role] = editor.deltaDecorations(decorationsRef.current[role] || [], nextDeco);
 
@@ -61,7 +62,7 @@ const CodeEditor = ({
       if (!widgetsRef.current[role]) {
         const node = document.createElement('div');
         node.className = labelClass;
-        node.textContent = labelText;
+        node.textContent = name;
 
         const widget = {
           getId: () => id,
@@ -74,10 +75,16 @@ const CodeEditor = ({
         widgetsRef.current[role] = widget;
         editor.addContentWidget(widget);
       } else {
-        const node = widgetsRef.current[role].getDomNode();
-        // Ensure class updates if role mapping changes.
+        const widget = widgetsRef.current[role];
+        const node = widget.getDomNode();
         node.className = labelClass;
-        node.textContent = labelText;
+        node.textContent = name;
+        
+        // Update position function
+        widget.getPosition = () => ({
+          position: { lineNumber, column },
+          preference: [monaco.editor.ContentWidgetPositionPreference.ABOVE],
+        });
       }
 
       editor.layoutContentWidget(widgetsRef.current[role]);
@@ -123,28 +130,30 @@ const CodeEditor = ({
           </Select>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={onRun}
-            disabled={isRunning}
-            className={`h-9 gap-2 px-5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${isRunning ? 'bg-neutral-200 text-neutral-500' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20'}`}
-          >
-            {isRunning ? (
-              <div className="h-3 w-3 border-2 border-neutral-400/30 border-t-neutral-400 animate-spin rounded-full" />
-            ) : (
-              <Play className="h-3 w-3 fill-current" />
-            )}
-            {isRunning ? 'Running' : 'Run Code'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={isDark ? 'h-9 w-9 rounded-2xl text-white/60 hover:text-white hover:bg-white/10 transition-colors' : 'h-9 w-9 rounded-xl text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors'}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={onRun}
+              disabled={isRunning}
+              className={`h-9 gap-2 px-5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${isRunning ? 'bg-neutral-200 text-neutral-500' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20'}`}
+            >
+              {isRunning ? (
+                <div className="h-3 w-3 border-2 border-neutral-400/30 border-t-neutral-400 animate-spin rounded-full" />
+              ) : (
+                <Play className="h-3 w-3 fill-current" />
+              )}
+              {isRunning ? 'Running' : 'Run Code'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={isDark ? 'h-9 w-9 rounded-2xl text-white/60 hover:text-white hover:bg-white/10 transition-colors' : 'h-9 w-9 rounded-xl text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors'}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Editor Area */}
@@ -185,6 +194,7 @@ const CodeEditor = ({
             cursorSmoothCaretAnimation: "on",
             smoothScrolling: true,
             contextmenu: false,
+            readOnly: readOnly,
           }}
         />
 

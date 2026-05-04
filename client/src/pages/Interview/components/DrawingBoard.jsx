@@ -39,21 +39,34 @@ const safeLoadPaths = (canvasRef, data) => {
   }
 };
 
-const DrawingBoard = ({ problemId, drawingData, onSync, onClear, role, on, emit, interviewId }) => {
+const DrawingBoard = ({ problemId, drawingData, onSync, onClear, role, on, emit, interviewId, visible }) => {
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
   const [isEraser, setIsEraser] = useState(false);
   const [strokeColor, setStrokeColor] = useState('#ffffff');
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [hasUnsyncedChanges, setHasUnsyncedChanges] = useState(false);
+  const [remoteCursors, setRemoteCursors] = useState({});
 
-  // Load initial data
+  // Load initial data and handle visibility changes
   useEffect(() => {
-    if (drawingData && canvasRef.current) {
-      // Small delay to let canvas mount fully
-      const timer = setTimeout(() => safeLoadPaths(canvasRef, drawingData), 100);
+    if (visible && canvasRef.current) {
+      // Small delay to let canvas mount/become visible fully
+      const timer = setTimeout(() => {
+        if (drawingData) {
+          try {
+            canvasRef.current.clearCanvas();
+            safeLoadPaths(canvasRef, drawingData);
+          } catch (err) {
+            console.warn('[DrawingBoard] Load failed, retrying...', err.message);
+          }
+        } else {
+          try { canvasRef.current.clearCanvas(); } catch {}
+        }
+      }, 150);
       return () => clearTimeout(timer);
     }
-  }, [drawingData]);
+  }, [drawingData, visible]);
 
   // Listen for socket updates
   useEffect(() => {
@@ -70,11 +83,36 @@ const DrawingBoard = ({ problemId, drawingData, onSync, onClear, role, on, emit,
       }
     });
 
+    const cleanupCursor = on('whiteboard-cursor-updated', (data) => {
+      if (data.problemId === problemId && data.role !== role) {
+        setRemoteCursors(prev => ({
+          ...prev,
+          [data.role]: { ...data, timestamp: Date.now() }
+        }));
+      }
+    });
+
     return () => {
       cleanupDraw();
       cleanupClear();
+      cleanupCursor();
     };
-  }, [on, problemId]);
+  }, [on, problemId, role]);
+
+  const handleMouseMove = (e) => {
+    if (!containerRef.current || !emit || !visible) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    
+    emit('whiteboard-cursor-move', { 
+      interviewId, 
+      problemId, 
+      role, 
+      name: role === 'interviewer' ? 'Moderator' : (localStorage.getItem('candidateName') || 'Candidate'),
+      x, y 
+    });
+  };
 
   const handleSync = async () => {
     if (!canvasRef.current || role !== 'interviewer') return;
@@ -168,7 +206,11 @@ const DrawingBoard = ({ problemId, drawingData, onSync, onClear, role, on, emit,
       )}
       
       {/* Canvas */}
-      <div className="flex-1 relative cursor-crosshair">
+      <div 
+        ref={containerRef}
+        onMouseMove={handleMouseMove}
+        className="flex-1 relative cursor-crosshair overflow-hidden"
+      >
         <CanvasErrorBoundary>
           <ReactSketchCanvas
             ref={canvasRef}
@@ -179,6 +221,20 @@ const DrawingBoard = ({ problemId, drawingData, onSync, onClear, role, on, emit,
             onChange={() => role === 'interviewer' && setHasUnsyncedChanges(true)}
           />
         </CanvasErrorBoundary>
+
+        {/* Remote Cursors */}
+        {Object.values(remoteCursors).map((cur) => (
+          <div 
+            key={cur.role}
+            className="absolute pointer-events-none transition-all duration-75 z-50"
+            style={{ left: `${cur.x * 100}%`, top: `${cur.y * 100}%` }}
+          >
+            <div className={`w-3 h-3 rounded-full border-2 border-white shadow-lg ${cur.role === 'interviewer' ? 'bg-blue-500' : 'bg-purple-500'}`} />
+            <div className="absolute left-4 top-0 px-2 py-0.5 rounded bg-black/60 backdrop-blur-sm border border-white/10 text-[9px] font-black text-white whitespace-nowrap">
+              {cur.name}
+            </div>
+          </div>
+        ))}
       </div>
       
       {/* Candidate Notice */}

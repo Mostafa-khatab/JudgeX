@@ -20,6 +20,7 @@ export const useSocket = (interviewId, role, userInfo) => {
       withCredentials: true,
       transports: ['websocket'],
       auth: {
+        token: localStorage.getItem('token'),
         inviteToken: localStorage.getItem('candidateToken') || userInfo?.inviteToken
       },
       reconnection: true,

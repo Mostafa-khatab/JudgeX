@@ -235,10 +235,11 @@ io.on('connection', (socket) => {
 	});
 
 	// Code run notification + auto-snapshot
-	socket.on('interview-code-run', async ({ interviewId, language, status, output, problemName }) => {
+	socket.on('interview-code-run', async ({ interviewId, code, language, status, output, problemName }) => {
 		const room = `interview:${interviewId}`;
 		socket.to(room).emit('code-run-result', {
 			role: socket.role || 'unknown',
+			code,
 			language, status, output, problemName,
 			timestamp: new Date()
 		});
@@ -464,9 +465,14 @@ io.on('connection', (socket) => {
 	});
 
 	// Cursor position sync
-	socket.on('interview-cursor-update', ({ interviewId, role, position }) => {
+	socket.on('interview-cursor-update', ({ interviewId, role, name, position }) => {
 		const room = `interview:${interviewId}`;
-		socket.to(room).emit('cursor-updated', { role, position, timestamp: new Date() });
+		socket.to(room).emit('cursor-updated', { role, name, position, timestamp: new Date() });
+	});
+
+	socket.on('whiteboard-cursor-move', (data) => {
+		const room = `interview:${data.interviewId}`;
+		socket.to(room).emit('whiteboard-cursor-updated', data);
 	});
 
 	// Language change sync

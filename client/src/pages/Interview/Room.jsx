@@ -136,6 +136,7 @@ const InterviewRoom = () => {
 
   // Local private view tracking
   const [localViewProblemId, setLocalViewProblemId] = useState(null);
+  const [snapshotModal, setSnapshotModal] = useState({ show: false, code: '', language: '' });
 
   // 1. Socket Hook
   const { emit, on, isConnected: isSocketConnected } = useSocket(interview?._id, role, {
@@ -166,6 +167,10 @@ const InterviewRoom = () => {
   // 3. WebRTC Hook
   const webrtc = useWebRTC({ emit, on }, interview?._id, role);
 
+  const isPrivateWhiteboard = useMemo(() => {
+    return !!localViewProblemId && !!displayProblem?.isCustom;
+  }, [localViewProblemId, displayProblem?.isCustom]);
+
   // Initial Load
   useEffect(() => {
     const init = async () => {
@@ -195,6 +200,13 @@ const InterviewRoom = () => {
     };
     init();
   }, [id, inviteToken, candidateToken, t]);
+
+  // Navigate back on finish
+  useEffect(() => {
+    if (interview?.status === 'finished') {
+      navigate('/interview');
+    }
+  }, [interview?.status, navigate]);
 
   const handleJoinFromLobby = async (data) => {
     setLoading(true);
@@ -246,6 +258,7 @@ const InterviewRoom = () => {
       const problemName = activeProblem?.name || activeProblem?.title || 'Unknown';
       emit('interview-code-run', {
         interviewId: interview?._id,
+        code,
         language,
         status: runStatus,
         output: runOutput?.substring(0, 300),
@@ -255,6 +268,7 @@ const InterviewRoom = () => {
       setOutput(t('errors.failedRunCodeFinal'));
       emit('interview-code-run', {
         interviewId: interview?._id,
+        code,
         language,
         status: 'error',
         output: 'Execution failed',
@@ -268,8 +282,13 @@ const InterviewRoom = () => {
   const handleCursorChange = useCallback((position) => {
     if (!interview?._id) return;
     if (!position?.lineNumber || !position?.column) return;
-    emit('interview-cursor-update', { interviewId: interview._id, role, position });
-  }, [emit, interview?._id, role]);
+    emit('interview-cursor-update', { 
+      interviewId: interview._id, 
+      role, 
+      name: role === 'interviewer' ? (authUser?.name || 'Moderator') : (localStorage.getItem('candidateName') || 'Candidate'),
+      position 
+    });
+  }, [emit, interview?._id, role, authUser?.name]);
 
   useEffect(() => {
     if (!on) return;
@@ -280,7 +299,12 @@ const InterviewRoom = () => {
 
       setRemoteCursors((prev) => {
         const next = prev.filter(x => x?.role !== r);
-        next.push({ role: r, position: p, timestamp: data?.timestamp || Date.now() });
+        next.push({ 
+          role: r, 
+          name: data?.name, 
+          position: p, 
+          timestamp: data?.timestamp || Date.now() 
+        });
         return next;
       });
     });
@@ -411,6 +435,19 @@ const InterviewRoom = () => {
     // Code run notification
     const u7 = on('code-run-result', (data) => {
       setCodeRunEvents(prev => [...prev, data]);
+      
+      // Add system message to chat
+      const participantName = data.role === 'candidate' ? 'Candidate' : 'Interviewer';
+      const statusIcon = data.status === 'success' ? '✅' : data.status === 'compile_error' ? '⚠️' : '❌';
+      const systemMsg = {
+        role: 'system',
+        content: `${statusIcon} ${participantName} executed code on ${data.problemName} — ${data.status.replace('_', ' ')}`,
+        code: data.code,
+        language: data.language,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, systemMsg]);
+
       if (data.role !== role) {
         const statusColors = { success: '✅', error: '❌', compile_error: '⚠️' };
         const icon = statusColors[data.status] || '🔵';
@@ -595,17 +632,7 @@ const InterviewRoom = () => {
 
   return (
     <AnimatePresence mode="wait">
-      {interview?.status === 'finished' ? (
-        <motion.div
-          key="review"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="h-full"
-        >
-          <ReviewMode interview={interview} role={role} />
-        </motion.div>
-      ) : showLobby ? (
+      {showLobby ? (
         <motion.div
           key="lobby"
           initial={{ opacity: 0 }}
@@ -784,7 +811,9 @@ const InterviewRoom = () => {
           {/* Workspace Layout */}
           <main className="flex-1 overflow-hidden grid grid-cols-12 gap-4 p-4">
             {/* Problem Description (Glassy Light) */}
-            <div className="col-span-12 lg:col-span-3 min-h-0 flex flex-col gap-4">
+            <div className={`min-h-0 flex flex-col gap-4 transition-all duration-500 ${
+              isPrivateWhiteboard ? 'col-span-12 lg:col-span-9' : 'col-span-12 lg:col-span-3'
+            }`}>
               {localViewProblemId && localViewProblemId !== activeProblem?._id && role === 'interviewer' && (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex flex-col gap-2 shadow-lg">
                   <div className="flex items-center gap-2 text-amber-400">
@@ -884,6 +913,7 @@ const InterviewRoom = () => {
                         on={on}
                         emit={emit}
                         interviewId={interview?._id}
+                        visible={displayProblem?._id === q._id}
                       />
                     </div>
                   ))}
@@ -892,7 +922,9 @@ const InterviewRoom = () => {
             </div>
 
             {/* Code Editor (Deep Focus Dark) */}
-            <div className="col-span-12 lg:col-span-6 min-h-0 rounded-3xl overflow-hidden border border-white/10 bg-[#0f0f14] shadow-[0_30px_120px_rgba(0,0,0,0.6)] relative">
+            <div className={`col-span-12 lg:col-span-6 min-h-0 rounded-3xl overflow-hidden border border-white/10 bg-[#0f0f14] shadow-[0_30px_120px_rgba(0,0,0,0.6)] relative transition-all duration-500 ${
+              isPrivateWhiteboard ? 'opacity-0 invisible pointer-events-none absolute h-0 w-0' : 'opacity-100 visible'
+            }`}>
               <div className="h-full min-h-0">
                 <CodeEditor
                   code={code}
@@ -934,11 +966,47 @@ const InterviewRoom = () => {
                   messages={messages}
                   onSendMessage={handleSendMessage}
                   role={role}
+                  onViewCode={(c, l) => setSnapshotModal({ show: true, code: c, language: l })}
                   theme="light"
                 />
               </div>
             </div>
           </main>
+
+          {/* Snapshot Viewer Modal */}
+          <Dialog 
+            open={snapshotModal.show} 
+            onOpenChange={(open) => setSnapshotModal(prev => ({ ...prev, show: open }))}
+          >
+            <DialogContent className="sm:max-w-[800px] h-[80vh] jx-glass-strong border-white/10 text-white rounded-3xl p-0 overflow-hidden flex flex-col">
+              <DialogHeader className="p-6 pb-2 shrink-0">
+                <div className="flex items-center justify-between">
+                  <DialogTitle className="text-xl font-black tracking-tight">Code Snapshot</DialogTitle>
+                  <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 px-3 py-1 uppercase text-[10px] font-black">
+                    {snapshotModal.language}
+                  </Badge>
+                </div>
+              </DialogHeader>
+              <div className="flex-1 min-h-0 p-4 pt-0">
+                <div className="h-full rounded-2xl overflow-hidden border border-white/5 bg-[#0b0b0f]">
+                  <CodeEditor
+                    code={snapshotModal.code}
+                    language={snapshotModal.language}
+                    readOnly={true}
+                    theme="vs-dark"
+                  />
+                </div>
+              </div>
+              <div className="p-6 pt-2 shrink-0 flex justify-end">
+                <Button 
+                  onClick={() => setSnapshotModal(prev => ({ ...prev, show: false }))}
+                  className="h-11 px-8 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold"
+                >
+                  Close
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </motion.div>
       )}
     </AnimatePresence>
