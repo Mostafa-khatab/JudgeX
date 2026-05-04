@@ -8,10 +8,14 @@ const execPromise = (cmd, options = {}) => {
   return new Promise((resolve, reject) => {
     exec(cmd, options, (error, stdout, stderr) => {
       if (error) {
+        // Truncate output to prevent overwhelming the error handler or logs
+        const truncatedStdout = stdout ? (stdout.length > 100000 ? stdout.substring(0, 100000) + "... [Truncated]" : stdout) : '';
+        const truncatedStderr = stderr ? (stderr.length > 100000 ? stderr.substring(0, 100000) + "... [Truncated]" : stderr) : '';
+        
         if (error.killed) {
           reject(new Error('Time Limit Exceeded'));
         } else {
-          reject(new Error(stderr || stdout || error.message));
+          reject(new Error(truncatedStderr || truncatedStdout || error.message));
         }
       } else {
         resolve(stdout || stderr);

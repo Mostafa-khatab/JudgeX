@@ -168,9 +168,9 @@ const InterviewRoom = () => {
   // 3. WebRTC Hook
   const webrtc = useWebRTC({ emit, on }, interview?._id, role);
 
-  const isPrivateWhiteboard = useMemo(() => {
-    return !!localViewProblemId && !!displayProblem?.isCustom;
-  }, [localViewProblemId, displayProblem?.isCustom]);
+  const isPrivateView = useMemo(() => {
+    return !!localViewProblemId && role === 'interviewer';
+  }, [localViewProblemId, role]);
 
   // Initial Load
   useEffect(() => {
@@ -808,7 +808,7 @@ const InterviewRoom = () => {
           <main className="flex-1 overflow-hidden grid grid-cols-12 gap-4 p-4">
             {/* Problem Description (Glassy Light) */}
             <div className={`min-h-0 flex flex-col gap-4 transition-all duration-500 ${
-              isPrivateWhiteboard ? 'col-span-9' : 'col-span-12 lg:col-span-3'
+              isPrivateView ? 'col-span-12 lg:col-span-9' : 'col-span-12 lg:col-span-3'
             }`}>
               {localViewProblemId && localViewProblemId !== activeProblem?._id && role === 'interviewer' && (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex flex-col gap-2 shadow-lg">
@@ -868,7 +868,7 @@ const InterviewRoom = () => {
                   </div>
                   
                   {interview?.questions?.filter(q => q.isCustom).map(q => (
-                    <div key={q._id} className={`absolute inset-0 w-full h-full ${displayProblem?._id === q._id ? 'block' : 'hidden'}`}>
+                    <div key={q._id} className={`absolute inset-0 w-full h-full ${String(displayProblem?._id) === String(q._id) ? 'block' : 'hidden'}`}>
                       <DrawingBoard
                         ref={(el) => (whiteboardRefs.current[q._id] = el)}
                         problemId={q._id}
@@ -925,7 +925,7 @@ const InterviewRoom = () => {
 
             {/* Code Editor (Deep Focus Dark) */}
             <div className={`col-span-12 lg:col-span-6 min-h-0 rounded-3xl overflow-hidden border border-white/10 bg-[#0f0f14] shadow-[0_30px_120px_rgba(0,0,0,0.6)] relative transition-all duration-500 ${
-              isPrivateWhiteboard ? 'opacity-0 invisible pointer-events-none absolute h-0 w-0' : 'opacity-100 visible'
+              isPrivateView ? 'hidden' : 'block'
             }`}>
               <div className="h-full min-h-0">
                 <CodeEditor
