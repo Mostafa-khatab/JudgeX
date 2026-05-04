@@ -9,11 +9,12 @@ import {
   Select, SelectContent, SelectItem, 
   SelectTrigger, SelectValue 
 } from '~/components/ui/select';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const CodeEditor = ({ 
   code, language, onCodeChange, onLanguageChange, 
   onRun, isRunning, allowedLanguages,
+  input, onInputChange,
   output, showOutput, onCloseOutput,
   theme = 'vs-dark',
   onCursorChange,
@@ -21,6 +22,7 @@ const CodeEditor = ({
   readOnly = false,
   onCodeDelta,
 }) => {
+  const [activeTab, setActiveTab] = useState('output');
   const isDark = theme && theme !== 'light';
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
@@ -238,12 +240,24 @@ const CodeEditor = ({
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className={isDark ? 'absolute bottom-0 left-0 right-0 h-1/3 bg-[#0b0b0f] border-t border-white/10 flex flex-col z-20 shadow-[0_-20px_60px_rgba(0,0,0,0.55)]' : 'absolute bottom-0 left-0 right-0 h-1/3 bg-white border-t border-neutral-200 flex flex-col z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]'}
+              className={isDark ? 'absolute bottom-0 left-0 right-0 h-1/2 bg-[#0b0b0f] border-t border-white/10 flex flex-col z-20 shadow-[0_-20px_60px_rgba(0,0,0,0.55)]' : 'absolute bottom-0 left-0 right-0 h-1/2 bg-white border-t border-neutral-200 flex flex-col z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]'}
             >
-              <div className={isDark ? 'flex items-center justify-between px-5 py-2.5 bg-white/5 backdrop-blur-xl border-b border-white/10' : 'flex items-center justify-between px-5 py-2.5 bg-neutral-50/80 backdrop-blur-md border-b border-neutral-100'}>
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-neutral-500">
-                  <Terminal className="h-4 w-4 text-emerald-500" />
-                  Console Output
+              <div className={isDark ? 'flex items-center justify-between px-5 py-2 bg-white/5 backdrop-blur-xl border-b border-white/10' : 'flex items-center justify-between px-5 py-2 bg-neutral-50/80 backdrop-blur-md border-b border-neutral-100'}>
+                <div className="flex items-center gap-6">
+                  <button 
+                    onClick={() => setActiveTab('output')}
+                    className={`flex items-center gap-2 py-2 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === 'output' ? 'text-emerald-500 border-emerald-500' : 'text-neutral-500 border-transparent hover:text-neutral-300'}`}
+                  >
+                    <Terminal className="h-4 w-4" />
+                    Output
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('input')}
+                    className={`flex items-center gap-2 py-2 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === 'input' ? 'text-blue-500 border-blue-500' : 'text-neutral-500 border-transparent hover:text-neutral-300'}`}
+                  >
+                    <Settings className="h-4 w-4" />
+                    Custom Input
+                  </button>
                 </div>
                 <Button 
                   variant="ghost" 
@@ -254,13 +268,28 @@ const CodeEditor = ({
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-              <div className={isDark ? 'flex-1 p-6 font-mono text-sm overflow-y-auto bg-[#0b0b0f] text-white' : 'flex-1 p-6 font-mono text-sm overflow-y-auto bg-white'}>
-                {output ? (
-                  <pre className={isDark ? 'text-white/90 leading-relaxed whitespace-pre-wrap selection:bg-blue-500/30' : 'text-neutral-800 leading-relaxed whitespace-pre-wrap selection:bg-blue-500/30'}>{output}</pre>
+
+              <div className="flex-1 min-h-0 overflow-hidden relative">
+                {activeTab === 'output' ? (
+                  <div className={isDark ? 'h-full p-6 font-mono text-sm overflow-y-auto bg-[#0b0b0f] text-white' : 'h-full p-6 font-mono text-sm overflow-y-auto bg-white'}>
+                    {output ? (
+                      <pre className={isDark ? 'text-white/90 leading-relaxed whitespace-pre-wrap selection:bg-blue-500/30' : 'text-neutral-800 leading-relaxed whitespace-pre-wrap selection:bg-blue-500/30'}>{output}</pre>
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center space-y-3 opacity-40">
+                        <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent animate-spin rounded-full" />
+                        <div className="text-[10px] font-black uppercase tracking-widest">Executing...</div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <div className="h-full flex flex-col items-center justify-center space-y-3 opacity-40">
-                    <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent animate-spin rounded-full" />
-                    <div className="text-[10px] font-black uppercase tracking-widest">Executing...</div>
+                  <div className="h-full flex flex-col p-4 bg-[#0b0b0f]">
+                    <div className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2">Standard Input (stdin)</div>
+                    <textarea
+                      value={input}
+                      onChange={(e) => onInputChange?.(e.target.value)}
+                      placeholder="Paste example test cases here..."
+                      className="flex-1 w-full bg-white/5 border border-white/10 rounded-xl p-4 font-mono text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all resize-none"
+                    />
                   </div>
                 )}
               </div>

@@ -9,8 +9,8 @@ const execPromise = (cmd, options = {}) => {
     exec(cmd, options, (error, stdout, stderr) => {
       if (error) {
         // Truncate output to prevent overwhelming the error handler or logs
-        const truncatedStdout = stdout ? (stdout.length > 100000 ? stdout.substring(0, 100000) + "... [Truncated]" : stdout) : '';
-        const truncatedStderr = stderr ? (stderr.length > 100000 ? stderr.substring(0, 100000) + "... [Truncated]" : stderr) : '';
+        const truncatedStdout = stdout ? (stdout.length > 5000 ? stdout.substring(0, 5000) + "... [Truncated]" : stdout) : '';
+        const truncatedStderr = stderr ? (stderr.length > 5000 ? stderr.substring(0, 5000) + "... [Truncated]" : stderr) : '';
         
         if (error.killed) {
           reject(new Error('Time Limit Exceeded'));
@@ -18,8 +18,8 @@ const execPromise = (cmd, options = {}) => {
           reject(new Error(truncatedStderr || truncatedStdout || error.message));
         }
       } else {
-        const truncatedStdout = stdout ? (stdout.length > 100000 ? stdout.substring(0, 100000) + "... [Truncated]" : stdout) : '';
-        const truncatedStderr = stderr ? (stderr.length > 100000 ? stderr.substring(0, 100000) + "... [Truncated]" : stderr) : '';
+        const truncatedStdout = stdout ? (stdout.length > 5000 ? stdout.substring(0, 5000) + "... [Truncated]" : stdout) : '';
+        const truncatedStderr = stderr ? (stderr.length > 5000 ? stderr.substring(0, 5000) + "... [Truncated]" : stderr) : '';
         resolve(truncatedStdout || truncatedStderr);
       }
     });
@@ -56,7 +56,7 @@ export const runCodeLocally = async (code, language, input) => {
       await fs.writeFile(inputPath, '');
     }
 
-    const runOptions = { timeout: 10000, maxBuffer: 1024 * 1024 * 5 }; // 5MB output limit, 10s timeout
+    const runOptions = { timeout: 3000, maxBuffer: 1024 * 100 }; // 100KB output limit, 3s timeout
     const inputRedirect = `< "${inputPath}"`;
     let output = '';
     const startTime = Date.now();

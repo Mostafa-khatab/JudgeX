@@ -119,6 +119,7 @@ const InterviewRoom = () => {
   const [candidateToken, setCandidateToken] = useState(localStorage.getItem('candidateToken'));
   
   const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
   const [showOutput, setShowOutput] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -235,7 +236,7 @@ const InterviewRoom = () => {
     setShowOutput(true);
     setOutput('');
     try {
-      const res = await api.runCode(code, language, '', candidateToken);
+      const res = await api.runCode(code, language, input, candidateToken);
       let runStatus = 'success';
       let runOutput = '';
       if (res.success) {
@@ -938,6 +939,8 @@ const InterviewRoom = () => {
                     handleRunCode();
                   }}
                   isRunning={isRunning}
+                  input={input}
+                  onInputChange={setInput}
                   allowedLanguages={interview?.allowedLanguages}
                   output={output}
                   showOutput={showOutput}
