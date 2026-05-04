@@ -434,6 +434,12 @@ const InterviewRoom = () => {
         if (remainingTime !== undefined) setRemainingSeconds(remainingTime);
       }
     });
+    // Problem switch sync
+    const u6b = on('problem-switched', () => {
+      if (role === 'candidate') {
+        refreshInterview();
+      }
+    });
     // Code run notification
     const u7 = on('code-run-result', (data) => {
       setCodeRunEvents(prev => [...prev, data]);
@@ -499,7 +505,7 @@ const InterviewRoom = () => {
       });
     });
 
-    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); u9(); };
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u6b(); u7(); u8(); u9(); };
   }, [on, t, role]);
 
   // Initialize timer from interview state

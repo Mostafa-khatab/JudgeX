@@ -58,6 +58,8 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
   const screenIceQueue = useRef([]);
   const isRemoteDescriptionSet = useRef(false);
   const isScreenRemoteDescriptionSet = useRef(false);
+  const isNegotiating = useRef(false); // To prevent m-line mismatch
+  const negotiationQueue = useRef([]);
 
   // Refs for media state to avoid stale closures
   const localStreamRef = useRef(null);
@@ -280,20 +282,30 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     };
 
     pc.onnegotiationneeded = async () => {
+      if (isNegotiating.current || pc.signalingState !== 'stable') {
+        negotiationQueue.current.push('negotiate');
+        return;
+      }
+      
       try {
+        isNegotiating.current = true;
         console.log('[WebRTC] Negotiation needed. signalingState:', pc.signalingState);
         makingOfferRef.current = true;
-        const offer = await pc.createOffer();
-        if (pc.signalingState !== 'stable') return;
-        await pc.setLocalDescription(offer);
+        
+        await pc.setLocalDescription();
         socketHandlers?.emit('interview-webrtc-offer', {
           interviewId,
           offer: pc.localDescription
         });
       } catch (err) {
-        console.error('[WebRTC] Renegotiation failed:', err);
+        console.error('[WebRTC] Negotiation failed:', err);
       } finally {
         makingOfferRef.current = false;
+        isNegotiating.current = false;
+        if (negotiationQueue.current.length > 0) {
+          negotiationQueue.current.shift();
+          pc.onnegotiationneeded();
+        }
       }
     };
 
@@ -406,6 +418,7 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
         return;
       }
 
+      isNegotiating.current = true;
       if (!pc) {
         const stream = localStreamRef.current || await startMedia({
           audio: isAudioEnabledRef.current,
@@ -430,6 +443,8 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
       socketHandlers?.emit('interview-webrtc-answer', { interviewId, answer: pcRef.current.localDescription });
     } catch (err) {
       console.error('[WebRTC] Failed to handle offer:', err);
+    } finally {
+      isNegotiating.current = false;
     }
   }, [startMedia, createPeerConnection, interviewId, socketHandlers, role]);
 
