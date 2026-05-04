@@ -48,11 +48,14 @@ const DrawingBoard = forwardRef(({ problemId, drawingData, onSync, onClear, role
   const [hasUnsyncedChanges, setHasUnsyncedChanges] = useState(false);
   const [remoteCursors, setRemoteCursors] = useState({});
 
+  const lastSyncedDataRef = useRef(null);
+
   const handleSync = async () => {
     if (!canvasRef.current || role !== 'interviewer') return;
     try {
       const paths = await canvasRef.current.exportPaths();
       const stringified = JSON.stringify(paths);
+      lastSyncedDataRef.current = stringified; // Track what we just sent
       emit('whiteboard-draw', { interviewId, problemId, drawingData: stringified });
       onSync?.(stringified);
       setHasUnsyncedChanges(false);
@@ -67,17 +70,20 @@ const DrawingBoard = forwardRef(({ problemId, drawingData, onSync, onClear, role
 
   // Load initial data and handle visibility changes
   useEffect(() => {
-    if (visible && canvasRef.current) {
+    if (visible && canvasRef.current && drawingData) {
+      // Don't reload if this is the data we just synced ourselves
+      if (drawingData === lastSyncedDataRef.current) {
+        return;
+      }
+
       const timer = setTimeout(() => {
-        if (drawingData) {
-          try {
-            canvasRef.current.clearCanvas();
-            safeLoadPaths(canvasRef, drawingData);
-          } catch (err) {
-            console.warn('[DrawingBoard] Load failed, retrying...', err.message);
-          }
-        } else {
-          try { canvasRef.current.clearCanvas(); } catch {}
+        try {
+          // Only clear and load if we have actual new data
+          canvasRef.current.clearCanvas();
+          safeLoadPaths(canvasRef, drawingData);
+          lastSyncedDataRef.current = drawingData;
+        } catch (err) {
+          console.warn('[DrawingBoard] Load failed, retrying...', err.message);
         }
       }, 150);
       return () => clearTimeout(timer);

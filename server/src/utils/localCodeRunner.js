@@ -18,7 +18,9 @@ const execPromise = (cmd, options = {}) => {
           reject(new Error(truncatedStderr || truncatedStdout || error.message));
         }
       } else {
-        resolve(stdout || stderr);
+        const truncatedStdout = stdout ? (stdout.length > 100000 ? stdout.substring(0, 100000) + "... [Truncated]" : stdout) : '';
+        const truncatedStderr = stderr ? (stderr.length > 100000 ? stderr.substring(0, 100000) + "... [Truncated]" : stderr) : '';
+        resolve(truncatedStdout || truncatedStderr);
       }
     });
   });
