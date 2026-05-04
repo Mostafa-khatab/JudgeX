@@ -158,12 +158,17 @@ const InterviewRoom = () => {
 
   // Compute display problem for private viewing
   const displayProblem = useMemo(() => {
-    if (!localViewProblemId) return activeProblem;
+    const targetId = localViewProblemId || activeProblem?._id;
+    if (!targetId) return activeProblem;
+
     const q = interview?.questions?.find(q => 
-      (q.problemId?._id || q.problemId) === localViewProblemId || q._id === localViewProblemId
+      String(q.problemId?._id || q.problemId || q._id) === String(targetId)
     );
+    
     if (!q) return activeProblem;
-    return q.isCustom ? { ...q.customContent, _id: q._id, isCustom: true, drawingData: q.customContent?.drawingData } : { ...q.problemId, _id: q.problemId?._id || q.problemId };
+    return q.isCustom 
+      ? { ...q.customContent, _id: q._id, isCustom: true, drawingData: q.customContent?.drawingData } 
+      : { ...q.problemId, _id: q.problemId?._id || q.problemId };
   }, [activeProblem, localViewProblemId, interview?.questions]);
 
   // 3. WebRTC Hook

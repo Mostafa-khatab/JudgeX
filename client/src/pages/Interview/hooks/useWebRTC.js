@@ -396,10 +396,10 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
   // Signaling Handlers
   const handleOffer = useCallback(async (offer) => {
     try {
-      const isPolite = role === 'candidate';
       const pc = pcRef.current;
+      const isPolite = role === 'candidate';
       const offerCollision = makingOfferRef.current || (pc && pc.signalingState !== 'stable');
-
+      
       ignoreOfferRef.current = !isPolite && offerCollision;
       if (ignoreOfferRef.current) {
         console.warn('[WebRTC] Offer glare detected (Impolite peer), ignoring offer.');
@@ -435,19 +435,22 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
 
   const handleAnswer = useCallback(async (answer) => {
     try {
-      if (pcRef.current) {
-        if (pcRef.current.signalingState !== 'have-local-offer') {
-          console.warn(`[WebRTC] Ignored answer. signalingState is ${pcRef.current.signalingState}`);
-          return;
-        }
-        await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
-        isRemoteDescriptionSet.current = true;
-        while (iceQueue.current.length > 0) {
-          try {
-            await pcRef.current.addIceCandidate(new RTCIceCandidate(iceQueue.current.shift()));
-          } catch (err) {
-            console.warn('[WebRTC] Failed to add queued ICE candidate:', err);
-          }
+      const pc = pcRef.current;
+      if (!pc) return;
+      
+      if (pc.signalingState !== 'have-local-offer') {
+        console.warn(`[WebRTC] Ignored answer. signalingState is ${pc.signalingState}`);
+        return;
+      }
+      
+      await pc.setRemoteDescription(new RTCSessionDescription(answer));
+      isRemoteDescriptionSet.current = true;
+      
+      while (iceQueue.current.length > 0) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(iceQueue.current.shift()));
+        } catch (err) {
+          console.warn('[WebRTC] Failed to add queued ICE candidate:', err);
         }
       }
     } catch (err) {
