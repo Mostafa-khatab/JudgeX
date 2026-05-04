@@ -148,7 +148,7 @@ const DrawingBoard = forwardRef(({ problemId, drawingData, onSync, onClear, role
     if (canvasRef.current) {
       try { canvasRef.current.clearCanvas(); } catch {}
       setHasUnsyncedChanges(true);
-      if (role === 'interviewer') {
+      if (role === 'interviewer' || role === 'candidate') {
         emit('whiteboard-clear', { interviewId, problemId });
         onClear?.();
       }
@@ -157,8 +157,8 @@ const DrawingBoard = forwardRef(({ problemId, drawingData, onSync, onClear, role
 
   return (
     <div className="flex flex-col h-full bg-[#0f0f14] rounded-2xl border border-white/10 overflow-hidden">
-      {/* Toolbar */}
-      {role === 'interviewer' && (
+      {/* Toolbar - Visible to both for collaboration */}
+      {(role === 'interviewer' || role === 'candidate') && (
         <div className="flex items-center justify-between p-3 border-b border-white/10 bg-white/5">
           <div className="flex items-center gap-2">
             <Button
@@ -231,7 +231,7 @@ const DrawingBoard = forwardRef(({ problemId, drawingData, onSync, onClear, role
               // Ignore changes triggered by remote sync
               if (isProcessingRemoteChangeRef.current) return;
               
-              if (role === 'interviewer' && canvasRef.current) {
+              if (canvasRef.current) {
                 // Throttle emits to every 100ms
                 const now = Date.now();
                 if (now - lastEmitTimeRef.current < 100) return;
