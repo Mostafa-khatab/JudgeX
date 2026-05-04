@@ -6,7 +6,7 @@ import {
   Share2, Code2, MessageSquare, Video as VideoIcon, 
   Clock, LogOut, FileText, ChevronRight,
   Monitor, Info, AlertCircle, Timer as TimerIcon, Users,
-  Play, Pause, RotateCcw
+  Play, Pause, RotateCcw, Brush
 } from 'lucide-react';
 import httpRequest from '~/utils/httpRequest';
 import useAuthStore from '~/stores/authStore';
@@ -36,7 +36,7 @@ import CodeEditor from './components/CodeEditor';
 import VideoPanel from './components/VideoPanel';
 import ChatPanel from './components/ChatPanel';
 import ReviewMode from './components/ReviewMode';
-import DrawingBoard from './components/DrawingBoard';
+import Whiteboard from '~/components/Interview/Whiteboard';
 
 // Hooks
 import useSocket from './hooks/useSocket';
@@ -111,6 +111,7 @@ const InterviewRoom = () => {
   const { t } = useTranslation('interview');
   const { id, token: inviteToken } = useParams();
   const navigate = useNavigate();
+  const whiteboardRef = useRef(null);
   
   const [interview, setInterview] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -126,6 +127,7 @@ const InterviewRoom = () => {
   const [privateNotes, setPrivateNotes] = useState(() => localStorage.getItem(`notes_${id}`) || '');
   const [remoteCursors, setRemoteCursors] = useState([]);
   const { user: authUser } = useAuthStore();
+  const [activeTab, setActiveTab] = useState('problem'); // 'problem' or 'whiteboard'
 
   // Timer state
   const [timerRunning, setTimerRunning] = useState(false);
@@ -138,7 +140,7 @@ const InterviewRoom = () => {
   const [localViewProblemId, setLocalViewProblemId] = useState(null);
 
   // 1. Socket Hook
-  const { emit, on, isConnected: isSocketConnected } = useSocket(interview?._id, role, {
+  const { socket, emit, on, isConnected: isSocketConnected } = useSocket(interview?._id, role, {
     name: role === 'interviewer' 
       ? interview?.instructor?.username || 'Interviewer' 
       : interview?.candidate?.name || 'Candidate',
@@ -147,7 +149,12 @@ const InterviewRoom = () => {
   });
 
   // 2. State Hook
-  const { code, setCode, language, setLanguage, activeProblem, setActiveProblem } = useInterviewState(
+  const { 
+    code, setCode, 
+    language, setLanguage, 
+    activeProblem, setActiveProblem,
+    whiteboardData, setWhiteboardData,
+  } = useInterviewState(
     interview,
     { emit, on },
     { updateState: (id, state) => api.updateState(id, state, candidateToken) }
@@ -378,6 +385,19 @@ const InterviewRoom = () => {
     if (id) localStorage.setItem(`notes_${id}`, privateNotes);
   }, [id, privateNotes]);
 
+  // Debounced save for whiteboard
+  const whiteboardSaveTimeout = useRef(null);
+  const handleWhiteboardChange = useCallback((data) => {
+      setWhiteboardData(data);
+      emit('interview-whiteboard-update', { interviewId: interview._id, whiteboardData: data });
+
+      if (whiteboardSaveTimeout.current) clearTimeout(whiteboardSaveTimeout.current);
+      whiteboardSaveTimeout.current = setTimeout(() => {
+        api.updateState(interview._id, { whiteboardData: data }, candidateToken);
+      }, 5000); // 5 sec debounce
+  }, [interview?._id, candidateToken, emit, setWhiteboardData]);
+
+
   // Listen for real-time events
   useEffect(() => {
     if (!on) return;
@@ -419,48 +439,8 @@ const InterviewRoom = () => {
         });
       }
     });
-    // Whiteboard drawing update
-    const u8 = on('whiteboard-draw', (data) => {
-      setInterview(prev => {
-        if (!prev) return prev;
-        const next = { ...prev };
-        if (!next.questions) return next;
-        
-        const qIndex = next.questions.findIndex(q => (q.problemId?._id || q.problemId || q._id) === data.problemId);
-        if (qIndex !== -1 && next.questions[qIndex].customContent) {
-          // Clone the array and the object to trigger re-render
-          next.questions = [...next.questions];
-          next.questions[qIndex] = { ...next.questions[qIndex] };
-          next.questions[qIndex].customContent = {
-            ...next.questions[qIndex].customContent,
-            drawingData: data.drawingData
-          };
-        }
-        return next;
-      });
-    });
 
-    // Whiteboard clear update
-    const u9 = on('whiteboard-clear', (data) => {
-      setInterview(prev => {
-        if (!prev) return prev;
-        const next = { ...prev };
-        if (!next.questions) return next;
-        
-        const qIndex = next.questions.findIndex(q => (q.problemId?._id || q.problemId || q._id) === data.problemId);
-        if (qIndex !== -1 && next.questions[qIndex].customContent) {
-          next.questions = [...next.questions];
-          next.questions[qIndex] = { ...next.questions[qIndex] };
-          next.questions[qIndex].customContent = {
-            ...next.questions[qIndex].customContent,
-            drawingData: null
-          };
-        }
-        return next;
-      });
-    });
-
-    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); u9(); };
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); };
   }, [on, t, role]);
 
   // Initialize timer from interview state
@@ -574,6 +554,21 @@ const InterviewRoom = () => {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
+  const handleTabChange = (value) => {
+    if (role === 'interviewer') {
+      setActiveTab(value);
+      emit('interview-tab-switch', { interviewId: interview._id, tab: value });
+    }
+  }
+
+  useEffect(() => {
+    if (!on) return;
+    const cleanup = on('tab-switched', ({ tab }) => {
+      setActiveTab(tab);
+    });
+    return () => cleanup();
+  }, [on]);
+
   if (loading) {
     return (
       <div className="h-screen jx-mesh-bg flex flex-col items-center justify-center space-y-6">
@@ -633,40 +628,16 @@ const InterviewRoom = () => {
           {/* Header */}
           <header className="h-14 px-4 shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-between z-50">
              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-[50%] py-1">
-               <AnimatePresence mode="popover">
-                 {interview?.questions?.map((q, idx) => {
-                    const probId = q.problemId?._id || q.problemId || q._id;
-                    const isSelected = (localViewProblemId || activeProblem?._id) === probId;
-                    const isActive = activeProblem?._id === probId;
-                    const displayName = q.isCustom ? q.customContent?.title : (q.problemName || `Problem ${idx + 1}`);
-
-                    return (
-                      <motion.div
-                        key={q._id || idx}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        onClick={() => {
-                          if (role === 'interviewer') {
-                            setLocalViewProblemId(probId === activeProblem?._id ? null : probId);
-                          }
-                        }}
-                        className={`flex items-center gap-2 px-4 py-1.5 rounded-xl border transition-all whitespace-nowrap group ${role === 'interviewer' ? 'cursor-pointer hover:bg-white/10' : ''} ${
-                          isSelected 
-                            ? 'bg-white/15 border-white/20 text-white shadow-lg' 
-                            : 'bg-white/5 border-white/5 text-white/40'
-                        }`}
-                      >
-                        {q.isCustom ? <Monitor className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
-                        <span className="text-xs font-bold tracking-tight">{displayName}</span>
-                        {isActive && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] ml-1" title="Live for Candidate" />}
-                      </motion.div>
-                    );
-                  })}
-               </AnimatePresence>
-               
-               {role === 'interviewer' && (
-                 <AddProblemDialog onAdd={handleAddQuestion} onAddWhiteboard={handleAddWhiteboard} api={api} />
-               )}
+                <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1">
+                    <TabsList className="bg-transparent p-0">
+                        <TabsTrigger value="problem" className="text-white/60 data-[state=active]:bg-white/10 data-[state=active]:text-white">
+                            <FileText className="h-4 w-4 mr-2" /> Problem
+                        </TabsTrigger>
+                        <TabsTrigger value="whiteboard" className="text-white/60 data-[state=active]:bg-white/10 data-[state=active]:text-white">
+                            <Brush className="h-4 w-4 mr-2" /> Whiteboard
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
              </div>
 
              <div className="flex items-center gap-8">
@@ -783,160 +754,124 @@ const InterviewRoom = () => {
 
           {/* Workspace Layout */}
           <main className="flex-1 overflow-hidden grid grid-cols-12 gap-4 p-4">
-            {/* Problem Description (Glassy Light) */}
-            <div className="col-span-12 lg:col-span-3 min-h-0 flex flex-col gap-4">
-              {localViewProblemId && localViewProblemId !== activeProblem?._id && role === 'interviewer' && (
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex flex-col gap-2 shadow-lg">
-                  <div className="flex items-center gap-2 text-amber-400">
-                    <EyeOff className="h-4 w-4" />
-                    <span className="text-sm font-bold">Private View Mode</span>
-                  </div>
-                  <div className="text-xs text-amber-400/80">The candidate cannot see this. They are viewing the live problem.</div>
-                  <div className="flex flex-col gap-2 mt-1">
-                    <Button 
-                      size="sm" 
-                      onClick={() => {
-                        handleSwitchProblem(localViewProblemId);
-                        setLocalViewProblemId(null);
-                      }}
-                      className="bg-amber-500 hover:bg-amber-600 text-black font-bold h-8"
-                    >
-                      Switch Candidate Here
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={() => setLocalViewProblemId(null)}
-                      className="text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 h-8"
-                    >
-                      Back to Live
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex-1 min-h-0 jx-glass-strong bg-white/10 border-white/10 overflow-hidden rounded-3xl flex flex-col">
-                <div className="shrink-0 px-4 py-3 border-b border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-white/60">Problem</div>
-                    {activeProblem?.difficulty && (
-                      <Badge className="bg-purple-500/15 border border-purple-500/20 text-purple-200 text-[10px]">
-                        {activeProblem.difficulty}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                <div className="flex-1 min-h-0 relative">
-                  <div className={`absolute inset-0 ${!displayProblem?.isCustom ? '' : 'hidden'}`}>
-                    <ProblemPanel
-                      problem={displayProblem}
-                      onEdit={() => {}}
-                      role={role}
-                      interviewId={interview?._id}
-                      candidateToken={candidateToken}
+            <div className={`col-span-12 ${activeTab === 'whiteboard' ? 'lg:col-span-8' : 'lg:col-span-6'} min-h-0 rounded-3xl overflow-hidden border border-white/10 bg-[#0f0f14] shadow-[0_30px_120px_rgba(0,0,0,0.6)] relative`}>
+              <AnimatePresence mode="wait">
+                {activeTab === 'problem' && (
+                  <motion.div
+                    key="problem-view"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="h-full"
+                  >
+                    <div className="col-span-12 lg:col-span-3 min-h-0 flex flex-col gap-4">
+                      {localViewProblemId && localViewProblemId !== activeProblem?._id && role === 'interviewer' && (
+                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex flex-col gap-2 shadow-lg">
+                          {/* Private View UI */}
+                        </div>
+                      )}
+        
+                      <div className="flex-1 min-h-0 jx-glass-strong bg-white/10 border-white/10 overflow-hidden rounded-3xl flex flex-col">
+                        <div className="shrink-0 px-4 py-3 border-b border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                             <div className="text-[10px] font-black uppercase tracking-widest text-white/60">Problem</div>
+                             {activeProblem?.difficulty && (
+                               <Badge className="bg-purple-500/15 border border-purple-500/20 text-purple-200 text-[10px]">
+                                 {activeProblem.difficulty}
+                               </Badge>
+                             )}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-h-0 relative">
+                           <ProblemPanel
+                             problem={displayProblem}
+                             onEdit={() => {}}
+                             role={role}
+                             interviewId={interview?._id}
+                             candidateToken={candidateToken}
+                           />
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+                {activeTab === 'whiteboard' && (
+                  <motion.div
+                    key="whiteboard-view"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="h-full"
+                  >
+                    <Whiteboard
+                      ref={whiteboardRef}
+                      roomId={interview._id}
+                      socket={socket}
+                      initialData={whiteboardData}
                     />
-                  </div>
-                  
-                  {interview?.questions?.filter(q => q.isCustom).map(q => (
-                    <div key={q._id} className={`absolute inset-0 ${displayProblem?._id === q._id ? '' : 'hidden'}`}>
-                      <DrawingBoard
-                        problemId={q._id}
-                        drawingData={q.customContent?.drawingData}
-                        onSync={(data) => {
-                          setInterview(prev => {
-                            if (!prev) return prev;
-                            const next = { ...prev };
-                            if (!next.questions) return next;
-                            
-                            const targetId = q._id;
-                            const qIndex = next.questions.findIndex(item => (item.problemId?._id || item.problemId || item._id) === targetId);
-                            if (qIndex !== -1 && next.questions[qIndex].customContent) {
-                              next.questions = [...next.questions];
-                              next.questions[qIndex] = { ...next.questions[qIndex] };
-                              next.questions[qIndex].customContent = {
-                                ...next.questions[qIndex].customContent,
-                                drawingData: data
-                              };
-                            }
-                            return next;
-                          });
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            
+            {/* Right Panel (Editor or Video/Chat) */}
+            <div className={`col-span-12 ${activeTab === 'whiteboard' ? 'lg:col-span-4' : 'lg:col-span-6'} min-h-0 flex flex-col gap-4`}>
+              <AnimatePresence mode="wait">
+                {activeTab === 'problem' ? (
+                  <motion.div
+                    key="editor"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="h-full"
+                  >
+                    <CodeEditor
+                      code={code}
+                      language={language}
+                      onCodeChange={setCode}
+                      onLanguageChange={setLanguage}
+                      onRun={handleRunCode}
+                      isRunning={isRunning}
+                      allowedLanguages={interview?.allowedLanguages}
+                      output={output}
+                      showOutput={showOutput}
+                      onCloseOutput={() => setShowOutput(false)}
+                      theme="vs-dark"
+                      onCursorChange={handleCursorChange}
+                      remoteCursors={remoteCursors}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="media-chat"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex flex-col gap-4 h-full"
+                  >
+                    <div className="jx-glass-strong bg-white/10 border-white/10 rounded-3xl p-4">
+                      <VideoPanel
+                        {...webrtc}
+                        isSocketConnected={isSocketConnected}
+                        peerInfo={peerInfo || { name: role === 'interviewer' ? 'Candidate' : 'Interviewer' }}
+                        onLeave={() => {
+                          emit('leave-interview', { interviewId: interview?._id });
+                          navigate('/interview');
                         }}
-                        onClear={() => {
-                          setInterview(prev => {
-                            if (!prev) return prev;
-                            const next = { ...prev };
-                            if (!next.questions) return next;
-                            
-                            const targetId = q._id;
-                            const qIndex = next.questions.findIndex(item => (item.problemId?._id || item.problemId || item._id) === targetId);
-                            if (qIndex !== -1 && next.questions[qIndex].customContent) {
-                              next.questions = [...next.questions];
-                              next.questions[qIndex] = { ...next.questions[qIndex] };
-                              next.questions[qIndex].customContent = {
-                                ...next.questions[qIndex].customContent,
-                                drawingData: null
-                              };
-                            }
-                            return next;
-                          });
-                        }}
-                        role={role}
-                        on={on}
-                        emit={emit}
-                        interviewId={interview?._id}
+                        compact
                       />
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Code Editor (Deep Focus Dark) */}
-            <div className="col-span-12 lg:col-span-6 min-h-0 rounded-3xl overflow-hidden border border-white/10 bg-[#0f0f14] shadow-[0_30px_120px_rgba(0,0,0,0.6)] relative">
-              <div className="h-full min-h-0">
-                <CodeEditor
-                  code={code}
-                  language={language}
-                  onCodeChange={setCode}
-                  onLanguageChange={setLanguage}
-                  onRun={() => {
-                    setShowOutput(true);
-                    handleRunCode();
-                  }}
-                  isRunning={isRunning}
-                  allowedLanguages={interview?.allowedLanguages}
-                  output={output}
-                  showOutput={showOutput}
-                  onCloseOutput={() => setShowOutput(false)}
-                  theme="vs-dark"
-                  onCursorChange={handleCursorChange}
-                  remoteCursors={remoteCursors}
-                />
-              </div>
-            </div>
-
-            {/* Video & Chat (Glassy Light) */}
-            <div className="col-span-12 lg:col-span-3 min-h-0 flex flex-col gap-4">
-              <div className="jx-glass-strong bg-white/10 border-white/10 rounded-3xl p-4">
-                <VideoPanel
-                  {...webrtc}
-                  isSocketConnected={isSocketConnected}
-                  peerInfo={peerInfo || { name: role === 'interviewer' ? 'Candidate' : 'Interviewer' }}
-                  onLeave={() => {
-                    emit('leave-interview', { interviewId: interview?._id });
-                    navigate('/interview');
-                  }}
-                  compact
-                />
-              </div>
-              <div className="jx-glass-strong bg-white/10 border-white/10 rounded-3xl overflow-hidden flex-1 min-h-0">
-                <ChatPanel
-                  messages={messages}
-                  onSendMessage={handleSendMessage}
-                  role={role}
-                  theme="light"
-                />
-              </div>
+                    <div className="jx-glass-strong bg-white/10 border-white/10 rounded-3xl overflow-hidden flex-1 min-h-0">
+                      <ChatPanel
+                        messages={messages}
+                        onSendMessage={handleSendMessage}
+                        role={role}
+                        theme="light"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </main>
         </motion.div>

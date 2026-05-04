@@ -1,46 +1,77 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { io } from 'socket.io-client';
-import { Pencil, Eraser, Trash2, Square, Circle, ArrowRight } from 'lucide-react';
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import { Pencil, Eraser, Trash2 } from 'lucide-react';
 
-const Whiteboard = ({ roomId, socketUrl }) => {
+const Whiteboard = forwardRef(({ roomId, socket, initialData }, ref) => {
 	const canvasRef = useRef(null);
 	const [isDrawing, setIsDrawing] = useState(false);
 	const [currentTool, setCurrentTool] = useState('pen');
 	const [currentColor, setCurrentColor] = useState('#000000');
 	const [lineWidth, setLineWidth] = useState(2);
-	const socketRef = useRef();
 	const contextRef = useRef();
+  
+  const drawingHistory = useRef([]);
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
-		canvas.width = canvas.offsetWidth * 2;
-		canvas.height = canvas.offsetHeight * 2;
+		const ratio = window.devicePixelRatio || 1;
+		canvas.width = canvas.offsetWidth * ratio;
+		canvas.height = canvas.offsetHeight * ratio;
 		canvas.style.width = `${canvas.offsetWidth}px`;
 		canvas.style.height = `${canvas.offsetHeight}px`;
 
 		const context = canvas.getContext('2d');
-		context.scale(2, 2);
+		context.scale(ratio, ratio);
 		context.lineCap = 'round';
 		context.strokeStyle = currentColor;
 		context.lineWidth = lineWidth;
 		contextRef.current = context;
+    
+    if (initialData) {
+      drawingHistory.current = initialData;
+      redrawCanvas();
+    }
 
-		// Socket setup
-		socketRef.current = io(socketUrl);
-		socketRef.current.emit('join-room', roomId);
+		if (!socket) return;
+		socket.emit('join-room', roomId);
 
-		socketRef.current.on('whiteboard-draw', (data) => {
+		const handleDraw = (data) => {
+      drawingHistory.current.push(data);
 			drawFromData(data);
-		});
+		};
 
-		socketRef.current.on('whiteboard-clear', () => {
+		const handleClear = () => {
 			clearCanvas();
-		});
+      drawingHistory.current = [];
+		};
+    
+    const handleGetFullCanvas = (requesterId) => {
+      socket.emit('whiteboard-full-sync-response', {
+        requesterId,
+        history: drawingHistory.current
+      });
+    };
+    
+    const handleFullSync = ({ history }) => {
+      drawingHistory.current = history;
+      redrawCanvas();
+    };
+
+		socket.on('whiteboard-draw', handleDraw);
+		socket.on('whiteboard-clear', handleClear);
+    socket.on('whiteboard-get-full-canvas', handleGetFullCanvas);
+    socket.on('whiteboard-full-sync-response', handleFullSync);
+    
+    if (!initialData?.length) {
+      socket.emit('whiteboard-get-full-canvas', { roomId, requesterId: socket.id });
+    }
 
 		return () => {
-			socketRef.current.disconnect();
+			socket.off('whiteboard-draw', handleDraw);
+			socket.off('whiteboard-clear', handleClear);
+      socket.off('whiteboard-get-full-canvas', handleGetFullCanvas);
+      socket.off('whiteboard-full-sync-response', handleFullSync);
 		};
-	}, [roomId, socketUrl]);
+	}, [roomId, socket, initialData]);
 
 	useEffect(() => {
 		if (contextRef.current) {
@@ -48,56 +79,99 @@ const Whiteboard = ({ roomId, socketUrl }) => {
 			contextRef.current.lineWidth = currentTool === 'eraser' ? lineWidth * 3 : lineWidth;
 		}
 	}, [currentTool, currentColor, lineWidth]);
+  
+  useImperativeHandle(ref, () => ({
+    getCanvasData: () => {
+      return drawingHistory.current;
+    }
+  }));
 
 	const startDrawing = ({ nativeEvent }) => {
 		const { offsetX, offsetY } = nativeEvent;
-		contextRef.current.beginPath();
-		contextRef.current.moveTo(offsetX, offsetY);
+    const point = {
+			type: 'start',
+			x: offsetX,
+			y: offsetY,
+			color: currentTool === 'eraser' ? '#ffffff' : currentColor,
+			width: currentTool === 'eraser' ? lineWidth * 3 : lineWidth,
+		};
+		
+    drawingHistory.current.push(point);
+		drawFromData(point);
+    
+		socket.emit('whiteboard-draw', { roomId, data: point });
 		setIsDrawing(true);
 	};
 
 	const draw = ({ nativeEvent }) => {
 		if (!isDrawing) return;
 		const { offsetX, offsetY } = nativeEvent;
-		contextRef.current.lineTo(offsetX, offsetY);
-		contextRef.current.stroke();
+    
+    const point = {
+			type: 'draw',
+			x: offsetX,
+			y: offsetY
+		};
+    
+    drawingHistory.current.push(point);
+		drawFromData(point);
 
-		// Emit drawing data to other users
-		socketRef.current.emit('whiteboard-draw', {
-			roomId,
-			data: {
-				x: offsetX,
-				y: offsetY,
-				color: currentTool === 'eraser' ? '#ffffff' : currentColor,
-				width: currentTool === 'eraser' ? lineWidth * 3 : lineWidth,
-				isEraser: currentTool === 'eraser',
-			},
-		});
+		socket.emit('whiteboard-draw', { roomId, data: point });
 	};
 
 	const stopDrawing = () => {
-		contextRef.current.closePath();
+    if (!isDrawing) return;
+    const point = { type: 'stop' };
+    drawingHistory.current.push(point);
+		drawFromData(point);
+    socket.emit('whiteboard-draw', { roomId, data: point });
 		setIsDrawing(false);
 	};
 
 	const drawFromData = (data) => {
 		const context = contextRef.current;
-		context.strokeStyle = data.color;
-		context.lineWidth = data.width;
-		context.lineTo(data.x, data.y);
-		context.stroke();
+    if (!context) return;
+    
+		switch(data.type) {
+      case 'start':
+        context.beginPath();
+        context.moveTo(data.x, data.y);
+        context.strokeStyle = data.color;
+        context.lineWidth = data.width;
+        break;
+      case 'draw':
+        context.lineTo(data.x, data.y);
+        context.stroke();
+        break;
+      case 'stop':
+        context.closePath();
+        break;
+      default:
+        break;
+    }
 	};
+  
+  const redrawCanvas = () => {
+    const context = contextRef.current;
+    if (!context || !canvasRef.current) return;
+    
+    context.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    
+    drawingHistory.current.forEach(data => {
+      drawFromData(data);
+    });
+  };
 
 	const clearCanvas = () => {
 		const canvas = canvasRef.current;
 		const context = contextRef.current;
-		context.fillStyle = '#ffffff';
-		context.fillRect(0, 0, canvas.width, canvas.height);
+		context.clearRect(0, 0, canvas.width, canvas.height);
 	};
 
 	const handleClear = () => {
 		clearCanvas();
-		socketRef.current.emit('whiteboard-clear', { roomId });
+    drawingHistory.current = [];
+		socket.emit('whiteboard-clear', { roomId });
 	};
 
 	const colors = ['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'];
@@ -169,6 +243,6 @@ const Whiteboard = ({ roomId, socketUrl }) => {
 			/>
 		</div>
 	);
-};
+});
 
 export default Whiteboard;
