@@ -136,6 +136,7 @@ const InterviewRoom = () => {
 
   // Local private view tracking
   const [localViewProblemId, setLocalViewProblemId] = useState(null);
+  const whiteboardRefs = useRef({}); // New ref to hold DrawingBoard handles
   const [snapshotModal, setSnapshotModal] = useState({ show: false, code: '', language: '' });
 
   // 1. Socket Hook
@@ -807,7 +808,7 @@ const InterviewRoom = () => {
           <main className="flex-1 overflow-hidden grid grid-cols-12 gap-4 p-4">
             {/* Problem Description (Glassy Light) */}
             <div className={`min-h-0 flex flex-col gap-4 transition-all duration-500 ${
-              isPrivateWhiteboard ? 'col-span-12' : 'col-span-12 lg:col-span-3'
+              isPrivateWhiteboard ? 'col-span-9' : 'col-span-12 lg:col-span-3'
             }`}>
               {localViewProblemId && localViewProblemId !== activeProblem?._id && role === 'interviewer' && (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex flex-col gap-2 shadow-lg">
@@ -819,13 +820,18 @@ const InterviewRoom = () => {
                   <div className="flex flex-col gap-2 mt-1">
                     <Button 
                       size="sm" 
-                      onClick={() => {
+                      onClick={async () => {
+                        // Auto-sync if it's a whiteboard
+                        const q = interview?.questions?.find(q => (q.problemId?._id || q.problemId) === localViewProblemId || q._id === localViewProblemId);
+                        if (q?.isCustom && whiteboardRefs.current[q._id]) {
+                          await whiteboardRefs.current[q._id].sync();
+                        }
                         handleSwitchProblem(localViewProblemId);
                         setLocalViewProblemId(null);
                       }}
-                      className="bg-amber-500 hover:bg-amber-600 text-black font-bold h-8"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-black h-8"
                     >
-                      Switch Candidate Here
+                      Sync & Show to Candidate
                     </Button>
                     <Button 
                       size="sm" 
@@ -864,6 +870,7 @@ const InterviewRoom = () => {
                   {interview?.questions?.filter(q => q.isCustom).map(q => (
                     <div key={q._id} className={`absolute inset-0 w-full h-full ${displayProblem?._id === q._id ? 'block' : 'hidden'}`}>
                       <DrawingBoard
+                        ref={(el) => (whiteboardRefs.current[q._id] = el)}
                         problemId={q._id}
                         drawingData={q.customContent?.drawingData}
                         onSync={(data) => {
@@ -943,9 +950,7 @@ const InterviewRoom = () => {
             </div>
 
             {/* Video & Chat (Glassy Light) */}
-            <div className={`col-span-12 lg:col-span-3 min-h-0 ${
-              isPrivateWhiteboard ? 'opacity-0 invisible pointer-events-none absolute h-0 w-0' : 'opacity-100 visible flex flex-col gap-4'
-            }`}>
+            <div className="col-span-12 lg:col-span-3 min-h-0 flex flex-col gap-4">
               <div className="jx-glass-strong bg-white/10 border-white/10 rounded-3xl p-4">
                 <VideoPanel
                   {...webrtc}

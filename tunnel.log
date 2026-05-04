@@ -26,3 +26,5 @@
 2026-05-04T09:33:06Z INF Retrying connection in up to 1s connIndex=0 event=0 ip=198.41.192.7
 2026-05-04T09:33:07Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.192.7
 2026-05-04T09:33:07Z INF Registered tunnel connection connIndex=0 connection=82ca03db-8f10-4f27-88a2-49fce8cf4bef event=0 ip=198.41.192.7 location=mrs05 protocol=quic
+2026-05-04T10:00:03Z ERR  error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it." connIndex=0 event=1 ingressRule=0 originService=http://localhost:8080
+2026-05-04T10:00:03Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp [::1]:8080: connectex: No connection could be made because the target machine actively refused it." connIndex=0 dest=https://know-jewellery-puzzle-bedroom.trycloudflare.com/socket.io/?EIO=4&transport=websocket event=0 ip=198.41.192.7 type=ws

@@ -95,7 +95,9 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
       track.onended = async () => {
         console.warn(`[WebRTC] Track ended unexpectedly: ${track.kind}. Attempting recovery...`);
         try {
-          const constraints = track.kind === 'audio' ? { audio: true, video: false } : { audio: false, video: true };
+          const constraints = track.kind === 'audio' 
+            ? { audio: true, video: false } 
+            : { audio: false, video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' } };
           const newStream = await navigator.mediaDevices.getUserMedia(constraints);
           const newTrack = newStream.getTracks()[0];
           if (!newTrack) return;
@@ -193,10 +195,16 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
         }
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: wantVideo,
-        audio: wantAudio
-      });
+      const constraints = {
+        audio: wantAudio,
+        video: wantVideo ? {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: 'user'
+        } : false
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       setLocalStream(stream);
       localStreamRef.current = stream;
       setIsAudioEnabled(wantAudio);
@@ -548,9 +556,11 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     }
   }, [interviewId, socketHandlers]);
 
-  // Toggles
+  // Toggles (Optimized for Mobile/Reliability)
   const toggleAudio = useCallback(async () => {
     if (!interviewId) return;
+    
+    // If no stream exists, try to start it
     if (!localStreamRef.current) {
       await startMedia({ audio: true, video: isVideoEnabledRef.current });
       return;
@@ -558,54 +568,28 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
 
     const stream = localStreamRef.current;
     const next = !isAudioEnabledRef.current;
+    const track = stream.getAudioTracks()[0];
 
-    const existing = stream.getAudioTracks()[0];
-    if (existing) {
-      if (!next) {
-        existing.stop();
-        stream.removeTrack(existing);
-        setIsAudioEnabled(false);
-        isAudioEnabledRef.current = false;
-      }
+    if (track) {
+      track.enabled = next;
+      setIsAudioEnabled(next);
+      isAudioEnabledRef.current = next;
     } else if (next) {
-      // If audio track doesn't exist (started muted), request audio-only and attach.
+      // If no track exists, we must get a new one
       try {
         const newStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        const track = newStream.getAudioTracks()[0];
-        if (track) {
-          stream.addTrack(track);
-          // Attach recovery
-          track.onended = async () => {
-            console.warn('[WebRTC] Audio track ended, recovering...');
-            try {
-              const recoveryStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-              const newTrack = recoveryStream.getAudioTracks()[0];
-              if (newTrack && localStreamRef.current) {
-                const old = localStreamRef.current.getAudioTracks()[0];
-                if (old) localStreamRef.current.removeTrack(old);
-                localStreamRef.current.addTrack(newTrack);
-                const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'audio');
-                if (sender) await sender.replaceTrack(newTrack);
-              }
-            } catch (e) {
-              console.error('[WebRTC] Audio recovery failed:', e);
-            }
-          };
-
+        const newTrack = newStream.getAudioTracks()[0];
+        if (newTrack) {
+          stream.addTrack(newTrack);
+          attachTrackRecovery(newStream);
           const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'audio');
-          if (sender) {
-            try { await sender.replaceTrack(track); } catch { /* ignore */ }
-          } else {
-            // Add track to peer connection if no sender exists
-            pcRef.current?.addTrack(track, stream);
-          }
+          if (sender) await sender.replaceTrack(newTrack);
           setIsAudioEnabled(true);
           isAudioEnabledRef.current = true;
         }
       } catch (err) {
         console.error('[WebRTC] Failed to acquire audio:', err);
         toast.error('Could not access microphone');
-        return;
       }
     }
 
@@ -613,10 +597,11 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
       interviewId,
       mediaState: { audio: isAudioEnabledRef.current, video: isVideoEnabledRef.current }
     });
-  }, [localStream, isAudioEnabled, isVideoEnabled, interviewId, socketHandlers, startMedia, isConnected, initiateCall]);
+  }, [interviewId, socketHandlers, startMedia, attachTrackRecovery]);
 
   const toggleVideo = useCallback(async () => {
     if (!interviewId) return;
+    
     if (!localStreamRef.current) {
       await startMedia({ audio: isAudioEnabledRef.current, video: true });
       return;
@@ -624,52 +609,30 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
 
     const stream = localStreamRef.current;
     const next = !isVideoEnabledRef.current;
+    const track = stream.getVideoTracks()[0];
 
-    const existing = stream.getVideoTracks()[0];
-    if (existing) {
-      if (!next) {
-        existing.stop();
-        stream.removeTrack(existing);
-        setIsVideoEnabled(false);
-        isVideoEnabledRef.current = false;
-      }
+    if (track) {
+      track.enabled = next;
+      setIsVideoEnabled(next);
+      isVideoEnabledRef.current = next;
     } else if (next) {
       try {
-        const newStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
-        const track = newStream.getVideoTracks()[0];
-        if (track) {
-          stream.addTrack(track);
-          // Attach recovery
-          track.onended = async () => {
-            console.warn('[WebRTC] Video track ended, recovering...');
-            try {
-              const recoveryStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
-              const newTrack = recoveryStream.getVideoTracks()[0];
-              if (newTrack && localStreamRef.current) {
-                const old = localStreamRef.current.getVideoTracks()[0];
-                if (old) localStreamRef.current.removeTrack(old);
-                localStreamRef.current.addTrack(newTrack);
-                const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'video');
-                if (sender) await sender.replaceTrack(newTrack);
-              }
-            } catch (e) {
-              console.error('[WebRTC] Video recovery failed:', e);
-            }
-          };
-
+        const newStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: false, 
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' } 
+        });
+        const newTrack = newStream.getVideoTracks()[0];
+        if (newTrack) {
+          stream.addTrack(newTrack);
+          attachTrackRecovery(newStream);
           const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'video');
-          if (sender) {
-            try { await sender.replaceTrack(track); } catch { /* ignore */ }
-          } else {
-            pcRef.current?.addTrack(track, stream);
-          }
+          if (sender) await sender.replaceTrack(newTrack);
           setIsVideoEnabled(true);
           isVideoEnabledRef.current = true;
         }
       } catch (err) {
         console.error('[WebRTC] Failed to acquire video:', err);
         toast.error('Could not access camera');
-        return;
       }
     }
 
@@ -677,7 +640,7 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
       interviewId,
       mediaState: { audio: isAudioEnabledRef.current, video: isVideoEnabledRef.current }
     });
-  }, [localStream, isAudioEnabled, isVideoEnabled, interviewId, socketHandlers, startMedia, isConnected, initiateCall]);
+  }, [interviewId, socketHandlers, startMedia, attachTrackRecovery]);
 
   // Lifecycle
   useEffect(() => {

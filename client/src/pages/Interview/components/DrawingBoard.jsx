@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import { ReactSketchCanvas } from 'react-sketch-canvas';
 import { Button } from '~/components/ui/button';
 import { PenTool, Eraser, Trash2, Send, Undo2, Redo2 } from 'lucide-react';
@@ -39,7 +39,7 @@ const safeLoadPaths = (canvasRef, data) => {
   }
 };
 
-const DrawingBoard = ({ problemId, drawingData, onSync, onClear, role, on, emit, interviewId, visible }) => {
+const DrawingBoard = forwardRef(({ problemId, drawingData, onSync, onClear, role, on, emit, interviewId, visible }, ref) => {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [isEraser, setIsEraser] = useState(false);
@@ -48,10 +48,26 @@ const DrawingBoard = ({ problemId, drawingData, onSync, onClear, role, on, emit,
   const [hasUnsyncedChanges, setHasUnsyncedChanges] = useState(false);
   const [remoteCursors, setRemoteCursors] = useState({});
 
+  const handleSync = async () => {
+    if (!canvasRef.current || role !== 'interviewer') return;
+    try {
+      const paths = await canvasRef.current.exportPaths();
+      const stringified = JSON.stringify(paths);
+      emit('whiteboard-draw', { interviewId, problemId, drawingData: stringified });
+      onSync?.(stringified);
+      setHasUnsyncedChanges(false);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    sync: handleSync
+  }));
+
   // Load initial data and handle visibility changes
   useEffect(() => {
     if (visible && canvasRef.current) {
-      // Small delay to let canvas mount/become visible fully
       const timer = setTimeout(() => {
         if (drawingData) {
           try {
@@ -112,19 +128,6 @@ const DrawingBoard = ({ problemId, drawingData, onSync, onClear, role, on, emit,
       name: role === 'interviewer' ? 'Moderator' : (localStorage.getItem('candidateName') || 'Candidate'),
       x, y 
     });
-  };
-
-  const handleSync = async () => {
-    if (!canvasRef.current || role !== 'interviewer') return;
-    try {
-      const paths = await canvasRef.current.exportPaths();
-      const stringified = JSON.stringify(paths);
-      emit('whiteboard-draw', { interviewId, problemId, drawingData: stringified });
-      onSync?.(stringified);
-      setHasUnsyncedChanges(false);
-    } catch (err) {
-      console.error(err);
-    }
   };
 
   const handleClear = () => {
@@ -245,6 +248,6 @@ const DrawingBoard = ({ problemId, drawingData, onSync, onClear, role, on, emit,
       )}
     </div>
   );
-};
+});
 
 export default DrawingBoard;
