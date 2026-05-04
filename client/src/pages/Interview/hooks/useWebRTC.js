@@ -5,11 +5,11 @@ const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    // { urls: 'stun:stun2.l.google.com:19302' },
-    // { urls: 'stun:stun3.l.google.com:19302' },
-    // { urls: 'stun:stun4.l.google.com:19302' },
-    // { urls: 'stun:stun.services.mozilla.com' },
-    // { urls: 'stun:stun.l.google.com:19305' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun.services.mozilla.com' },
+    { urls: 'stun:stun.l.google.com:19305' },
     {
       urls: 'turn:openrelay.metered.ca:80',
       username: 'openrelayproject',
@@ -20,14 +20,13 @@ const ICE_SERVERS = {
       username: 'openrelayproject',
       credential: 'openrelayproject',
     },
-    // {
-    //   urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-    //   username: 'openrelayproject',
-    //   credential: 'openrelayproject',
-    // }
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    }
   ],
   iceCandidatePoolSize: 10,
-  iceTransportPolicy: 'relay',
 };
 
 // Max auto-reconnect attempts before giving up

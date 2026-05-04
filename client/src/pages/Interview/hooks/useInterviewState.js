@@ -4,7 +4,6 @@ export const useInterviewState = (initialData, socketHandlers, apiHandlers) => {
   const [code, setCode] = useState(initialData?.state?.code || '');
   const [language, setLanguage] = useState(initialData?.state?.language || 'cpp');
   const [activeProblem, setActiveProblem] = useState(null);
-  const [whiteboardData, setWhiteboardData] = useState(initialData?.state?.whiteboardData || null);
   
   const lastEmittedCode = useRef(code);
   const saveTimeout = useRef(null);
@@ -13,12 +12,10 @@ export const useInterviewState = (initialData, socketHandlers, apiHandlers) => {
   useEffect(() => {
     const nextCode = initialData?.state?.code || '';
     const nextLang = initialData?.state?.language || 'cpp';
-    const nextWhiteboardData = initialData?.state?.whiteboardData || null;
 
     setCode(nextCode);
     lastEmittedCode.current = nextCode;
     setLanguage(nextLang);
-    setWhiteboardData(nextWhiteboardData);
     
     const currentActiveProblemId = initialData?.state?.activeProblemId;
     const visibleQuestion = initialData?.questions?.find(q => q?.isVisible);
@@ -58,15 +55,10 @@ export const useInterviewState = (initialData, socketHandlers, apiHandlers) => {
       if (data.starterCode) setCode(data.starterCode);
     });
 
-    const cleanupWhiteboard = socketHandlers.on('whiteboard-updated', (data) => {
-      setWhiteboardData(data);
-    });
-
     return () => {
       cleanupCode();
       cleanupLang();
       cleanupProblem();
-      cleanupWhiteboard();
     };
   }, [socketHandlers]);
 
@@ -113,24 +105,13 @@ export const useInterviewState = (initialData, socketHandlers, apiHandlers) => {
     }
   }, [initialData?._id, socketHandlers, apiHandlers]);
 
-  const updateWhiteboard = useCallback((newData) => {
-    setWhiteboardData(newData);
-    socketHandlers?.emit('interview-whiteboard-update', {
-      interviewId: initialData?._id,
-      whiteboardData: newData
-    });
-    // Also persist this state to the backend, maybe debounced
-  }, [initialData?._id, socketHandlers]);
-
   return {
     code,
     setCode: updateCode,
     language,
     setLanguage: updateLanguage,
     activeProblem,
-    setActiveProblem,
-    whiteboardData,
-    setWhiteboardData: updateWhiteboard,
+    setActiveProblem
   };
 };
 
