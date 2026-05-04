@@ -19,12 +19,34 @@ const CodeEditor = ({
   onCursorChange,
   remoteCursors,
   readOnly = false,
+  onCodeDelta,
 }) => {
   const isDark = theme && theme !== 'light';
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const decorationsRef = useRef({});
   const widgetsRef = useRef({});
+  const lastKnownCodeRef = useRef(code);
+
+  // Apply incoming code changes via edits to preserve cursor/undo stack
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || readOnly || code === lastKnownCodeRef.current) return;
+    
+    const model = editor.getModel();
+    if (!model) return;
+
+    const currentCode = editor.getValue();
+    if (code !== currentCode) {
+      lastKnownCodeRef.current = code;
+      // Use executeEdits to replace the whole content while preserving undo stack and cursor
+      editor.executeEdits('remote-sync', [{
+        range: model.getFullModelRange(),
+        text: code,
+        forceMoveMarkers: true
+      }]);
+    }
+  }, [code, readOnly]);
 
   const cursorList = useMemo(() => {
     return Array.isArray(remoteCursors) ? remoteCursors : [];
@@ -161,20 +183,30 @@ const CodeEditor = ({
         <Editor
           height="100%"
           language={language === 'cpp' ? 'cpp' : language}
-          value={code}
-          onChange={onCodeChange}
+          defaultValue={code}
           theme={theme}
           onMount={(editor, monaco) => {
             editorRef.current = editor;
             monacoRef.current = monaco;
 
-            const disposable = editor.onDidChangeCursorPosition((e) => {
+            const disposableContent = editor.onDidChangeModelContent(() => {
+              const val = editor.getValue();
+              if (val !== lastKnownCodeRef.current) {
+                lastKnownCodeRef.current = val;
+                onCodeChange?.(val);
+              }
+            });
+
+            const disposableCursor = editor.onDidChangeCursorPosition((e) => {
               onCursorChange?.({ lineNumber: e.position.lineNumber, column: e.position.column });
             });
 
             // Cleanup when editor unmounts.
             editor.onDidDispose(() => {
-              try { disposable.dispose(); } catch { /* noop */ }
+              try { 
+                disposableContent.dispose();
+                disposableCursor.dispose(); 
+              } catch { /* noop */ }
             });
           }}
           options={{

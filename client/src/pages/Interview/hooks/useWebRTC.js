@@ -49,6 +49,10 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
 
   const pcRef = useRef(null);
   const screenPcRef = useRef(null);
+  const makingOfferRef = useRef(false);
+  const ignoreOfferRef = useRef(false);
+  const isSettingRemoteAnswerPendingRef = useRef(false);
+  const lastInitiationTimeRef = useRef(0);
 
   const iceQueue = useRef([]);
   const screenIceQueue = useRef([]);
@@ -270,15 +274,18 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     pc.onnegotiationneeded = async () => {
       try {
         console.log('[WebRTC] Negotiation needed. signalingState:', pc.signalingState);
-        if (pc.signalingState !== 'stable') return;
+        makingOfferRef.current = true;
         const offer = await pc.createOffer();
+        if (pc.signalingState !== 'stable') return;
         await pc.setLocalDescription(offer);
         socketHandlers?.emit('interview-webrtc-offer', {
           interviewId,
-          offer
+          offer: pc.localDescription
         });
       } catch (err) {
         console.error('[WebRTC] Renegotiation failed:', err);
+      } finally {
+        makingOfferRef.current = false;
       }
     };
 
@@ -324,6 +331,14 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
   }, [interviewId, socketHandlers, role]);
 
   const initiateCall = useCallback(async () => {
+    // Debounce initiations to avoid rapid re-creation
+    const now = Date.now();
+    if (now - lastInitiationTimeRef.current < 1500) {
+      console.log('[WebRTC] Initiation debounced');
+      return;
+    }
+    lastInitiationTimeRef.current = now;
+
     console.log('[WebRTC] Manual/Auto initiating call (ICE Restart)...');
     
     // Close existing PC if any
@@ -340,16 +355,19 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
 
     const pc = createPeerConnection(stream);
     try {
+      makingOfferRef.current = true;
       const offer = await pc.createOffer({ iceRestart: true });
       await pc.setLocalDescription(offer);
       
       console.log('[WebRTC] Sending Offer to peer...');
       socketHandlers?.emit('interview-webrtc-offer', {
         interviewId,
-        offer
+        offer: pc.localDescription
       });
     } catch (err) {
       console.error('[WebRTC] Failed to create/set offer:', err);
+    } finally {
+      makingOfferRef.current = false;
     }
   }, [startMedia, createPeerConnection, interviewId, socketHandlers]);
 
@@ -363,39 +381,45 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     // Delay slightly to let the other peer finish joining the room.
     const t = setTimeout(() => {
       initiateCall();
-    }, 300);
+    }, 500);
     return () => clearTimeout(t);
   }, [localStream, role, initiateCall]);
 
   // Signaling Handlers
   const handleOffer = useCallback(async (offer) => {
     try {
-      let pc = pcRef.current;
+      const isPolite = role === 'candidate';
+      const pc = pcRef.current;
+      const offerCollision = makingOfferRef.current || (pc && pc.signalingState !== 'stable');
+
+      ignoreOfferRef.current = !isPolite && offerCollision;
+      if (ignoreOfferRef.current) {
+        console.warn('[WebRTC] Offer glare detected (Impolite peer), ignoring offer.');
+        return;
+      }
+
       if (!pc) {
         const stream = localStreamRef.current || await startMedia({
           audio: isAudioEnabledRef.current,
           video: isVideoEnabledRef.current
         });
-        pc = createPeerConnection(stream);
-      } else if (pc.signalingState !== 'stable') {
-        console.warn('[WebRTC] Offer glare detected. signalingState:', pc.signalingState);
-        if (role === 'interviewer') return; 
+        pcRef.current = createPeerConnection(stream);
       }
       
-      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer));
       isRemoteDescriptionSet.current = true;
       
       while (iceQueue.current.length > 0) {
         try {
-          await pc.addIceCandidate(new RTCIceCandidate(iceQueue.current.shift()));
+          await pcRef.current.addIceCandidate(new RTCIceCandidate(iceQueue.current.shift()));
         } catch (err) {
           console.warn('[WebRTC] Failed to add queued ICE candidate:', err);
         }
       }
       
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      socketHandlers?.emit('interview-webrtc-answer', { interviewId, answer });
+      const answer = await pcRef.current.createAnswer();
+      await pcRef.current.setLocalDescription(answer);
+      socketHandlers?.emit('interview-webrtc-answer', { interviewId, answer: pcRef.current.localDescription });
     } catch (err) {
       console.error('[WebRTC] Failed to handle offer:', err);
     }

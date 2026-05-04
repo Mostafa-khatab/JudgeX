@@ -18,3 +18,11 @@
 2026-05-04T09:17:57Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.192.7
 2026-05-04T09:17:57Z INF ICMP proxy will use fe80::bd02:29b5:9633:bfc9 in zone WiFi as source for IPv6
 2026-05-04T09:17:57Z INF Starting metrics server on 127.0.0.1:20242/metrics
+2026-05-04T09:17:58Z INF Registered tunnel connection connIndex=0 connection=b27d4baa-0f41-4ba2-b4bf-94a1afc17989 event=0 ip=198.41.192.7 location=mrs05 protocol=quic
+2026-05-04T09:33:06Z ERR failed to accept incoming stream requests error="failed to accept QUIC stream: timeout: no recent network activity" connIndex=0 event=0 ip=198.41.192.7
+2026-05-04T09:33:06Z ERR failed to run the datagram handler error="timeout: no recent network activity" connIndex=0 event=0 ip=198.41.192.7
+2026-05-04T09:33:06Z ERR failed to serve tunnel connection error="accept stream listener encountered a failure while serving" connIndex=0 event=0 ip=198.41.192.7
+2026-05-04T09:33:06Z ERR Serve tunnel error error="accept stream listener encountered a failure while serving" connIndex=0 event=0 ip=198.41.192.7
+2026-05-04T09:33:06Z INF Retrying connection in up to 1s connIndex=0 event=0 ip=198.41.192.7
+2026-05-04T09:33:07Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.192.7
+2026-05-04T09:33:07Z INF Registered tunnel connection connIndex=0 connection=82ca03db-8f10-4f27-88a2-49fce8cf4bef event=0 ip=198.41.192.7 location=mrs05 protocol=quic

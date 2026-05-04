@@ -201,12 +201,7 @@ const InterviewRoom = () => {
     init();
   }, [id, inviteToken, candidateToken, t]);
 
-  // Navigate back on finish
-  useEffect(() => {
-    if (interview?.status === 'finished') {
-      navigate('/interview');
-    }
-  }, [interview?.status, navigate]);
+  // Navigate back on finish removed to allow viewing old interviews
 
   const handleJoinFromLobby = async (data) => {
     setLoading(true);
@@ -812,7 +807,7 @@ const InterviewRoom = () => {
           <main className="flex-1 overflow-hidden grid grid-cols-12 gap-4 p-4">
             {/* Problem Description (Glassy Light) */}
             <div className={`min-h-0 flex flex-col gap-4 transition-all duration-500 ${
-              isPrivateWhiteboard ? 'col-span-12 lg:col-span-9' : 'col-span-12 lg:col-span-3'
+              isPrivateWhiteboard ? 'col-span-12' : 'col-span-12 lg:col-span-3'
             }`}>
               {localViewProblemId && localViewProblemId !== activeProblem?._id && role === 'interviewer' && (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex flex-col gap-2 shadow-lg">
@@ -856,7 +851,7 @@ const InterviewRoom = () => {
                   </div>
                 </div>
                 <div className="flex-1 min-h-0 relative">
-                  <div className={`absolute inset-0 ${!displayProblem?.isCustom ? '' : 'hidden'}`}>
+                  <div className={`absolute inset-0 w-full h-full ${!displayProblem?.isCustom ? 'block' : 'hidden'}`}>
                     <ProblemPanel
                       problem={displayProblem}
                       onEdit={() => {}}
@@ -867,7 +862,7 @@ const InterviewRoom = () => {
                   </div>
                   
                   {interview?.questions?.filter(q => q.isCustom).map(q => (
-                    <div key={q._id} className={`absolute inset-0 ${displayProblem?._id === q._id ? '' : 'hidden'}`}>
+                    <div key={q._id} className={`absolute inset-0 w-full h-full ${displayProblem?._id === q._id ? 'block' : 'hidden'}`}>
                       <DrawingBoard
                         problemId={q._id}
                         drawingData={q.customContent?.drawingData}
@@ -948,7 +943,9 @@ const InterviewRoom = () => {
             </div>
 
             {/* Video & Chat (Glassy Light) */}
-            <div className="col-span-12 lg:col-span-3 min-h-0 flex flex-col gap-4">
+            <div className={`col-span-12 lg:col-span-3 min-h-0 ${
+              isPrivateWhiteboard ? 'opacity-0 invisible pointer-events-none absolute h-0 w-0' : 'opacity-100 visible flex flex-col gap-4'
+            }`}>
               <div className="jx-glass-strong bg-white/10 border-white/10 rounded-3xl p-4">
                 <VideoPanel
                   {...webrtc}
@@ -978,7 +975,7 @@ const InterviewRoom = () => {
             open={snapshotModal.show} 
             onOpenChange={(open) => setSnapshotModal(prev => ({ ...prev, show: open }))}
           >
-            <DialogContent className="sm:max-w-[800px] h-[80vh] jx-glass-strong border-white/10 text-white rounded-3xl p-0 overflow-hidden flex flex-col">
+            <DialogContent aria-describedby={undefined} className="sm:max-w-[800px] h-[80vh] jx-glass-strong border-white/10 text-white rounded-3xl p-0 overflow-hidden flex flex-col">
               <DialogHeader className="p-6 pb-2 shrink-0">
                 <div className="flex items-center justify-between">
                   <DialogTitle className="text-xl font-black tracking-tight">Code Snapshot</DialogTitle>
@@ -1040,7 +1037,7 @@ const SwitchQuestionDialog = ({ questions, activeProblemId, onSwitch }) => {
           Switch
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[560px] jx-glass-strong border-white/10 text-white rounded-3xl p-0 overflow-hidden">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-[560px] jx-glass-strong border-white/10 text-white rounded-3xl p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="text-xl font-black tracking-tight">Switch Question</DialogTitle>
         </DialogHeader>
@@ -1144,7 +1141,7 @@ const AddProblemDialog = ({ onAdd, onAddWhiteboard, api }) => {
           </Tooltip>
         </TooltipProvider>
       </div>
-      <DialogContent className="sm:max-w-[560px] jx-glass-strong border-white/10 text-white rounded-3xl p-0 overflow-hidden">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-[560px] jx-glass-strong border-white/10 text-white rounded-3xl p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="text-xl font-black tracking-tight">Add Problem</DialogTitle>
         </DialogHeader>

@@ -253,9 +253,6 @@ const getInterviewByToken = async (req, res) => {
       return sendError(res, 'Interview not found or invalid token', 404);
     }
 
-    if (interview.status === 'finished' || interview.status === 'cancelled') {
-      return sendError(res, 'This interview has already ended', 400);
-    }
 
     const isInstructor = req.userId && interview.instructor._id.toString() === req.userId.toString();
     const role = isInstructor ? 'interviewer' : 'candidate';
