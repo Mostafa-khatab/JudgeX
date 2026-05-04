@@ -27,15 +27,21 @@ class CanvasErrorBoundary extends React.Component {
   }
 }
 
-const safeLoadPaths = (canvasRef, data) => {
+const safeLoadPaths = (canvasRef, data, isRemoteChangeRef) => {
   if (!canvasRef?.current || !data) return;
   try {
     const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    if (Array.isArray(parsed)) {
+      if (isRemoteChangeRef) isRemoteChangeRef.current = true;
       canvasRef.current.loadPaths(parsed);
+      // Wait for React to process the change before releasing the guard
+      setTimeout(() => {
+        if (isRemoteChangeRef) isRemoteChangeRef.current = false;
+      }, 50);
     }
   } catch (err) {
     console.warn('[DrawingBoard] Failed to load paths:', err.message);
+    if (isRemoteChangeRef) isRemoteChangeRef.current = false;
   }
 };
 
@@ -49,6 +55,8 @@ const DrawingBoard = forwardRef(({ problemId, drawingData, onSync, onClear, role
   const [remoteCursors, setRemoteCursors] = useState({});
 
   const lastSyncedDataRef = useRef(null);
+  const isProcessingRemoteChangeRef = useRef(false);
+  const lastEmitTimeRef = useRef(0);
 
   const handleSync = async () => {
     if (!canvasRef.current || role !== 'interviewer') return;
@@ -78,9 +86,7 @@ const DrawingBoard = forwardRef(({ problemId, drawingData, onSync, onClear, role
 
       const timer = setTimeout(() => {
         try {
-          // Only clear and load if we have actual new data
-          canvasRef.current.clearCanvas();
-          safeLoadPaths(canvasRef, drawingData);
+          safeLoadPaths(canvasRef, drawingData, isProcessingRemoteChangeRef);
           lastSyncedDataRef.current = drawingData;
         } catch (err) {
           console.warn('[DrawingBoard] Load failed, retrying...', err.message);
@@ -95,7 +101,9 @@ const DrawingBoard = forwardRef(({ problemId, drawingData, onSync, onClear, role
     if (!on) return;
     const cleanupDraw = on('whiteboard-draw', (data) => {
       if (data.problemId === problemId && canvasRef.current && data.drawingData) {
-        safeLoadPaths(canvasRef, data.drawingData);
+        // Prevent echo if we just received our own update via a slow socket path (though usually socket.to avoids this)
+        if (data.drawingData === lastSyncedDataRef.current) return;
+        safeLoadPaths(canvasRef, data.drawingData, isProcessingRemoteChangeRef);
       }
     });
     
@@ -202,14 +210,6 @@ const DrawingBoard = forwardRef(({ problemId, drawingData, onSync, onClear, role
               <Trash2 className="h-4 w-4 mr-2" />
               Clear
             </Button>
-            <Button 
-              size="sm" 
-              onClick={handleSync} 
-              className={`h-8 ${hasUnsyncedChanges ? 'bg-blue-600 hover:bg-blue-700 animate-pulse' : 'bg-white/10 text-white/50'}`}
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Sync to Candidate
-            </Button>
           </div>
         </div>
       )}
@@ -227,7 +227,22 @@ const DrawingBoard = forwardRef(({ problemId, drawingData, onSync, onClear, role
             strokeColor={strokeColor}
             canvasColor="transparent"
             className="absolute inset-0 w-full h-full"
-            onChange={() => role === 'interviewer' && setHasUnsyncedChanges(true)}
+            onChange={async () => {
+              // Ignore changes triggered by remote sync
+              if (isProcessingRemoteChangeRef.current) return;
+              
+              if (role === 'interviewer' && canvasRef.current) {
+                // Throttle emits to every 100ms
+                const now = Date.now();
+                if (now - lastEmitTimeRef.current < 100) return;
+                lastEmitTimeRef.current = now;
+
+                const paths = await canvasRef.current.exportPaths();
+                const stringified = JSON.stringify(paths);
+                lastSyncedDataRef.current = stringified;
+                emit('whiteboard-draw', { interviewId, problemId, drawingData: stringified });
+              }
+            }}
           />
         </CanvasErrorBoundary>
 
