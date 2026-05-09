@@ -56,3 +56,27 @@ export const getSkillGap = async (name) => {
 		throw err;
 	}
 };
+
+export const updateRoadmapProgress = async ({ topicId, patch }) => {
+	try {
+		const { reload } = useAuthStore.getState();
+		const res = await httpRequest.patch('/user/roadmap/progress', { topicId, patch });
+		await reload();
+		return res.data;
+	} catch (err) {
+		console.error(err);
+		throw err;
+	}
+};
+
+export const verifyRoadmapProblem = async ({ topicId, problemId }) => {
+	try {
+		const { reload } = useAuthStore.getState();
+		const res = await httpRequest.post('/user/roadmap/verify-problem', { topicId, problemId });
+		await reload();
+		return res.data;
+	} catch (err) {
+		console.error(err);
+		throw err;
+	}
+};

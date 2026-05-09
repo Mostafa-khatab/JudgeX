@@ -28,6 +28,10 @@ import InterviewIndex from '~/pages/Interview/index';
 import InterviewRoom from '~/pages/Interview/Room';
 import InterviewResults from '~/pages/Interview/Results';
 import BlogDetail from '~/pages/BlogDetail/BlogDetail';
+import RoadmapTopic from '~/pages/RoadmapTopic';
+import CustomRoadmapDashboard from '~/components/Roadmap/CustomRoadmapDashboard';
+import CustomRoadmapView from '~/components/Roadmap/CustomRoadmapView';
+
 
 const routes = [
 	{
@@ -149,6 +153,24 @@ const routes = [
 		path: routesConfig.course,
 		page: Course,
 		layout: DefaultLayoutWithFooter,
+	},
+{
+		path: routesConfig.roadmapTopic,
+		page: RoadmapTopic,
+		layout: DefaultLayoutWithFooter,
+		type: 'auth',
+	},
+	{
+		path: routesConfig.customRoadmapDashboard,
+		page: CustomRoadmapDashboard,
+		layout: DefaultLayoutWithFooter,
+		type: 'auth',
+	},
+	{
+		path: routesConfig.customRoadmapView,
+		page: CustomRoadmapView,
+		layout: DefaultLayoutWithFooter,
+		type: 'auth',
 	},
 	// Interview System Routes (Simplified)
 	{

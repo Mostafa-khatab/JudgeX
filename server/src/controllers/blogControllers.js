@@ -16,23 +16,31 @@ export const getBlogs = async (req, res) => {
         const skip = (page - 1) * limit;
 
         const blogs = await Blog.find()
+            .populate('user', 'name avatar')
             .sort({ creationTimeSeconds: -1 }) // Newest first
             .skip(skip)
             .limit(limit)
             .lean(); // Convert to plan JS objects to add virtual fields
         
-        // Add isLiked field if user is logged in
-        if (req.userId) {
-            blogs.forEach(blog => {
-                blog.isLiked = blog.likes?.some(id => id.toString() === req.userId.toString());
-            });
-        }
+        // Enhance blogs with counts and like status
+        const enhancedBlogs = await Promise.all(blogs.map(async (blog) => {
+            const commentsCount = await Comment.countDocuments({ blogId: blog._id });
+            const likesCount = blog.likes?.length || 0;
+            const isLiked = req.userId ? blog.likes?.some(id => id.toString() === req.userId.toString()) : false;
+            
+            return {
+                ...blog,
+                commentsCount,
+                likesCount,
+                isLiked
+            };
+        }));
 
         const total = await Blog.countDocuments();
 
         res.status(200).json({
             success: true,
-            data: blogs,
+            data: enhancedBlogs,
             pagination: {
                 current: page,
                 total: Math.ceil(total / limit),
@@ -266,6 +274,39 @@ export const getBlogComments = async (req, res) => {
         });
 
         res.status(200).json({ success: true, data: structuredComments });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * Create a new blog (local)
+ */
+export const createBlog = async (req, res) => {
+    try {
+        const { title, content, tags, image } = req.body;
+        const user = await mongoose.model('User').findById(req.userId);
+        
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        const newBlog = await Blog.create({
+            title,
+            content,
+            tags: tags || [],
+            authorHandle: user.name || user.handle, // Use user's name as handle
+            user: user._id,
+            creationTimeSeconds: Math.floor(Date.now() / 1000),
+            rating: 0,
+            likes: [],
+            image
+        });
+
+        res.status(201).json({
+            success: true,
+            data: newBlog
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

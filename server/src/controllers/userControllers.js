@@ -3,6 +3,7 @@ import { getTop } from '../utils/user.js';
 import cloudinary from '../config/cloudinary.js';
 import Submission from '../models/submission.js';
 import Problem from '../models/problem.js';
+import Topic from '../models/topic.js';
 
 const userControllers = {
 	//[GET] /user
@@ -102,6 +103,136 @@ const userControllers = {
 			res.status(400).json({ success: false, msg: err.message });
 
 			console.error(`Error in edit user: ${err.message}`);
+		}
+	},
+
+	//[PATCH] /user/roadmap/progress
+	async updateRoadmapProgress(req, res, next) {
+		try {
+			const { topicId, patch } = req.body;
+			const user = await User.findById(req.userId);
+			
+			if (!user) {
+				throw new Error('User not found');
+			}
+
+			if (!topicId || typeof topicId !== 'string') {
+				throw new Error('topicId is required');
+			}
+			if (!patch || typeof patch !== 'object') {
+				throw new Error('patch is required');
+			}
+
+			// Initialize roadmapProgress for existing users
+			if (!user.roadmapProgress) {
+				user.roadmapProgress = {};
+			}
+			if (!Array.isArray(user.roadmapProgress.unlockedTopicIds)) {
+				user.roadmapProgress.unlockedTopicIds = [];
+			}
+			if (!Array.isArray(user.roadmapProgress.completedTopicIds)) {
+				user.roadmapProgress.completedTopicIds = [];
+			}
+			if (!user.roadmapProgress.topicProgress) {
+				user.roadmapProgress.topicProgress = new Map();
+			}
+
+			// Ensure the first topic is unlocked for the user.
+			if (user.roadmapProgress.unlockedTopicIds.length === 0) {
+				const first = await Topic.findOne().sort({ order: 1 }).select('topicId');
+				if (first?.topicId) user.roadmapProgress.unlockedTopicIds.push(first.topicId);
+			}
+
+			const prev = user.roadmapProgress.topicProgress.get(topicId) || {
+				currentStep: 0,
+				videoWatched: false,
+				quizzesPassed: [],
+				problemSolved: false,
+				completed: false,
+			};
+			const next = {
+				...prev,
+				...patch,
+			};
+			user.roadmapProgress.topicProgress.set(topicId, next);
+
+			// If topic is completed, unlock the next topic by order.
+			if (next.completed) {
+				if (!user.roadmapProgress.completedTopicIds.includes(topicId)) {
+					user.roadmapProgress.completedTopicIds.push(topicId);
+				}
+				const t = await Topic.findOne({ topicId }).select('order');
+				if (t) {
+					const nextTopic = await Topic.findOne({ order: t.order + 1 }).select('topicId');
+					if (nextTopic?.topicId && !user.roadmapProgress.unlockedTopicIds.includes(nextTopic.topicId)) {
+						user.roadmapProgress.unlockedTopicIds.push(nextTopic.topicId);
+					}
+				}
+			}
+
+			user.markModified('roadmapProgress');
+			await user.save();
+
+			res.status(200).json({
+				success: true,
+				msg: 'Roadmap progress updated',
+				data: user.roadmapProgress,
+			});
+		} catch (err) {
+			res.status(400).json({ success: false, msg: err.message });
+			console.error(`Error in update roadmap progress: ${err.message}`);
+		}
+	},
+
+	//[POST] /user/roadmap/verify-problem
+	async verifyRoadmapProblem(req, res, next) {
+		try {
+			const { topicId, problemId } = req.body;
+			if (!topicId || !problemId) throw new Error('topicId and problemId are required');
+
+			const user = await User.findById(req.userId);
+			if (!user) throw new Error('User not found');
+
+			const accepted = await Submission.exists({ author: user.name, forProblem: problemId, status: 'AC' });
+
+			if (accepted) {
+				if (!user.roadmapProgress) user.roadmapProgress = {};
+				if (!Array.isArray(user.roadmapProgress.unlockedTopicIds)) user.roadmapProgress.unlockedTopicIds = [];
+				if (!Array.isArray(user.roadmapProgress.completedTopicIds)) user.roadmapProgress.completedTopicIds = [];
+				if (!user.roadmapProgress.topicProgress) user.roadmapProgress.topicProgress = new Map();
+
+				const prev = user.roadmapProgress.topicProgress.get(topicId) || {};
+				user.roadmapProgress.topicProgress.set(topicId, {
+					...prev,
+					problemSolved: true,
+					completed: true,
+				});
+				if (!user.roadmapProgress.completedTopicIds.includes(topicId)) {
+					user.roadmapProgress.completedTopicIds.push(topicId);
+				}
+
+				const t = await Topic.findOne({ topicId }).select('order');
+				if (t) {
+					const nextTopic = await Topic.findOne({ order: t.order + 1 }).select('topicId');
+					if (nextTopic?.topicId && !user.roadmapProgress.unlockedTopicIds.includes(nextTopic.topicId)) {
+						user.roadmapProgress.unlockedTopicIds.push(nextTopic.topicId);
+					}
+				}
+
+				user.markModified('roadmapProgress');
+				await user.save();
+			}
+
+			res.status(200).json({
+				success: true,
+				data: {
+					accepted: Boolean(accepted),
+					roadmapProgress: user.roadmapProgress,
+				},
+			});
+		} catch (err) {
+			res.status(400).json({ success: false, msg: err.message });
+			console.error(`Error in verify roadmap problem: ${err.message}`);
 		}
 	},
 

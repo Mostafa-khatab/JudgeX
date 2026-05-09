@@ -27,7 +27,11 @@ const routesConfig = {
 	interviewRoom: '/interview/room/:id',
 	interviewJoin: '/interview/join/:token',
 	interviewResults: '/interview/results/:id',
-    blogDetail: '/blog/:id',
+	blogDetail: '/blog/:id',
+	roadmapTopic: '/roadmap/:topicId',
+	customRoadmapDashboard: '/roadmaps',
+	customRoadmapView: '/roadmaps/:id',
+
 };
 
 export default routesConfig;

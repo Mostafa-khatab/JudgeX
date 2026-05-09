@@ -11,14 +11,14 @@ const authService = {
         password,
       });
       
-      if (response.token) {
-        await AsyncStorage.setItem('authToken', response.token);
+      if (response.data && response.data.token) {
+        await AsyncStorage.setItem('authToken', response.data.token);
       }
-      if (response.user) {
-        await AsyncStorage.setItem('user', JSON.stringify(response.user));
+      if (response.data) {
+        await AsyncStorage.setItem('user', JSON.stringify(response.data));
       }
       
-      return response;
+      return response.data;
     } catch (error) {
       throw error.message ? error : { message: 'Signup failed' };
     }
@@ -32,14 +32,14 @@ const authService = {
         password,
       });
       
-      if (response.token) {
-        await AsyncStorage.setItem('authToken', response.token);
+      if (response.data && response.data.token) {
+        await AsyncStorage.setItem('authToken', response.data.token);
       }
-      if (response.user) {
-        await AsyncStorage.setItem('user', JSON.stringify(response.user));
+      if (response.data) {
+        await AsyncStorage.setItem('user', JSON.stringify(response.data));
       }
       
-      return response;
+      return response.data;
     } catch (error) {
       throw error.message ? error : { message: 'Login failed' };
     }
@@ -52,14 +52,14 @@ const authService = {
         token: googleToken,
       });
       
-      if (response.token) {
-        await AsyncStorage.setItem('authToken', response.token);
+      if (response.data && response.data.token) {
+        await AsyncStorage.setItem('authToken', response.data.token);
       }
-      if (response.user) {
-        await AsyncStorage.setItem('user', JSON.stringify(response.user));
+      if (response.data) {
+        await AsyncStorage.setItem('user', JSON.stringify(response.data));
       }
       
-      return response;
+      return response.data;
     } catch (error) {
       throw error.message ? error : { message: 'Google login failed' };
     }

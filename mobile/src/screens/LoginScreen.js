@@ -7,19 +7,17 @@ import {
   StatusBar,
   TouchableOpacity,
   ScrollView,
-  Alert,
+  TextInput,
+  Platform,
 } from 'react-native';
-import { colors, spacing, typography, borderRadius } from '../theme/theme';
-import Logo from '../components/Logo';
-import Card from '../components/Card';
-import Input from '../components/Input';
-import Button from '../components/Button';
+import { Mail, Lock, Eye, Moon, Loader2 } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
-import useGoogleAuth from '../services/googleAuth';
+import Logo from '../components/Logo';
 
 const LoginScreen = ({ navigation }) => {
   const { login } = useAuth();
-  const { signInWithGoogle, loading: googleLoading, isReady } = useGoogleAuth();
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,111 +28,110 @@ const LoginScreen = ({ navigation }) => {
       setError('Please fill in all fields');
       return;
     }
-
     setLoading(true);
     setError('');
-
     try {
       await login(email, password);
     } catch (err) {
-      setError(err.message || 'Login failed. Please try again.');
+      setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleGoogleLogin = async () => {
-    try {
-      setLoading(true);
-      const result = await signInWithGoogle();
-      if (result?.user) {
-        await login(result.user.email, null, result.token, result.user);
-      }
-    } catch (err) {
-      setError(err.message || 'Google login failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleForgotPassword = () => {
-    Alert.alert('Forgot Password', 'Password reset functionality will be implemented');
-  };
-
-  const handleVerifyEmail = () => {
-    Alert.alert('Verify Email', 'Email verification functionality will be implemented');
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="light-content" />
+      
+      {/* Background Decorative Glow */}
+      <View style={styles.backgroundGlow} />
+
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Logo size={40} />
-        </View>
-
-        {/* Login Card */}
-        <Card style={styles.card}>
-          <Text style={styles.title}>Welcome Back</Text>
-
-          {/* Error Message */}
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          {/* Input Fields */}
-          <Input
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <Input
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          {/* Action Links */}
-          <View style={styles.linksRow}>
-            <TouchableOpacity onPress={handleForgotPassword}>
-              <Text style={styles.link}>Forgot Password?</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleVerifyEmail}>
-              <Text style={styles.linkSecondary}>Verify Email</Text>
-            </TouchableOpacity>
+        <View style={styles.centerWrapper}>
+          {/* Header Logo */}
+          <View style={styles.logoHeader}>
+             <Logo size={48} />
           </View>
 
-          {/* Login Button and Google */}
-          <View style={styles.buttonRow}>
-            <Button
-              title="Log in"
-              onPress={handleLogin}
-              loading={loading}
-              style={styles.loginButton}
-            />
+          <View style={styles.card}>
+            <Text style={styles.title}>Sign In</Text>
+            
+            <TouchableOpacity style={styles.googleButton} onPress={() => {}}>
+               <Text style={styles.googleIcon}>G</Text>
+               <Text style={styles.googleButtonText}>continueWithGoogle</Text>
+            </TouchableOpacity>
+
+            <View style={styles.divider}>
+               <View style={styles.dividerLine} />
+               <Text style={styles.dividerText}>OR</Text>
+               <View style={styles.dividerLine} />
+            </View>
+
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            <View style={styles.inputWrapper}>
+               <Mail size={20} color="#8B949E" style={styles.inputIcon} />
+               <TextInput
+                 style={styles.textInput}
+                 placeholder="email"
+                 placeholderTextColor="#8B949E"
+                 value={email}
+                 onChangeText={setEmail}
+                 autoCapitalize="none"
+                 keyboardType="email-address"
+               />
+            </View>
+
+            <View style={styles.inputWrapper}>
+               <Lock size={20} color="#8B949E" style={styles.inputIcon} />
+               <TextInput
+                 style={styles.textInput}
+                 placeholder="password"
+                 placeholderTextColor="#8B949E"
+                 value={password}
+                 onChangeText={setPassword}
+                 secureTextEntry
+               />
+               <TouchableOpacity>
+                  <Eye size={20} color="#8B949E" />
+               </TouchableOpacity>
+            </View>
+
+            <View style={styles.linksRow}>
+               <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+                  <Text style={styles.linkText}>forgot-password</Text>
+               </TouchableOpacity>
+               <TouchableOpacity onPress={() => navigation.navigate('VerifyEmail')}>
+                  <Text style={styles.linkText}>verify-email</Text>
+               </TouchableOpacity>
+            </View>
+
             <TouchableOpacity 
-              style={[styles.googleButton, (!isReady || googleLoading) && styles.googleButtonDisabled]} 
-              onPress={handleGoogleLogin}
-              disabled={!isReady || googleLoading}
+              style={styles.loginButton} 
+              onPress={handleLogin}
+              disabled={loading}
             >
-              <Text style={styles.googleIcon}>G</Text>
+              <LinearGradient
+                colors={['#0EA5E9', '#0284C7']}
+                style={styles.gradientButton}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                {loading ? <Loader2 size={24} color="white" /> : <Text style={styles.loginButtonText}>login</Text>}
+              </LinearGradient>
             </TouchableOpacity>
           </View>
 
-          {/* Sign Up Link */}
-          <View style={styles.linkContainer}>
-            <Text style={styles.linkText}>Don't have an account? </Text>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>dont-have-account </Text>
             <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-              <Text style={styles.link}>Sign up</Text>
+              <Text style={styles.signupLink}>signup</Text>
             </TouchableOpacity>
           </View>
-        </Card>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -143,87 +140,157 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#05070A',
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingBottom: spacing.xxl,
   },
-  header: {
-    flexDirection: 'row',
+  centerWrapper: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
+    paddingVertical: 40,
+  },
+  backgroundGlow: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    top: 50,
+    left: -50,
+    width: 300,
+    height: 300,
+    backgroundColor: 'rgba(14, 165, 233, 0.05)',
+    borderRadius: 150,
+  },
+  logoHeader: {
+    marginBottom: 40,
   },
   card: {
-    marginHorizontal: spacing.lg,
+    width: '90%',
+    maxWidth: 400,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 24,
+    padding: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    ...Platform.select({
+      web: { boxShadow: '0 10px 20px rgba(0, 0, 0, 0.5)' }
+    }),
+    elevation: 10,
   },
   title: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.primary,
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#0EA5E9',
     textAlign: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: 32,
+    letterSpacing: -1,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    marginBottom: 24,
+  },
+  googleIcon: {
+    color: '#4285F4',
+    fontWeight: '900',
+    fontSize: 20,
+    marginRight: 12,
+  },
+  googleButtonText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#333',
+  },
+  dividerText: {
+    color: '#666',
+    fontSize: 12,
+    fontWeight: '800',
+    marginHorizontal: 12,
   },
   errorText: {
-    color: colors.error,
-    fontSize: typography.sizes.sm,
+    color: '#FF453A',
     textAlign: 'center',
-    marginBottom: spacing.md,
+    marginBottom: 16,
+    fontWeight: '600',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0A0A0A',
+    height: 56,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333',
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  textInput: {
+    flex: 1,
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '500',
   },
   linksRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  link: {
-    color: colors.primary,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
-  },
-  linkSecondary: {
-    color: colors.textSecondary,
-    fontSize: typography.sizes.sm,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  loginButton: {
-    flex: 1,
-  },
-  googleButton: {
-    width: 56,
-    height: 56,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.text,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  googleButtonDisabled: {
-    opacity: 0.6,
-  },
-  googleIcon: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: '#4285F4',
-  },
-  linkContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 32,
   },
   linkText: {
-    color: colors.textSecondary,
-    fontSize: typography.sizes.sm,
+    color: '#0EA5E9',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  loginButton: {
+    height: 56,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  gradientButton: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loginButtonText: {
+    color: '#FFF',
+    fontWeight: '900',
+    fontSize: 18,
+  },
+  footer: {
+    flexDirection: 'row',
+    marginTop: 32,
+  },
+  footerText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  signupLink: {
+    color: '#0EA5E9',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
 

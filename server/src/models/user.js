@@ -78,18 +78,38 @@ const userSchema = new mongoose.Schema(
 		resetPasswordExpiresAt: Date,
 		verificationToken: String,
 		verificationTokenExpiresAt: Date,
+		roadmapProgress: {
+			unlockedTopicIds: { type: [String], default: [] },
+			completedTopicIds: { type: [String], default: [] },
+			topicProgress: {
+				type: Map,
+				of: new mongoose.Schema(
+					{
+						currentStep: { type: Number, default: 0 },
+						videoWatched: { type: Boolean, default: false },
+						quizzesPassed: { type: [Boolean], default: [] },
+						problemSolved: { type: Boolean, default: false },
+						completed: { type: Boolean, default: false },
+					},
+					{ _id: false },
+				),
+				default: {},
+			},
+		},
 	},
 	{
 		timestamps: true,
 		statics: {
 			filterAndSort: function ({ q = '', permission, sortBy, order }) {
 				const regex = new RegExp(q, 'i');
+				const sortOrder = (order === 'desc' || order === '-1') ? -1 : 1;
 
 				let data = this.find({
 					$or: [{ name: { $regex: regex } }, { fullname: { $regex: regex } }],
 				})
 					.select('-resetPasswordToken -verificationToken -isVerified -password -email')
-					.sort({ [sortBy]: typeof order === 'string' ? Number(order) : order || 1 });
+					.sort({ [sortBy || 'createdAt']: sortOrder });
+					
 				if (permission) {
 					data = data.where('permission').equals(permission);
 				}

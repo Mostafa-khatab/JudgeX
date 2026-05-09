@@ -81,6 +81,9 @@ const ProblemSolve = () => {
 		python3: 'python',
 	};
 
+	// Mobile view state
+	const [activePanel, setActivePanel] = useState('problem'); // 'problem' or 'editor'
+
 	useEffect(() => {
 		setLoading(true);
 		getProblem(id)
@@ -143,7 +146,7 @@ const ProblemSolve = () => {
 					const expectedOut = (tc.expectedOutput || '').replace(/\r/g, '').trim();
 
 					let status = 'AC';
-					if (data.error === 'Time Limit Exceeded') {
+					if (data.error && data.error.includes('Time Limit Exceeded')) {
 						status = 'TLE';
 					} else if (data.error || (data.output && data.output.toLowerCase().includes('error') && data.statusCode !== 200)) {
 						status = 'RTE';
@@ -177,6 +180,7 @@ const ProblemSolve = () => {
 	};
 
 	const startPolling = useCallback((submissionId) => {
+		if (!submissionId) return;
 		if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
 		setIsPolling(true);
 		setSubmissionResult(null);
@@ -185,7 +189,7 @@ const ProblemSolve = () => {
 			try {
 				const res = await getSubmission(submissionId);
 				const data = res.data;
-				if (data?.status && data.status !== 'PENDING') {
+				if (data?.status && data.status !== 'PENDING' && data.status !== 'JUDGING') {
 					clearInterval(pollIntervalRef.current);
 					pollIntervalRef.current = null;
 					setSubmissionResult(data);
@@ -237,25 +241,42 @@ const ProblemSolve = () => {
 	return (
 		<div className="flex h-screen flex-col dark:bg-neutral-950">
 			{/* Header */}
-			<div className="border-b border-gray-200 bg-white px-6 py-3 dark:border-neutral-800 dark:bg-neutral-900">
+			<div className="border-b border-gray-200 bg-white px-4 md:px-6 py-2 md:py-3 dark:border-neutral-800 dark:bg-neutral-900">
 				<div className="flex items-center justify-between">
-					<div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+					<div className="flex items-center text-xs md:text-sm text-gray-500 dark:text-gray-400">
 						<Link to={routesConfig.problems} className="transition hover:text-gray-700 dark:hover:text-gray-300">
 							{t('problems')}
 						</Link>
-						<ChevronRight className="mx-2 h-4 w-4" />
+						<ChevronRight className="mx-1 md:mx-2 h-3 w-3 md:h-4 md:w-4" />
 						<span className="font-medium text-gray-900 dark:text-white">
-							{loading ? <Skeleton className="inline-block h-4 w-32 rounded-md dark:bg-neutral-800" /> : problem?.id}
+							{loading ? <Skeleton className="inline-block h-4 w-16 md:w-32 rounded-md dark:bg-neutral-800" /> : problem?.id}
 						</span>
 					</div>
-					<div className="flex items-center gap-3">
-						<Button variant="outline" size="sm" onClick={() => setIsFullscreen(!isFullscreen)}>
+
+					{/* Mobile Switcher */}
+					<div className="lg:hidden flex items-center bg-gray-100 dark:bg-neutral-800 rounded-lg p-1">
+						<button 
+							onClick={() => setActivePanel('problem')}
+							className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${activePanel === 'problem' ? 'bg-white dark:bg-neutral-700 text-blue-500 shadow-sm' : 'text-gray-500'}`}
+						>
+							Task
+						</button>
+						<button 
+							onClick={() => setActivePanel('editor')}
+							className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${activePanel === 'editor' ? 'bg-white dark:bg-neutral-700 text-blue-500 shadow-sm' : 'text-gray-500'}`}
+						>
+							Code
+						</button>
+					</div>
+
+					<div className="flex items-center gap-2 md:gap-3">
+						<Button variant="outline" size="sm" className="hidden md:flex" onClick={() => setIsFullscreen(!isFullscreen)}>
 							{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
 						</Button>
-						<Button variant="outline" size="sm" asChild>
+						<Button variant="outline" className="h-8 px-2 md:px-3 text-xs md:text-sm" size="sm" asChild>
 							<Link to={`${routesConfig.submissions}?problem=${id}`}>
-								<AlignJustify className="mr-2 h-4 w-4" />
-								{t('submissions')}
+								<AlignJustify className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
+								<span className="hidden md:inline">{t('submissions')}</span>
 							</Link>
 						</Button>
 					</div>
@@ -263,10 +284,11 @@ const ProblemSolve = () => {
 			</div>
 
 			{/* Main Content */}
-			<div className="flex flex-1 overflow-hidden">
+			<div className="flex flex-1 overflow-hidden relative">
 				{/* Left Panel - Problem Description */}
 				{!isFullscreen && (
-					<div className="flex w-1/2 flex-col border-r border-gray-200 dark:border-neutral-800">
+					<div className={`flex flex-col border-r border-gray-200 dark:border-neutral-800 transition-all duration-300 
+						${activePanel === 'problem' ? 'w-full flex' : 'hidden lg:flex lg:w-1/2'}`}>
 						<Tabs defaultValue="description" className="flex h-full flex-col">
 							<TabsList className="w-full justify-start rounded-none border-b border-gray-200 bg-white px-4 dark:border-neutral-800 dark:bg-neutral-900">
 								<TabsTrigger value="description" className="capitalize">
@@ -277,7 +299,7 @@ const ProblemSolve = () => {
 								</TabsTrigger>
 							</TabsList>
 
-							<TabsContent value="description" className="flex-1 overflow-y-auto p-6">
+							<TabsContent value="description" className="flex-1 overflow-y-auto p-4 md:p-6">
 								{loading ? (
 									<div className="space-y-6">
 										<Skeleton className="h-10 w-2/3 rounded-lg dark:bg-neutral-800" />
@@ -290,32 +312,32 @@ const ProblemSolve = () => {
 								) : (
 									<>
 										<div className="mb-6">
-											<h1 className="mb-3 text-3xl font-bold text-gray-900 dark:text-white">{problem?.name}</h1>
+											<h1 className="mb-3 text-2xl md:text-3xl font-bold text-gray-900 dark:text-white leading-tight">{problem?.name}</h1>
 											<div className="flex flex-wrap items-center gap-2">
 												<span
 													data-difficulty={problem?.difficulty}
-													className={`rounded-full border px-3 py-1 text-sm font-medium data-[difficulty='']:border-gray-200 data-[difficulty=easy]:border-green-200 data-[difficulty=hard]:border-red-200 data-[difficulty=medium]:border-yellow-200 data-[difficulty='']:bg-gray-100 data-[difficulty=easy]:bg-green-100 data-[difficulty=hard]:bg-red-100 data-[difficulty=medium]:bg-yellow-100 data-[difficulty='']:text-gray-600 data-[difficulty=easy]:text-green-600 data-[difficulty=hard]:text-red-600 data-[difficulty=medium]:text-yellow-600 dark:data-[difficulty='']:border-gray-700 dark:data-[difficulty=easy]:border-green-800 dark:data-[difficulty=hard]:border-red-800 dark:data-[difficulty=medium]:border-yellow-800 dark:data-[difficulty='']:bg-gray-800 dark:data-[difficulty=easy]:bg-green-900/30 dark:data-[difficulty=hard]:bg-red-900/30 dark:data-[difficulty=medium]:bg-yellow-900/30 dark:data-[difficulty='']:text-gray-400 dark:data-[difficulty=easy]:text-green-400 dark:data-[difficulty=hard]:text-red-400 dark:data-[difficulty=medium]:text-yellow-400`}
+													className={`rounded-full border px-2.5 py-1 text-[10px] md:text-sm font-black uppercase tracking-widest data-[difficulty='']:border-gray-200 data-[difficulty=easy]:border-green-200 data-[difficulty=hard]:border-red-200 data-[difficulty=medium]:border-yellow-200 data-[difficulty='']:bg-gray-100 data-[difficulty=easy]:bg-green-100 data-[difficulty=hard]:bg-red-100 data-[difficulty=medium]:bg-yellow-100 data-[difficulty='']:text-gray-600 data-[difficulty=easy]:text-green-600 data-[difficulty=hard]:text-red-600 data-[difficulty=medium]:text-yellow-600 dark:data-[difficulty='']:border-gray-700 dark:data-[difficulty=easy]:border-green-800 dark:data-[difficulty=hard]:border-red-800 dark:data-[difficulty=medium]:border-yellow-800 dark:data-[difficulty='']:bg-gray-800 dark:data-[difficulty=easy]:bg-green-900/30 dark:data-[difficulty=hard]:bg-red-900/30 dark:data-[difficulty=medium]:bg-yellow-900/30 dark:data-[difficulty='']:text-gray-400 dark:data-[difficulty=easy]:text-green-400 dark:data-[difficulty=hard]:text-red-400 dark:data-[difficulty=medium]:text-yellow-400`}
 												>
 													{t(problem?.difficulty)}
 												</span>
 												{problem?.tags?.map((tag, index) => (
 													<span
 														key={index}
-														className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300"
+														className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300"
 													>
 														{tag}
 													</span>
 												))}
 											</div>
 										</div>
-										<div className="prose dark:prose-invert prose-headings:text-gray-900 prose-p:text-gray-700 prose-p:leading-relaxed prose-pre:bg-gray-50 prose-pre:border prose-pre:border-gray-200 dark:prose-headings:text-gray-100 dark:prose-p:text-gray-300 dark:prose-pre:bg-neutral-800/50 dark:prose-pre:border-neutral-700 max-w-none">
+										<div className="prose prose-sm md:prose-base dark:prose-invert prose-headings:text-gray-900 prose-p:text-gray-700 prose-p:leading-relaxed prose-pre:bg-gray-50 prose-pre:border prose-pre:border-gray-200 dark:prose-headings:text-gray-100 dark:prose-p:text-gray-300 dark:prose-pre:bg-neutral-800/50 dark:prose-pre:border-neutral-700 max-w-none">
 											<Markdown components={markdownComponents}>{problem?.task}</Markdown>
 										</div>
 									</>
 								)}
 							</TabsContent>
 
-							<TabsContent value="details" className="flex-1 overflow-y-auto p-6">
+							<TabsContent value="details" className="flex-1 overflow-y-auto p-4 md:p-6">
 								{loading ? (
 									<div className="space-y-6">
 										<MetadataSkeleton />
@@ -383,7 +405,8 @@ const ProblemSolve = () => {
 				)}
 
 				{/* Right Panel - Code Editor */}
-				<div className={`flex ${isFullscreen ? 'w-full' : 'w-1/2'} flex-col`}>
+				<div className={`flex flex-col transition-all duration-300 
+					${isFullscreen ? 'w-full' : (activePanel === 'editor' ? 'w-full' : 'hidden lg:flex lg:w-1/2')}`}>
 					{/* Editor Header */}
 					<div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-800">
 						<div className="flex items-center gap-2">
@@ -518,28 +541,29 @@ const ProblemSolve = () => {
 					)}
 
 					{/* Editor Footer */}
-					<div className="border-t border-gray-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900">
+					<div className="border-t border-gray-200 bg-white px-3 md:px-4 py-2 md:py-3 dark:border-neutral-800 dark:bg-neutral-900">
 						<div className="flex items-center justify-between">
-							<div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-								<FileCode className="h-4 w-4" />
-								<span>{language}</span>
+							<div className="flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs text-gray-500 dark:text-gray-400">
+								<FileCode className="h-3.5 w-3.5 md:h-4 md:w-4" />
+								<span className="truncate max-w-[60px] md:max-w-none">{language}</span>
 							</div>
-							<div className="flex gap-2">
+							<div className="flex gap-1.5 md:gap-2">
 								<Button
 									onClick={handleRun}
 									variant="outline"
 									size="sm"
 									disabled={isRunning || isSubmitting}
-									className="border-gray-300 hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+									className="h-8 md:h-9 border-gray-300 hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-800 text-[10px] md:text-sm font-black uppercase tracking-widest px-3 md:px-4"
 								>
 									{isRunning ? (
 										<>
-											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-											Running...
+											<Loader2 className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4 animate-spin" />
+											<span className="hidden xs:inline">Running...</span>
+											<span className="xs:hidden">...</span>
 										</>
 									) : (
 										<>
-											<Play className="mr-2 h-4 w-4" />
+											<Play className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" />
 											Run
 										</>
 									)}
@@ -548,16 +572,17 @@ const ProblemSolve = () => {
 									onClick={handleSubmit}
 									disabled={isSubmitting || isRunning}
 									size="sm"
-									className="bg-gradient-to-r from-blue-600 to-indigo-600 font-medium !text-white hover:from-blue-700 hover:to-indigo-700 dark:from-blue-700 dark:to-indigo-700 dark:hover:from-blue-800 dark:hover:to-indigo-800"
+									className="h-8 md:h-9 bg-gradient-to-r from-blue-600 to-indigo-600 font-black uppercase tracking-widest !text-white hover:from-blue-700 hover:to-indigo-700 dark:from-blue-700 dark:to-indigo-700 px-3 md:px-4 text-[10px] md:text-sm"
 								>
 									{isSubmitting ? (
 										<>
-											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-											Submitting...
+											<Loader2 className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4 animate-spin" />
+											<span className="hidden xs:inline">Submitting...</span>
+											<span className="xs:hidden">...</span>
 										</>
 									) : (
 										<>
-											<SendIcon className="mr-2 h-4 w-4" />
+											<SendIcon className="mr-1.5 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4" />
 											Submit
 										</>
 									)}
@@ -587,10 +612,9 @@ const ProblemSolve = () => {
 
 					{/* Sliding sidebar */}
 					<div
-						className={`fixed top-0 right-0 z-50 h-full transition-transform duration-300 ease-in-out ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}
-						style={{ width: 420 }}
+						className={`fixed top-0 right-0 z-50 h-full transition-transform duration-300 ease-in-out shadow-2xl w-full md:w-[420px] ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}
 					>
-						<div className="h-full w-[420px]">
+						<div className="h-full w-full">
 							<ChatBot problemId={id} code={src} language={language} isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 						</div>
 					</div>

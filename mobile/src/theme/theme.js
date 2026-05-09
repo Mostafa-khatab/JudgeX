@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 // JudgeX Mobile Theme
 // Design tokens matching Figma design
 
@@ -70,18 +72,28 @@ export const typography = {
 
 export const shadows = {
   card: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
     elevation: 8,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)' },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      }
+    }),
   },
   button: {
-    shadowColor: '#00D9FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
     elevation: 4,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 8px rgba(0, 217, 255, 0.3)' },
+      default: {
+        shadowColor: '#00D9FF',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      }
+    }),
   },
 };
 

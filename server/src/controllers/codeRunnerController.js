@@ -29,24 +29,18 @@ export const runCode = async (req, res) => {
 			return res.status(400).json({ msg: 'Code is required' });
 		}
 
-		try {
-			const result = await runCodeLocally(code, language, input);
-			return res.status(200).json({
-				success: true,
-				output: result.output || '',
-				error: null,
-				executionTime: result.executionTime,
-			});
-		} catch (runErr) {
-			console.error('Local Execution Error:', runErr.message);
+		const result = await runCodeLocally(code, language, input);
 
-			let errorMsg = runErr.message;
+		if (result.error) {
+			console.error('Local Execution Error:', result.error);
+
+			let errorMsg = result.error;
 			if (errorMsg.includes('Time Limit Exceeded')) {
 				return res.status(200).json({
 					success: true,
 					output: '',
-					error: 'Time Limit Exceeded (Infinite loop or took too long)',
-					executionTime: 5000
+					error: 'Time Limit Exceeded',
+					executionTime: result.executionTime
 				});
 			}
 
@@ -55,7 +49,7 @@ export const runCode = async (req, res) => {
 					success: true,
 					output: errorMsg,
 					error: 'Compilation Error',
-					executionTime: 0
+					executionTime: result.executionTime
 				});
 			}
 
@@ -63,9 +57,16 @@ export const runCode = async (req, res) => {
 				success: true,
 				output: errorMsg,
 				error: 'Execution Error',
-				executionTime: 0
+				executionTime: result.executionTime
 			});
 		}
+
+		return res.status(200).json({
+			success: true,
+			output: result.output || '',
+			error: null,
+			executionTime: result.executionTime,
+		});
 	} catch (err) {
 		console.error('Code runner error:', err);
 		return res.status(500).json({ success: false, msg: 'Server error during execution' });

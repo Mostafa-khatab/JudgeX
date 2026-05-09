@@ -10,9 +10,11 @@ import codeRunner from './codeRunnerRoutes.js';
 import interview from './interviewRoutes.js';
 import queueRoutes from './queueRoutes.js';
 import dailyChallengeRoutes from './dailyChallengeRoutes.js';
+import topicRoutes from './topicRoutes.js';
 
 import blogRoutes from './blogRoutes.js';
 import commentRoutes from './commentRoutes.js';
+import customRoadmapRoutes from './customRoadmapRoutes.js';
 
 function route(app) {
 	app.get('/', (req, res, next) => res.send('Hello world!'));
@@ -30,6 +32,8 @@ function route(app) {
 	app.use('/interview', interview);
 	app.use('/queue', queueRoutes);
 	app.use('/daily-challenge', dailyChallengeRoutes);
+	app.use('/topic', topicRoutes);
+	app.use('/roadmaps', customRoadmapRoutes);
 }
 
 export default route;

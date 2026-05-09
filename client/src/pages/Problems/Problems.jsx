@@ -146,19 +146,19 @@ const Problems = () => {
 									</button>
 								</th>
 							)}
-							<th scope="col" className="px-6 py-3">
+							<th scope="col" className="hidden px-6 py-3 sm:table-cell">
 								{t('point')}
 								<button className="ml-1" onClick={() => sortHandle('point')}>
 									<FontAwesomeIcon icon="fa-solid fa-sort" />
 								</button>
 							</th>
-							<th scope="col" className="px-6 py-3">
+							<th scope="col" className="hidden px-6 py-3 sm:table-cell">
 								{t('ac-rate')}
 								<button className="ml-1" onClick={() => sortHandle('accuracy')}>
 									<FontAwesomeIcon icon="fa-solid fa-sort" />
 								</button>
 							</th>
-							<th scope="col" className="px-6 py-3">
+							<th scope="col" className="hidden px-6 py-3 sm:table-cell">
 								{t('ac-count')}
 								<button className="ml-1" onClick={() => sortHandle('noOfSuccess')}>
 									<FontAwesomeIcon icon="fa-solid fa-sort" />
@@ -192,9 +192,9 @@ const Problems = () => {
 									{user?.permission == 'Admin' && (
 										<td className="hidden px-6 py-4 lg:table-cell">{!problem.public && <img className="mx-auto size-6" src={padlock} />}</td>
 									)}
-									<td className="px-6 py-4">{problem.point}p</td>
-									<td className="px-6 py-4">{problem.noOfSubm ? Math.round((problem.noOfSuccess / problem.noOfSubm) * 100) : 0}%</td>
-									<td className="px-6 py-4">{problem.noOfSuccess}</td>
+									<td className="hidden px-6 py-4 sm:table-cell">{problem.point}p</td>
+									<td className="hidden px-6 py-4 sm:table-cell">{problem.noOfSubm ? Math.round((problem.noOfSuccess / problem.noOfSubm) * 100) : 0}%</td>
+									<td className="hidden px-6 py-4 sm:table-cell">{problem.noOfSuccess}</td>
 								</tr>
 							))}
 					</tbody>

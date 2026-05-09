@@ -57,11 +57,11 @@ const authMiddlewares = {
 			console.log(`[Auth] User authenticated: ${user.email} (${source})`);
 			next();
 		} catch (err) {
-			console.error(`[Auth] Error: ${err.message}`);
+			console.error(`[Auth Middleware Error] ${err.message}`, err);
 			if (err?.name === 'JsonWebTokenError' || err?.name === 'TokenExpiredError') {
 				return res.status(401).json({ success: false, msg: 'Unauthorized - invalid or expired token' });
 			}
-			res.status(500).json({ success: false, msg: 'Server error' });
+			res.status(500).json({ success: false, msg: 'Server authentication error', error: err.message });
 		}
 	},
 

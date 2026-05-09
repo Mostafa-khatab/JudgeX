@@ -7,190 +7,193 @@ import {
   StatusBar,
   TouchableOpacity,
   ScrollView,
-  Alert,
+  TextInput,
+  Platform,
 } from 'react-native';
-import { colors, spacing, typography, borderRadius } from '../theme/theme';
-import Logo from '../components/Logo';
-import Card from '../components/Card';
-import Input from '../components/Input';
-import Button from '../components/Button';
+import { Mail, Lock, User, Eye, X, Moon, Check, Loader2 } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
-import useGoogleAuth from '../services/googleAuth';
+import Logo from '../components/Logo';
 
 const SignUpScreen = ({ navigation }) => {
   const { signup } = useAuth();
-  const { signInWithGoogle, loading: googleLoading, isReady } = useGoogleAuth();
+  
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Password strength checks
-  const passwordChecks = {
-    minLength: password.length >= 6,
-    hasUppercase: /[A-Z]/.test(password),
-    hasLowercase: /[a-z]/.test(password),
-    hasNumber: /\d/.test(password),
-    hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+  const criteria = [
+    { label: 'At least 6 characters', met: password.length >= 6 },
+    { label: 'Contains uppercase letter', met: /[A-Z]/.test(password) },
+    { label: 'Contains lowercase letter', met: /[a-z]/.test(password) },
+    { label: 'Contains number', met: /\d/.test(password) },
+    { label: 'Contains special character', met: /[!@#$%^&*()_+{}[\]:;<>,.?/~\\-]/.test(password) },
+  ];
+
+  const metCount = criteria.filter(c => c.met).length;
+  
+  const getStrengthText = () => {
+    if (password.length === 0) return 'Very Weak';
+    if (metCount <= 1) return 'Very Weak';
+    if (metCount === 2) return 'Weak';
+    if (metCount === 3) return 'Fair';
+    if (metCount === 4) return 'Good';
+    return 'Strong';
   };
 
-  const passedChecks = Object.values(passwordChecks).filter(Boolean).length;
-  const strengthLabel = passedChecks <= 1 ? 'Very Weak' : passedChecks <= 2 ? 'Weak' : passedChecks <= 3 ? 'Medium' : passedChecks <= 4 ? 'Strong' : 'Very Strong';
-  const strengthColor = passedChecks <= 1 ? colors.error : passedChecks <= 2 ? colors.warning : passedChecks <= 3 ? colors.warning : colors.success;
+  const getStrengthColor = () => {
+    if (password.length === 0) return '#30363D';
+    if (metCount <= 2) return '#F85149';
+    if (metCount === 3) return '#D29922';
+    return '#3FB950';
+  };
 
   const handleSignUp = async () => {
     if (!username || !email || !password) {
       setError('Please fill in all fields');
       return;
     }
-
-    if (passedChecks < 3) {
-      setError('Please use a stronger password');
-      return;
-    }
-
     setLoading(true);
     setError('');
-
     try {
       await signup(username, email, password);
     } catch (err) {
-      setError(err.message || 'Sign up failed. Please try again.');
+      setError(err.message || 'Sign up failed');
     } finally {
       setLoading(false);
     }
   };
-
-  const handleGoogleSignUp = async () => {
-    try {
-      setLoading(true);
-      const result = await signInWithGoogle();
-      if (result?.user) {
-        // Google sign-up auto-logs in
-      }
-    } catch (err) {
-      setError(err.message || 'Google sign up failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const CheckItem = ({ checked, label }) => (
-    <View style={styles.checkItem}>
-      <Text style={[styles.checkIcon, checked && styles.checkIconActive]}>
-        {checked ? '✓' : '✗'}
-      </Text>
-      <Text style={[styles.checkLabel, checked && styles.checkLabelActive]}>{label}</Text>
-    </View>
-  );
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="light-content" />
+      
+      {/* Background Decorative Glow */}
+      <View style={styles.backgroundGlow} />
+
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Logo size={40} />
-        </View>
-
-        {/* Sign Up Card */}
-        <Card style={styles.card}>
-          <Text style={styles.title}>Create Account</Text>
-
-          {/* Google Button */}
-          <TouchableOpacity 
-            style={[styles.googleButton, (!isReady || googleLoading) && styles.googleButtonDisabled]} 
-            onPress={handleGoogleSignUp}
-            disabled={!isReady || googleLoading}
-          >
-            <Text style={styles.googleIcon}>G</Text>
-            <Text style={styles.googleText}>Continue with Google</Text>
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR</Text>
-            <View style={styles.dividerLine} />
+        <View style={styles.centerWrapper}>
+          <View style={styles.logoHeader}>
+             <Logo size={48} />
           </View>
 
-          {/* Error Message */}
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <View style={styles.card}>
+            <Text style={styles.title}>Create account</Text>
+            
+            <TouchableOpacity style={styles.googleButton} onPress={() => {}}>
+               <Text style={styles.googleIcon}>G</Text>
+               <Text style={styles.googleButtonText}>Continue with Google</Text>
+            </TouchableOpacity>
 
-          {/* Input Fields */}
-          <Input
-            placeholder="Username"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-            icon={<Text style={styles.inputIcon}>👤</Text>}
-          />
+            <View style={styles.divider}>
+               <View style={styles.dividerLine} />
+               <Text style={styles.dividerText}>OR</Text>
+               <View style={styles.dividerLine} />
+            </View>
 
-          <Input
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            icon={<Text style={styles.inputIcon}>✉️</Text>}
-          />
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          <Input
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            icon={<Text style={styles.inputIcon}>🔒</Text>}
-          />
+            <View style={styles.inputWrapper}>
+               <User size={20} color="#8B949E" style={styles.inputIcon} />
+               <TextInput
+                 style={styles.textInput}
+                 placeholder="Username"
+                 placeholderTextColor="#8B949E"
+                 value={username}
+                 onChangeText={setUsername}
+                 autoCapitalize="none"
+               />
+            </View>
 
-          {/* Password Strength */}
-          <View style={styles.strengthContainer}>
-            <Text style={styles.strengthLabel}>Password Strength</Text>
-            <Text style={[styles.strengthValue, { color: strengthColor }]}>{strengthLabel}</Text>
-          </View>
+            <View style={styles.inputWrapper}>
+               <Mail size={20} color="#8B949E" style={styles.inputIcon} />
+               <TextInput
+                 style={styles.textInput}
+                 placeholder="Email"
+                 placeholderTextColor="#8B949E"
+                 value={email}
+                 onChangeText={setEmail}
+                 autoCapitalize="none"
+                 keyboardType="email-address"
+               />
+            </View>
 
-          {/* Strength Bars */}
-          <View style={styles.strengthBars}>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <View
-                key={i}
-                style={[
-                  styles.strengthBar,
-                  { backgroundColor: i <= passedChecks ? strengthColor : colors.inputBorder },
-                ]}
-              />
-            ))}
-          </View>
+            <View style={styles.inputWrapper}>
+               <Lock size={20} color="#8B949E" style={styles.inputIcon} />
+               <TextInput
+                 style={styles.textInput}
+                 placeholder="Password"
+                 placeholderTextColor="#8B949E"
+                 value={password}
+                 onChangeText={setPassword}
+                 secureTextEntry
+               />
+               <TouchableOpacity>
+                  <Eye size={20} color="#8B949E" />
+               </TouchableOpacity>
+            </View>
 
-          {/* Password Checks */}
-          <View style={styles.checksContainer}>
-            <CheckItem checked={passwordChecks.minLength} label="At least 6 characters" />
-            <CheckItem checked={passwordChecks.hasUppercase} label="Contains uppercase letter" />
-            <CheckItem checked={passwordChecks.hasLowercase} label="Contains lowercase letter" />
-            <CheckItem checked={passwordChecks.hasNumber} label="Contains number" />
-            <CheckItem checked={passwordChecks.hasSpecial} label="Contains special character" />
-          </View>
+            {/* Password Strength Section */}
+            <View style={styles.strengthSection}>
+              <View style={styles.strengthHeader}>
+                <Text style={styles.strengthLabel}>Password Strength</Text>
+                <Text style={[styles.strengthLabel, { color: getStrengthColor() }]}>
+                  {getStrengthText()}
+                </Text>
+              </View>
+              <View style={styles.strengthBars}>
+                 {[1, 2, 3, 4, 5].map((i) => (
+                   <View 
+                     key={i} 
+                     style={[
+                       styles.strengthBar, 
+                       { backgroundColor: i <= metCount ? getStrengthColor() : '#1F2937' }
+                     ]} 
+                   />
+                 ))}
+              </View>
+              <View style={styles.criteriaList}>
+                {criteria.map((item, idx) => (
+                  <View key={idx} style={styles.criteriaItem}>
+                    {item.met ? (
+                      <Check size={14} color="#3FB950" style={styles.criteriaIcon} />
+                    ) : (
+                      <X size={14} color="#4B5563" style={styles.criteriaIcon} />
+                    )}
+                    <Text style={[styles.criteriaText, item.met && styles.criteriaTextMet]}>{item.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
 
-          {/* Sign Up Button */}
-          <Button
-            title="Sign Up"
-            onPress={handleSignUp}
-            loading={loading}
-            style={styles.submitButton}
-          />
-
-          {/* Login Link */}
-          <View style={styles.linkContainer}>
-            <Text style={styles.linkText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.link}>Log in</Text>
+            <TouchableOpacity 
+              style={styles.signupButton} 
+              onPress={handleSignUp}
+              disabled={loading}
+            >
+               <LinearGradient
+                 colors={['#0EA5E9', '#0284C7']}
+                 style={styles.gradientButton}
+                 start={{ x: 0, y: 0 }}
+                 end={{ x: 1, y: 0 }}
+               >
+                  {loading ? <Loader2 size={24} color="white" /> : <Text style={styles.signupButtonText}>Sign Up</Text>}
+               </LinearGradient>
             </TouchableOpacity>
           </View>
-        </Card>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.loginLink}>Log In</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -199,142 +202,192 @@ const SignUpScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#05070A',
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: spacing.xxl,
   },
-  header: {
-    flexDirection: 'row',
+  centerWrapper: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    marginBottom: spacing.lg,
+    paddingVertical: 40,
+  },
+  backgroundGlow: {
+    position: 'absolute',
+    top: 50,
+    left: -50,
+    width: 300,
+    height: 300,
+    backgroundColor: 'rgba(14, 165, 233, 0.05)',
+    borderRadius: 150,
+  },
+  logoHeader: {
+    marginBottom: 30,
   },
   card: {
-    marginHorizontal: spacing.lg,
+    width: '90%',
+    maxWidth: 400,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 24,
+    padding: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    ...Platform.select({
+      web: { boxShadow: '0 10px 20px rgba(0, 0, 0, 0.5)' }
+    }),
+    elevation: 10,
   },
   title: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.primary,
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#0EA5E9',
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: 32,
+    letterSpacing: -1,
   },
   googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.text,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  googleButtonDisabled: {
-    opacity: 0.6,
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    marginBottom: 24,
   },
   googleIcon: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
     color: '#4285F4',
+    fontWeight: '900',
+    fontSize: 20,
+    marginRight: 12,
   },
-  googleText: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.medium,
-    color: '#1F1F1F',
+  googleButtonText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 15,
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: 24,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: colors.border,
+    backgroundColor: '#333',
   },
   dividerText: {
-    color: colors.textSecondary,
-    paddingHorizontal: spacing.md,
-    fontSize: typography.sizes.sm,
+    color: '#666',
+    fontSize: 12,
+    fontWeight: '800',
+    marginHorizontal: 12,
   },
   errorText: {
-    color: colors.error,
-    fontSize: typography.sizes.sm,
+    color: '#FF453A',
     textAlign: 'center',
-    marginBottom: spacing.md,
+    marginBottom: 16,
+    fontWeight: '600',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0A0A0A',
+    height: 56,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333',
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
   inputIcon: {
-    fontSize: typography.sizes.lg,
+    marginRight: 12,
   },
-  strengthContainer: {
+  textInput: {
+    flex: 1,
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  strengthSection: {
+    marginBottom: 24,
+    marginTop: 8,
+  },
+  strengthHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: 12,
   },
   strengthLabel: {
-    color: colors.textSecondary,
-    fontSize: typography.sizes.sm,
-  },
-  strengthValue: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    color: '#666',
+    fontSize: 12,
+    fontWeight: '700',
   },
   strengthBars: {
     flexDirection: 'row',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
+    gap: 6,
+    marginBottom: 16,
   },
   strengthBar: {
     flex: 1,
     height: 4,
     borderRadius: 2,
   },
-  checksContainer: {
-    marginBottom: spacing.lg,
+  criteriaList: {
+    gap: 8,
   },
-  checkItem: {
+  criteriaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.xs,
   },
-  checkIcon: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.sm,
-    marginRight: spacing.sm,
-    width: 16,
+  criteriaIcon: {
+    marginRight: 10,
   },
-  checkIconActive: {
-    color: colors.success,
+  criteriaText: {
+    color: '#666',
+    fontSize: 13,
+    fontWeight: '500',
   },
-  checkLabel: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.sm,
+  criteriaTextMet: {
+    color: '#3FB950',
   },
-  checkLabelActive: {
-    color: colors.textSecondary,
+  signupButton: {
+    height: 56,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 8,
   },
-  submitButton: {
-    marginBottom: spacing.lg,
-  },
-  linkContainer: {
-    flexDirection: 'row',
+  gradientButton: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  linkText: {
-    color: colors.textSecondary,
-    fontSize: typography.sizes.sm,
+  signupButtonText: {
+    color: '#FFF',
+    fontWeight: '900',
+    fontSize: 18,
   },
-  link: {
-    color: colors.primary,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+  footer: {
+    flexDirection: 'row',
+    marginTop: 32,
+  },
+  footerText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  loginLink: {
+    color: '#0EA5E9',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
 
 export default SignUpScreen;
+
+

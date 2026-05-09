@@ -316,6 +316,7 @@ const authControllers = {
 				top,
 				topPercent,
 				joiningContest: user.joiningContest,
+				roadmapProgress: user.roadmapProgress,
 			}, 'User info retrieved');
 		} catch (err) {
 			return handleError(res, err, 'GetSelfInfo');

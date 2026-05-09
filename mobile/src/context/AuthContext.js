@@ -18,7 +18,9 @@ export const AuthProvider = ({ children }) => {
       const storedUser = await authService.getStoredUser();
       const token = await AsyncStorage.getItem('authToken');
       if (storedUser && token) {
-        setUser(storedUser);
+        // Handle potential wrapped data from older versions
+        const actualUser = storedUser.data || storedUser;
+        setUser(actualUser);
         setIsAuthenticated(true);
       } else {
         // Clear any partial data
@@ -47,24 +49,24 @@ export const AuthProvider = ({ children }) => {
     }
     
     // Otherwise do normal email/password login
-    const response = await authService.login(email, password);
-    setUser(response.user);
+    const loggedInUser = await authService.login(email, password);
+    setUser(loggedInUser);
     setIsAuthenticated(true);
-    return response;
+    return loggedInUser;
   };
 
   const signup = async (name, email, password) => {
-    const response = await authService.signup(name, email, password);
-    setUser(response.user);
+    const userData = await authService.signup(name, email, password);
+    setUser(userData);
     setIsAuthenticated(true);
-    return response;
+    return userData;
   };
 
   const googleLogin = async (token) => {
-    const response = await authService.googleLogin(token);
-    setUser(response.user);
+    const userData = await authService.googleLogin(token);
+    setUser(userData);
     setIsAuthenticated(true);
-    return response;
+    return userData;
   };
 
   const logout = async () => {

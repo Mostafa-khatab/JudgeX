@@ -35,7 +35,7 @@ const BlogCard = ({ blog: initialBlog }) => {
     };
 
     return (
-        <div className="mb-4 flex flex-col rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:bg-zinc-800 dark:shadow-[0px_0px_7px_rgba(0,0,0,0.2)]">
+        <div className="mb-4 flex flex-col rounded-lg bg-white p-4 md:p-6 shadow-sm transition-shadow hover:shadow-md dark:bg-zinc-800 dark:shadow-[0px_0px_7px_rgba(0,0,0,0.2)]">
             <h3 className="mb-2 text-xl font-bold text-gray-800 dark:text-gray-100">
                 <Link to={`/blog/${blog.externalId}`} className="hover:text-blue-500 hover:underline">
                     {blog.title || 'Untitled Blog'}

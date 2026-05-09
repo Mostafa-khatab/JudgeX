@@ -14,6 +14,7 @@
 		"clear:problems": "node clearProblems.js",
 		"check:problems": "node checkProblems.js",
 		"seed:courses": "node seedCourses.js",
+		"seed:topics": "node ./scripts/seedTopics.js",
 		"clear:courses": "node clearCourses.js",
 		"clear:contests": "node clearContests.js",
 		"seed:contests": "node seedContests.js"

@@ -13,5 +13,6 @@ router.get('/monthly-language', authMiddlewares.requireAd, statControllers.getMo
 router.get('/newest-activity', authMiddlewares.requireAd, statControllers.getNewestActivity);
 router.get('/problem/:id', authMiddlewares.requireAd, statControllers.getProblemStat);
 router.get('/daily-submission', authMiddlewares.requireAd, statControllers.getDailySubmission);
+router.get('/global-stats', authMiddlewares.isSoftAuth, statControllers.getGlobalStats);
 
 export default router;

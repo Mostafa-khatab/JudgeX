@@ -1,20 +1,14 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// API Base URL - auto-detect for web (Docker) or use local IP for native
-const getApiBaseUrl = () => {
-  if (Platform.OS === 'web') {
-    // In Docker/web, use the same hostname but server port
-    const hostname = window.location.hostname || 'localhost';
-    return `http://${hostname}:8080`;
-  }
-  // For native mobile, use your computer's IP on WiFi
-  return 'http://192.168.1.5:8080';
-};
+// IMPORTANT: Change this to your computer's ACTUAL IP address (e.g., 192.168.1.5)
+// Find it by running 'ipconfig' (Windows) or 'ifconfig' (Mac/Linux)
+const LOCAL_IP = '192.168.1.4'; 
 
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = Platform.OS === 'web' 
+  ? 'http://localhost:8080' 
+  : `http://${LOCAL_IP}:8080`;
 
-// Get auth token from storage
 const getAuthToken = async () => {
   try {
     return await AsyncStorage.getItem('authToken');
@@ -47,7 +41,6 @@ const apiRequest = async (endpoint, options = {}) => {
     const data = await response.json();
     
     if (!response.ok) {
-      // Handle 401 - token expired
       if (response.status === 401) {
         await AsyncStorage.removeItem('authToken');
         await AsyncStorage.removeItem('user');

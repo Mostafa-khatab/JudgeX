@@ -71,3 +71,13 @@ export const likeComment = async (id) => {
         throw error;
     }
 };
+
+export const createBlog = async (data) => {
+    try {
+        const res = await httpRequest.post('blogs', data);
+        return res.data;
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+};

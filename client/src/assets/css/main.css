@@ -172,3 +172,17 @@ body {
 #root {
 	@apply h-full w-full;
 }
+
+/* Neural Flicker Animation - Subtle Voltage Fluctuation */
+@keyframes voltage-flicker {
+  0%, 100% { opacity: 1; }
+  92% { opacity: 1; }
+  93% { opacity: 0.85; }
+  94% { opacity: 1; }
+  96% { opacity: 0.9; }
+  97% { opacity: 1; }
+}
+
+.neural-flicker {
+  animation: voltage-flicker 4s infinite;
+}

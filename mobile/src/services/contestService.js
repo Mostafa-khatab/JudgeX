@@ -1,6 +1,16 @@
 import api from './api';
 
 const contestService = {
+  // Get upcoming contests
+  getUpcomingContests: async () => {
+    try {
+      const response = await api.get('/contest?status=upcoming');
+      return response;
+    } catch (error) {
+      throw error.message ? error : { message: 'Failed to fetch upcoming contests' };
+    }
+  },
+
   // Get all contests
   getContests: async (params = {}) => {
     try {

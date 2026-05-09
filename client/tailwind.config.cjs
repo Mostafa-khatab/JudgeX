@@ -12,6 +12,15 @@ module.exports = {
 				primary: '#0ea5e9',
 				secondary: '#ffaf16',
 			},
+			keyframes: {
+				shimmer: {
+					'0%': { transform: 'translateX(-100%)' },
+					'100%': { transform: 'translateX(100%)' },
+				},
+			},
+			animation: {
+				shimmer: 'shimmer 2s infinite',
+			},
 		},
 		fontFamily: {
 			poppins: ['Poppins', 'sans-serif'],

@@ -33,88 +33,87 @@ const ContestProblems = () => {
 
 	console.log('Component state:', { id, loading, problems }); // للتأكد من حالة المكون
 
-	return (
-		<div className="w-full">
-			<motion.div
-				initial={{ opacity: 0, y: 20 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ duration: 0.5 }}
-				className="overflow-x-auto rounded-lg bg-white shadow-md dark:bg-neutral-800"
-			>
-				<table className="w-full table-auto">
-					<thead>
-						<tr className="border-b border-gray-200 dark:border-neutral-700">
-							<th className="w-16 px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">#</th>
-							<th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">{t('problem')}</th>
-							<th className="w-24 px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">{t('points')}</th>
-							<th className="w-24 px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">{t('solved')}</th>
-							<th className="w-24 px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">{t('memory')}</th>
-							<th className="w-24 px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">{t('time')}</th>
-						</tr>
-					</thead>
-					<tbody>
-						{loading
-							? Array(5)
-									.fill(0)
-									.map((_, index) => (
-										<tr key={index} className="animate-pulse border-b border-gray-200 dark:border-neutral-700">
-											<td className="px-6 py-4">
-												<div className="h-4 w-8 rounded bg-gray-200 dark:bg-neutral-700"></div>
-											</td>
-											<td className="px-6 py-4">
-												<div className="h-4 w-full rounded bg-gray-200 dark:bg-neutral-700"></div>
-											</td>
-											<td className="px-6 py-4">
-												<div className="h-4 w-12 rounded bg-gray-200 dark:bg-neutral-700"></div>
-											</td>
-											<td className="px-6 py-4">
-												<div className="h-4 w-12 rounded bg-gray-200 dark:bg-neutral-700"></div>
-											</td>
-											<td className="px-6 py-4">
-												<div className="h-4 w-16 rounded bg-gray-200 dark:bg-neutral-700"></div>
-											</td>
-											<td className="px-6 py-4">
-												<div className="h-4 w-16 rounded bg-gray-200 dark:bg-neutral-700"></div>
-											</td>
-										</tr>
-									))
-							: problems.map((problem, index) => (
-									<tr
-										key={problem.id}
-										className="border-b border-gray-200 transition-colors hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-700/20"
-									>
-										<td className="px-6 py-4 text-center font-semibold text-gray-700 dark:text-gray-200">{String.fromCharCode(65 + index)}</td>
-										<td className="px-6 py-4">
-											<Link
-												to={routesConfig.problem.replace(':id', problem.id)}
-												className="text-gray-700 hover:text-blue-500 dark:text-gray-200 dark:hover:text-blue-400"
-											>
-												{problem.name}
-											</Link>
-										</td>
-										<td className="flex items-center justify-center gap-1 px-6 py-4 text-gray-600 dark:text-gray-300">
-											<Star className="h-4 w-4" />
-											{problem.point}
-										</td>
-										<td className="flex items-center justify-center gap-1 px-6 py-4 text-gray-600 dark:text-gray-300">
-											<CircleCheck className="h-4 w-4" />
-											{problem.noOfSubm === 0 ? 0 : Math.round((problem.noOfSuccess / problem.noOfSubm) * 100)}%
-										</td>
-										<td className="flex items-center justify-center gap-1 px-6 py-4 text-gray-600 dark:text-gray-300">
-											<MemoryStick className="h-4 w-4" />
-											{problem.memoryLimit}MB
-										</td>
-										<td className="flex items-center justify-center gap-1 px-6 py-4 text-gray-600 dark:text-gray-300">
-											<Clock9 className="h-4 w-4" />
-											{problem.timeLimit}s
-										</td>
-									</tr>
-								))}
-					</tbody>
-				</table>
-			</motion.div>
-		</div>
-	);
+  return (
+    <div className="w-full">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="overflow-hidden rounded-[2rem] border border-white/5 bg-white/[0.01] shadow-2xl backdrop-blur-sm"
+      >
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-white/[0.03] border-b border-white/5">
+              <th className="w-20 px-6 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-white/40">#</th>
+              <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-white/40">{t('problem')}</th>
+              <th className="w-32 px-6 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-white/40">{t('points')}</th>
+              <th className="w-32 px-6 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-white/40">{t('solved')}</th>
+              <th className="w-32 px-6 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-white/40">{t('memory')}</th>
+              <th className="w-32 px-6 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-white/40">{t('time')}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/[0.02]">
+            {loading
+              ? Array(5)
+                  .fill(0)
+                  .map((_, index) => (
+                    <tr key={index} className="animate-pulse">
+                      <td className="px-6 py-6"><div className="h-4 w-8 mx-auto rounded-full bg-white/5" /></td>
+                      <td className="px-6 py-6"><div className="h-4 w-48 rounded-full bg-white/5" /></td>
+                      <td className="px-6 py-6"><div className="h-4 w-12 mx-auto rounded-full bg-white/5" /></td>
+                      <td className="px-6 py-6"><div className="h-4 w-12 mx-auto rounded-full bg-white/5" /></td>
+                      <td className="px-6 py-6"><div className="h-4 w-16 mx-auto rounded-full bg-white/5" /></td>
+                      <td className="px-6 py-6"><div className="h-4 w-16 mx-auto rounded-full bg-white/5" /></td>
+                    </tr>
+                  ))
+              : problems.map((problem, index) => (
+                  <tr
+                    key={problem.id}
+                    className="group transition-all duration-300 hover:bg-white/[0.03]"
+                  >
+                    <td className="px-6 py-6 text-center">
+                      <span className="inline-flex size-8 items-center justify-center rounded-xl bg-white/5 border border-white/5 text-xs font-black text-white/60 group-hover:border-blue-500/30 group-hover:text-blue-400 transition-all">
+                        {String.fromCharCode(65 + index)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-6">
+                      <Link
+                        to={routesConfig.problem.replace(':id', problem.id)}
+                        className="text-base font-black tracking-tight text-white/80 hover:text-blue-400 transition-colors"
+                      >
+                        {problem.name}
+                      </Link>
+                    </td>
+                    <td className="px-6 py-6">
+                      <div className="flex items-center justify-center gap-2 text-sm font-bold text-amber-400/80">
+                        <Star className="h-3.5 w-3.5 fill-amber-400/20" />
+                        {problem.point}
+                      </div>
+                    </td>
+                    <td className="px-6 py-6">
+                      <div className="flex items-center justify-center gap-2 text-sm font-bold text-emerald-400/80">
+                        <CircleCheck className="h-3.5 w-3.5" />
+                        {problem.noOfSubm === 0 ? 0 : Math.round((problem.noOfSuccess / problem.noOfSubm) * 100)}%
+                      </div>
+                    </td>
+                    <td className="px-6 py-6">
+                      <div className="flex items-center justify-center gap-2 text-sm font-bold text-white/40">
+                        <MemoryStick className="h-3.5 w-3.5" />
+                        {problem.memoryLimit}MB
+                      </div>
+                    </td>
+                    <td className="px-6 py-6">
+                      <div className="flex items-center justify-center gap-2 text-sm font-bold text-white/40">
+                        <Clock9 className="h-3.5 w-3.5" />
+                        {problem.timeLimit}s
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+          </tbody>
+        </table>
+      </motion.div>
+    </div>
+  );
 };
 
 export default ContestProblems;

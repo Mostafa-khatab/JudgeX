@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
@@ -21,6 +21,59 @@ const execPromise = (cmd, options = {}) => {
         const truncatedStdout = stdout ? (stdout.length > 5000 ? stdout.substring(0, 5000) + "... [Truncated]" : stdout) : '';
         const truncatedStderr = stderr ? (stderr.length > 5000 ? stderr.substring(0, 5000) + "... [Truncated]" : stderr) : '';
         resolve(truncatedStdout || truncatedStderr);
+      }
+    });
+  });
+};
+
+const spawnPromise = (cmd, args, input, options = {}) => {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { ...options, shell: false });
+    let stdout = '';
+    let stderr = '';
+    let killedByTimeout = false;
+
+    const timeout = setTimeout(() => {
+      killedByTimeout = true;
+      child.kill('SIGKILL');
+    }, options.timeout || 5000);
+
+    if (input) {
+      const canWrite = child.stdin.write(input);
+      if (!canWrite) {
+        child.stdin.once('drain', () => child.stdin.end());
+      } else {
+        child.stdin.end();
+      }
+    } else {
+      child.stdin.end();
+    }
+
+    child.stdout.on('data', (data) => {
+      stdout += data.toString();
+      if (stdout.length > (options.maxBuffer || 1024 * 500)) {
+        child.kill();
+      }
+    });
+
+    child.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    child.on('error', (err) => {
+      clearTimeout(timeout);
+      reject(err);
+    });
+
+    child.on('close', (code) => {
+      clearTimeout(timeout);
+      if (killedByTimeout) {
+        reject(new Error('Time Limit Exceeded'));
+      } else if (code !== 0) {
+        const errorMsg = stderr || stdout || `Process exited with code ${code}`;
+        reject(new Error(errorMsg));
+      } else {
+        resolve(stdout);
       }
     });
   });
@@ -56,23 +109,29 @@ export const runCodeLocally = async (code, language, input) => {
       await fs.writeFile(inputPath, '');
     }
 
-    const runOptions = { timeout: 3000, maxBuffer: 1024 * 100 }; // 100KB output limit, 3s timeout
+    const startTime = Date.now();
+    const runOptions = { timeout: 10000, maxBuffer: 1024 * 1024 }; // 1MB output limit, 10s timeout
     const inputRedirect = `< "${inputPath}"`;
     let output = '';
-    const startTime = Date.now();
 
     if (ext === 'cpp' || ext === 'c') {
       const compiler = ext === 'cpp' ? 'g++' : 'gcc';
+      const flags = ext === 'cpp' ? ['-O3', '-std=c++17'] : ['-O3'];
       try {
-        await execPromise(`${compiler} "${codePath}" -o "${exePath}"`, { timeout: 30000 });
+        console.log(`[LocalCodeRunner] Compiling ${language}...`);
+        await execPromise(`${compiler} ${flags.join(' ')} "${codePath}" -o "${exePath}"`, { timeout: 30000 });
       } catch (err) {
+        console.error(`[LocalCodeRunner] Compilation Error:`, err.message);
         throw new Error(`Compilation Error:\n${err.message}`);
       }
-      output = await execPromise(`"${exePath}" ${inputRedirect}`, runOptions);
+      console.log(`[LocalCodeRunner] Executing ${exePath}...`);
+      output = await spawnPromise(exePath, [], input, runOptions);
     } else if (ext === 'py') {
-      output = await execPromise(`python "${codePath}" ${inputRedirect}`, runOptions);
+      console.log(`[LocalCodeRunner] Executing Python...`);
+      output = await spawnPromise('python', [codePath], input, runOptions);
     } else if (ext === 'js') {
-      output = await execPromise(`node "${codePath}" ${inputRedirect}`, runOptions);
+      console.log(`[LocalCodeRunner] Executing Node.js...`);
+      output = await spawnPromise('node', [codePath], input, runOptions);
     } else {
       throw new Error(`Unsupported language for local execution: ${language}`);
     }
@@ -80,6 +139,11 @@ export const runCodeLocally = async (code, language, input) => {
     const elapsed = Date.now() - startTime;
     return { output, executionTime: elapsed };
 
+  } catch (err) {
+    return { 
+      error: err.message, 
+      executionTime: typeof startTime !== 'undefined' ? (Date.now() - startTime) : 0 
+    };
   } finally {
     // Cleanup
     try {

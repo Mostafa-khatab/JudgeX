@@ -1,6 +1,7 @@
 import Submission from '../models/submission.js';
 import Problem from '../models/problem.js';
 import User from '../models/user.js';
+import Topic from '../models/topic.js';
 import { runCodeLocally } from './localCodeRunner.js';
 
 /**
@@ -113,6 +114,43 @@ export const judgeSubmission = async (submissionId) => {
 					} 
 				}
 			);
+		}
+
+		// Check if this submission completes a Roadmap Topic
+		if (finalStatus === 'AC') {
+			const user = await User.findOne({ name: submission.author });
+			if (user) {
+				const topic = await Topic.findOne({ linkedProblems: problem._id });
+				if (topic) {
+					console.log(`[JUDGER] Submission ${submissionId} completes roadmap topic: ${topic.topicId}`);
+					
+					if (!user.roadmapProgress) user.roadmapProgress = {};
+					if (!Array.isArray(user.roadmapProgress.unlockedTopicIds)) user.roadmapProgress.unlockedTopicIds = [];
+					if (!Array.isArray(user.roadmapProgress.completedTopicIds)) user.roadmapProgress.completedTopicIds = [];
+					if (!user.roadmapProgress.topicProgress) user.roadmapProgress.topicProgress = new Map();
+
+					const topicId = topic.topicId;
+					const prev = user.roadmapProgress.topicProgress.get(topicId) || {};
+					user.roadmapProgress.topicProgress.set(topicId, {
+						...prev,
+						problemSolved: true,
+						completed: true,
+					});
+
+					if (!user.roadmapProgress.completedTopicIds.includes(topicId)) {
+						user.roadmapProgress.completedTopicIds.push(topicId);
+					}
+
+					// Unlock next topic
+					const nextTopic = await Topic.findOne({ order: topic.order + 1 }).select('topicId');
+					if (nextTopic?.topicId && !user.roadmapProgress.unlockedTopicIds.includes(nextTopic.topicId)) {
+						user.roadmapProgress.unlockedTopicIds.push(nextTopic.topicId);
+					}
+
+					user.markModified('roadmapProgress');
+					await user.save();
+				}
+			}
 		}
 
 		console.log(`[JUDGER] Finished judging ${submissionId}. Result: ${finalStatus}, Score: ${score}`);

@@ -88,7 +88,7 @@ app.use(
 			// 3. Allow any Cloudflare Tunnel (solves the changing URL issue)
 			// 4. Allow any Vercel deployment of this project
 			const isCloudflare = origin && origin.endsWith('.trycloudflare.com');
-			const isVercel = origin && (origin.includes('vercel.app') || origin.includes('judgex'));
+			const isVercel = origin && (origin.includes('vercel.app') || origin.includes('judgex') || origin.includes('localhost:3000') || origin.includes('localhost:8081') || origin.includes('localhost:8082') || origin.includes('localhost:8083'));
 
 			if (
 				!origin ||

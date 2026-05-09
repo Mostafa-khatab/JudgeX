@@ -130,28 +130,6 @@ const AvatarWithMenu = () => {
 							</DropdownMenuSubContent>
 						</DropdownMenuPortal>
 					</DropdownMenuSub>
-					<DropdownMenuSub>
-						<DropdownMenuSubTrigger className="flex h-[42px] cursor-pointer rounded-md px-4 text-gray-600 dark:text-gray-400 dark:hover:!bg-neutral-700 dark:focus:!bg-neutral-700 dark:data-[state=open]:bg-neutral-700">
-							<Languages></Languages>
-							{t('language')}
-						</DropdownMenuSubTrigger>
-						<DropdownMenuPortal>
-							<DropdownMenuSubContent className="mr-5 max-h-[452px] w-48 overflow-auto rounded-xl border-none p-4 dark:!bg-neutral-800">
-								<DropdownMenuRadioGroup value={i18n.language} onValueChange={i18n.changeLanguage}>
-									{Object.keys(locales).map((item, index) => (
-										<DropdownMenuRadioItem
-											key={index}
-											value={item}
-											icon={<Check className="size-4" />}
-											className="h-[42px] cursor-pointer rounded-md text-gray-600 dark:text-gray-400 dark:hover:!bg-neutral-700"
-										>
-											{locales[item]}
-										</DropdownMenuRadioItem>
-									))}
-								</DropdownMenuRadioGroup>
-							</DropdownMenuSubContent>
-						</DropdownMenuPortal>
-					</DropdownMenuSub>
 					<DropdownMenuItem
 						asChild
 						className="flex h-[42px] w-full cursor-pointer rounded-md px-4 text-gray-600 hover:!bg-red-600/10 hover:!text-red-500 dark:text-gray-400"

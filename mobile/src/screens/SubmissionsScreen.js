@@ -11,7 +11,17 @@ import {
   ActivityIndicator,
   Modal,
   ScrollView,
+  Platform,
 } from 'react-native';
+import { 
+  CheckCircle2, 
+  XCircle, 
+  Clock, 
+  Eye, 
+  Code, 
+  ArrowLeft,
+  Activity
+} from 'lucide-react-native';
 import { colors, spacing, typography, borderRadius } from '../theme/theme';
 import Logo from '../components/Logo';
 import submissionService from '../services/submissionService';
@@ -116,45 +126,50 @@ const SubmissionsScreen = ({ navigation }) => {
   };
 
   const SubmissionCard = ({ submission }) => (
-    <View style={styles.submissionCard}>
-      <TouchableOpacity
-        style={styles.cardMain}
-        onPress={() => navigation.navigate('ProblemDetail', { problemId: submission.forProblem })}
-        activeOpacity={0.7}
-      >
-        <View style={styles.cardLeft}>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(submission.status) + '20' }]}>
+    <TouchableOpacity
+      style={styles.submissionCard}
+      onPress={() => navigation.navigate('ProblemDetail', { problemId: submission.forProblem })}
+      activeOpacity={0.8}
+    >
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderLeft}>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(submission.status) + '15', borderColor: getStatusColor(submission.status) + '40' }]}>
             <Text style={[styles.statusText, { color: getStatusColor(submission.status) }]}>
               {submission.status}
             </Text>
           </View>
-        </View>
-        
-        <View style={styles.cardContent}>
           <Text style={styles.problemId}>{submission.forProblem}</Text>
-          <View style={styles.submissionMeta}>
-            <Text style={styles.metaText}>{submission.language}</Text>
-            <Text style={styles.metaDot}>•</Text>
-            <Text style={styles.metaText}>{submission.time || 0}ms</Text>
-            <Text style={styles.metaDot}>•</Text>
-            <Text style={styles.metaText}>{submission.memory || 0}KB</Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.eyeButton} 
+          onPress={() => handleViewCode(submission._id)}
+        >
+          <Eye size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
+      </View>
+      
+      <View style={styles.cardBody}>
+        <View style={styles.metaRow}>
+          <View style={styles.metaItem}>
+            <Code size={12} color="#888" />
+            <Text style={styles.metaLabel}>{submission.language}</Text>
+          </View>
+          <View style={styles.metaItem}>
+            <Clock size={12} color="#888" />
+            <Text style={styles.metaLabel}>{submission.time || 0}ms</Text>
+          </View>
+          <View style={styles.metaItem}>
+            <Activity size={12} color="#888" />
+            <Text style={styles.metaLabel}>{submission.memory || 0}KB</Text>
           </View>
         </View>
         
-        <View style={styles.cardRight}>
+        <View style={styles.cardFooter}>
           <Text style={styles.pointsText}>{submission.point || 0} pts</Text>
           <Text style={styles.dateText}>{formatDate(submission.createdAt)}</Text>
         </View>
-      </TouchableOpacity>
-
-      {/* View Code Button */}
-      <TouchableOpacity 
-        style={styles.viewCodeButton} 
-        onPress={() => handleViewCode(submission._id)}
-      >
-        <Text style={styles.viewCodeText}>{'</> Code'}</Text>
-      </TouchableOpacity>
-    </View>
+      </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -164,36 +179,48 @@ const SubmissionsScreen = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backArrow}>←</Text>
+          <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Logo size={40} />
         <Text style={styles.headerTitle}>My Submissions</Text>
+        <View style={{ width: 24 }} />
       </View>
 
       {/* Stats */}
       {/* ... (stats container same) ... */}
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: '#22C55E' }]}>
-            {submissions.filter(s => s.status === 'AC').length}
-          </Text>
-          <Text style={styles.statLabel}>Accepted</Text>
+          <CheckCircle2 size={16} color="#22C55E" />
+          <View style={styles.statInfo}>
+            <Text style={[styles.statValue, { color: '#22C55E' }]}>
+              {submissions.filter(s => s.status === 'AC').length}
+            </Text>
+            <Text style={styles.statLabel}>Accepted</Text>
+          </View>
         </View>
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: '#EF4444' }]}>
-            {submissions.filter(s => s.status === 'WA').length}
-          </Text>
-          <Text style={styles.statLabel}>Wrong</Text>
+          <XCircle size={16} color="#EF4444" />
+          <View style={styles.statInfo}>
+            <Text style={[styles.statValue, { color: '#EF4444' }]}>
+              {submissions.filter(s => s.status === 'WA').length}
+            </Text>
+            <Text style={styles.statLabel}>Wrong</Text>
+          </View>
         </View>
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: '#F59E0B' }]}>
-            {submissions.filter(s => s.status === 'TLE').length}
-          </Text>
-          <Text style={styles.statLabel}>TLE</Text>
+          <Clock size={16} color="#F59E0B" />
+          <View style={styles.statInfo}>
+            <Text style={[styles.statValue, { color: '#F59E0B' }]}>
+              {submissions.filter(s => s.status === 'TLE').length}
+            </Text>
+            <Text style={styles.statLabel}>TLE</Text>
+          </View>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{submissions.length}</Text>
-          <Text style={styles.statLabel}>Total</Text>
+          <Activity size={16} color={colors.primary} />
+          <View style={styles.statInfo}>
+            <Text style={styles.statValue}>{submissions.length}</Text>
+            <Text style={styles.statLabel}>Total</Text>
+          </View>
         </View>
       </View>
 
@@ -287,25 +314,33 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
     backgroundColor: colors.cardBackground,
     marginHorizontal: spacing.lg,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     padding: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   statItem: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  statInfo: {
+    flex: 1,
   },
   statValue: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.primary,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.text,
   },
   statLabel: {
-    fontSize: typography.sizes.xs,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
+    fontSize: 8,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
   },
   errorText: {
     color: colors.error,
@@ -323,60 +358,75 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   submissionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.cardBackground,
+    backgroundColor: '#1e1e1e',
     borderRadius: borderRadius.lg,
     padding: spacing.md,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: '#333',
   },
-  cardLeft: {
-    marginRight: spacing.md,
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   statusBadge: {
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
     minWidth: 40,
     alignItems: 'center',
   },
   statusText: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-  },
-  cardContent: {
-    flex: 1,
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   problemId: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontSize: 16,
+    fontWeight: 'bold',
     color: colors.text,
-    marginBottom: spacing.xs,
   },
-  submissionMeta: {
+  eyeButton: {
+    padding: spacing.xs,
+  },
+  cardBody: {
+    gap: spacing.md,
+  },
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.lg,
   },
-  metaText: {
-    fontSize: typography.sizes.xs,
-    color: colors.textSecondary,
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
-  metaDot: {
-    color: colors.textMuted,
-    marginHorizontal: spacing.xs,
+  metaLabel: {
+    fontSize: 12,
+    color: '#888',
   },
-  cardRight: {
-    alignItems: 'flex-end',
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.xs,
   },
   pointsText: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontSize: 14,
+    fontWeight: 'bold',
     color: colors.primary,
   },
   dateText: {
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
+    fontSize: 11,
+    color: '#555',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -396,21 +446,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: typography.sizes.sm,
     textAlign: 'center',
-  },
-  viewCodeButton: {
-    padding: spacing.sm,
-    backgroundColor: '#0D1117',
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#30363d',
-    marginTop: spacing.sm,
-  },
-  viewCodeText: {
-    color: colors.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
   },
   modalContainer: {
     flex: 1,

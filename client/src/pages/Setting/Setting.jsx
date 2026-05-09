@@ -87,14 +87,6 @@ const Setting = () => {
 					]}
 				></Select>
 				<p className="mt-3 text-sm/6 text-gray-600 dark:text-gray-300">{t('default-language-msg')}</p>
-				<h4 className="mb-2 mt-10 block text-sm/6 font-medium capitalize text-gray-900 dark:text-gray-50">{t('language')}</h4>
-				<Select
-					triggerClassname="!bg-white border border-gray-300"
-					defaultValue={i18n.language}
-					data={Object.entries(locales).map((item) => ({ value: item[0], label: item[1] }))}
-					setValue={i18n.changeLanguage}
-				></Select>
-				<p className="mb-2 mt-3 text-sm/6 text-gray-600 dark:text-gray-300">{t('language-msg')}</p>
 				<h4 className="mb-2 mt-10 block text-sm/6 font-medium capitalize text-gray-900 dark:text-gray-50">{t('theme')}</h4>
 				<p className="mb-2 text-sm/6 text-gray-600 dark:text-gray-300">{t('theme-msg')}</p>
 				<div className="flex space-x-4">

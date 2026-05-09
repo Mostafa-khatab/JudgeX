@@ -1,5 +1,6 @@
 import Submission from '../models/submission.js';
 import User from '../models/user.js';
+import Problem from '../models/problem.js';
 
 const parseDate = (dateStr) => {
 	const d = new Date(dateStr);
@@ -423,6 +424,27 @@ const statControllers = {
 			res.status(400).json({ success: false, msg: err.message });
 
 			console.error(`Error in get problem stat: ${err.message}`);
+		}
+	},
+
+	//[GET] /stat/global-stats
+	async getGlobalStats(req, res, next) {
+		try {
+			const totalProblems = await Problem.countDocuments({ public: true });
+			const totalUsers = await User.countDocuments();
+			const totalSubmissions = await Submission.countDocuments();
+			
+			res.status(200).json({
+				success: true,
+				data: {
+					totalProblems,
+					totalUsers,
+					totalSubmissions,
+					globalActivity: 'ACTIVE'
+				}
+			});
+		} catch (err) {
+			res.status(400).json({ success: false, msg: err.message });
 		}
 	},
 };

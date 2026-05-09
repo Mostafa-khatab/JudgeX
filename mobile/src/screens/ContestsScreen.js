@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   SafeAreaView,
   StatusBar,
   FlatList,
@@ -10,10 +9,14 @@ import {
   TextInput,
   RefreshControl,
   ActivityIndicator,
+  StyleSheet,
+  Dimensions,
 } from 'react-native';
-import { colors, spacing, typography, borderRadius } from '../theme/theme';
-import Logo from '../components/Logo';
+import { Trophy, Search, Calendar, Clock, RotateCcw, ChevronRight, Filter } from 'lucide-react-native';
 import contestService from '../services/contestService';
+import theme from '../theme/theme';
+
+const { width } = Dimensions.get('window');
 
 const ContestsScreen = ({ navigation }) => {
   const [contests, setContests] = useState([]);
@@ -30,7 +33,13 @@ const ContestsScreen = ({ navigation }) => {
         q: searchQuery,
         status: statusFilter,
       });
-      setContests(response.data || response || []);
+      const data = response.data || response || [];
+      const sorted = data.sort((a, b) => {
+        const priority = { ongoing: 3, upcoming: 2, ended: 1 };
+        if (a.status === b.status) return new Date(b.startTime) - new Date(a.startTime);
+        return (priority[b.status] || 0) - (priority[a.status] || 0);
+      });
+      setContests(sorted);
     } catch (err) {
       setError(err.message || 'Failed to load contests');
     } finally {
@@ -49,132 +58,138 @@ const ContestsScreen = ({ navigation }) => {
   };
 
   const formatDuration = (ms) => {
-    const minutes = Math.floor(ms / (1000 * 60));
-    if (minutes < 60) return `${minutes} min`;
-    const hours = Math.floor(minutes / 60);
-    const remainingMins = minutes % 60;
-    return remainingMins > 0 ? `${hours}h ${remainingMins}m` : `${hours}h`;
+    if (!ms) return '0m';
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+    const days = Math.floor(hours / 24);
+    
+    if (days > 0) return `${days} days`;
+    if (hours > 0) return `${hours} hours`;
+    return `${minutes} minutes`;
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  };
+  const ContestCard = ({ item, index }) => {
+    const startTime = new Date(item.startTime);
+    const status = item.status?.toLowerCase() || 'ended';
+    
+    const getStatusColor = () => {
+      if (status === 'ongoing') return '#22c55e';
+      if (status === 'upcoming') return '#eab308';
+      return '#ef4444';
+    };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'ended':
-        return '#EF4444';
-      case 'ongoing':
-        return '#F59E0B';
-      case 'upcoming':
-        return '#22C55E';
-      default:
-        return colors.textSecondary;
-    }
-  };
-
-  const StatusBadge = ({ status }) => (
-    <View style={[styles.statusBadge, { backgroundColor: colors.cardBackground }]}>
-      <View style={[styles.statusDot, { backgroundColor: getStatusColor(status) }]} />
-      <Text style={styles.statusText}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Text>
-    </View>
-  );
-
-  const ContestCard = ({ contest }) => (
-    <TouchableOpacity
-      style={styles.contestCard}
-      onPress={() => navigation.navigate('ContestDetail', { contestId: contest.id })}
-      activeOpacity={0.8}
-    >
-      <View style={styles.cardLeft}>
-        <Text style={styles.trophyIcon}>🏆</Text>
-      </View>
-      <View style={styles.cardContent}>
-        <Text style={styles.contestTitle}>{contest.title}</Text>
-        <View style={styles.contestMeta}>
-          <Text style={styles.metaText}>📅 {formatDate(contest.startTime)}</Text>
-          <Text style={styles.metaText}>⏱️ {formatDuration(contest.duration)}</Text>
+    return (
+      <TouchableOpacity
+        onPress={() => navigation.navigate('ContestDetail', { contestId: item.id || item._id })}
+        activeOpacity={0.7}
+        style={styles.card}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.trophyContainer}>
+            <Trophy size={28} color="#eab308" fill="#eab30830" />
+            <View style={styles.indexBadge}>
+              <Text style={styles.indexText}>{index + 1}</Text>
+            </View>
+          </View>
         </View>
-      </View>
-      <StatusBadge status={contest.status} />
-    </TouchableOpacity>
-  );
+
+        <View style={styles.cardBody}>
+          <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+          <View style={styles.cardMeta}>
+            <View style={styles.metaItem}>
+              <Calendar size={14} color="#0ea5e9" />
+              <Text style={styles.metaText}>
+                {startTime.getFullYear()}-{startTime.getMonth() + 1}-{startTime.getDate()} {startTime.getHours()}:{startTime.getMinutes().toString().padStart(2, '0')}
+              </Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Clock size={14} color="#0ea5e9" />
+              <Text style={styles.metaText}>
+                {formatDuration(item.duration)}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.cardRight}>
+          <View style={styles.statusBadge}>
+            <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
+            <Text style={[styles.statusText, { color: '#fff' }]}>
+              {status.toUpperCase()}
+            </Text>
+          </View>
+          <ChevronRight size={20} color="#3f3f46" />
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="light-content" />
       
-      {/* Header */}
-      <View style={styles.header}>
-        <Logo size={40} />
-        <Text style={styles.headerTitle}>All Contests</Text>
+      {/* Title Header */}
+      <View style={styles.titleHeader}>
+        <View>
+          <Text style={styles.mainTitle}>ALL-CONTESTS</Text>
+          <Text style={styles.subtitle}>{contests.length} CONTESTS-FOUND</Text>
+        </View>
       </View>
 
-      {/* Search and Filter */}
-      <View style={styles.filterContainer}>
+      {/* Filter Section */}
+      <View style={styles.filterSection}>
         <TouchableOpacity 
-          style={styles.statusDropdown}
+          style={styles.dropdown}
           onPress={() => {
-            // Cycle through filters
-            const filters = ['', 'upcoming', 'ongoing', 'ended'];
-            const currentIndex = filters.indexOf(statusFilter);
-            setStatusFilter(filters[(currentIndex + 1) % filters.length]);
+            const filters = ['', 'ongoing', 'upcoming', 'ended'];
+            const idx = filters.indexOf(statusFilter);
+            setStatusFilter(filters[(idx + 1) % filters.length]);
           }}
         >
           <Text style={styles.dropdownText}>
             {statusFilter ? statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1) : 'Status'}
           </Text>
-          <Text style={styles.dropdownArrow}>▼</Text>
+          <ChevronRight size={16} color="#71717a" style={{ transform: [{ rotate: '90deg' }] }} />
         </TouchableOpacity>
 
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search"
-          placeholderTextColor={colors.textMuted}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          onSubmitEditing={fetchContests}
-        />
+        <View style={styles.searchContainer}>
+          <Search size={18} color="#71717a" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="search-placeholder"
+            placeholderTextColor="#71717a"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
 
-        <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
-          <Text style={styles.refreshButtonText}>Refresh</Text>
+        <TouchableOpacity style={styles.refreshBtn} onPress={onRefresh}>
+          <RotateCcw size={20} color="#fff" />
+          <Text style={styles.refreshBtnText}>Refresh</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Error Message */}
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-      {/* Loading */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      ) : (
-        /* Contest List */
-        <FlatList
-          data={contests}
-          keyExtractor={(item) => item.id || item._id}
-          renderItem={({ item }) => <ContestCard contest={item} />}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.primary}
-            />
-          }
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>No contests found</Text>
-          }
-        />
-      )}
+      {/* Content */}
+      <FlatList
+        data={contests}
+        keyExtractor={(item) => (item.id || item._id).toString()}
+        renderItem={({ item, index }) => <ContestCard item={item} index={index} />}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0ea5e9" />
+        }
+        ListEmptyComponent={
+          loading ? (
+            <ActivityIndicator size="large" color="#0ea5e9" style={{ marginTop: 50 }} />
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Trophy size={64} color="#27272a" />
+              <Text style={styles.emptyText}>No Contests Found</Text>
+            </View>
+          )
+        }
+      />
     </SafeAreaView>
   );
 };
@@ -182,118 +197,165 @@ const ContestsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#0a0a0a',
   },
-  header: {
+  titleHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
+  },
+  mainTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 1,
+  },
+  subtitle: {
+    fontSize: 12,
+    color: '#71717a',
+    fontWeight: '700',
+    marginTop: 4,
+    letterSpacing: 1,
+  },
+  filterSection: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    gap: 10,
+    alignItems: 'center',
+  },
+  dropdown: {
+    flex: 1,
+    height: 48,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
-    gap: spacing.lg,
-  },
-  headerTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.primary,
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  statusDropdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.cardBackground,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    gap: spacing.sm,
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   dropdownText: {
-    color: colors.text,
-    fontSize: typography.sizes.sm,
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
   },
-  dropdownArrow: {
-    color: colors.textSecondary,
-    fontSize: typography.sizes.xs,
+  searchContainer: {
+    flex: 2,
+    height: 48,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  searchIcon: {
+    marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    backgroundColor: colors.cardBackground,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    color: colors.text,
-    fontSize: typography.sizes.sm,
+    color: '#fff',
+    fontSize: 14,
   },
-  refreshButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    justifyContent: 'center',
-  },
-  refreshButtonText: {
-    color: colors.background,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
-  },
-  errorText: {
-    color: colors.error,
-    textAlign: 'center',
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  refreshBtn: {
+    height: 48,
+    backgroundColor: '#0ea5e9',
+    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 15,
+    gap: 8,
+  },
+  refreshBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   listContent: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxl,
+    paddingHorizontal: 20,
+    paddingBottom: 100,
   },
-  contestCard: {
+  card: {
+    backgroundColor: '#111',
+    borderRadius: 16,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#222',
   },
-  cardLeft: {
-    marginRight: spacing.md,
+  cardHeader: {
+    marginRight: 16,
   },
-  trophyIcon: {
-    fontSize: 32,
+  trophyContainer: {
+    width: 64,
+    height: 64,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
   },
-  cardContent: {
+  indexBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    width: 22,
+    height: 22,
+    backgroundColor: '#0ea5e9',
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#111',
+  },
+  indexText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  cardBody: {
     flex: 1,
   },
-  contestTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
-    color: colors.text,
-    marginBottom: spacing.xs,
+  cardTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
   },
-  contestMeta: {
+  cardMeta: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: 15,
   },
-  metaText: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-  },
-  statusBadge: {
+  metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.md,
-    gap: spacing.xs,
+    gap: 4,
+  },
+  metaText: {
+    color: '#71717a',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  cardRight: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  statusBadge: {
+    backgroundColor: '#000',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   statusDot: {
     width: 8,
@@ -301,14 +363,19 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   statusText: {
-    fontSize: typography.sizes.sm,
-    color: colors.text,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    marginTop: 100,
   },
   emptyText: {
-    textAlign: 'center',
-    color: colors.textSecondary,
-    marginTop: spacing.xxl,
-    fontSize: typography.sizes.md,
+    color: '#71717a',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 10,
   },
 });
 
