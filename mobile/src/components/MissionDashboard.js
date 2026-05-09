@@ -24,7 +24,7 @@ import { WebView } from 'react-native-webview';
 
 const { width } = Dimensions.get('window');
 
-const MissionPlan = ({ node, onBack }) => {
+const MissionDashboard = ({ node, onBack }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [videoChecked, setVideoChecked] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
@@ -293,4 +293,4 @@ const styles = StyleSheet.create({
   advanceText: { color: '#fff', fontSize: 13, fontWeight: '900' },
 });
 
-export default MissionPlan;
+export default MissionDashboard;
