@@ -131,7 +131,7 @@ const ContestsScreen = ({ navigation }) => {
       {/* Title Header */}
       <View style={styles.titleHeader}>
         <View>
-          <Text style={styles.mainTitle}>ALL-CONTESTS</Text>
+          <Text style={styles.mainTitle}>ALL CONTESTS</Text>
           <Text style={styles.subtitle}>{contests.length} CONTESTS-FOUND</Text>
         </View>
       </View>
@@ -156,7 +156,7 @@ const ContestsScreen = ({ navigation }) => {
           <Search size={18} color="#71717a" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="search-placeholder"
+            placeholder="Search contests..."
             placeholderTextColor="#71717a"
             value={searchQuery}
             onChangeText={setSearchQuery}

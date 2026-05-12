@@ -20,6 +20,7 @@ const LoginScreen = ({ navigation }) => {
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -61,7 +62,7 @@ const LoginScreen = ({ navigation }) => {
             
             <TouchableOpacity style={styles.googleButton} onPress={() => {}}>
                <Text style={styles.googleIcon}>G</Text>
-               <Text style={styles.googleButtonText}>continueWithGoogle</Text>
+               <Text style={styles.googleButtonText}>Continue with Google</Text>
             </TouchableOpacity>
 
             <View style={styles.divider}>
@@ -76,7 +77,7 @@ const LoginScreen = ({ navigation }) => {
                <Mail size={20} color="#8B949E" style={styles.inputIcon} />
                <TextInput
                  style={styles.textInput}
-                 placeholder="email"
+                 placeholder="Email Address"
                  placeholderTextColor="#8B949E"
                  value={email}
                  onChangeText={setEmail}
@@ -89,23 +90,23 @@ const LoginScreen = ({ navigation }) => {
                <Lock size={20} color="#8B949E" style={styles.inputIcon} />
                <TextInput
                  style={styles.textInput}
-                 placeholder="password"
+                 placeholder="Password"
                  placeholderTextColor="#8B949E"
                  value={password}
                  onChangeText={setPassword}
-                 secureTextEntry
+                 secureTextEntry={!showPassword}
                />
-               <TouchableOpacity>
-                  <Eye size={20} color="#8B949E" />
+               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <Eye size={20} color={showPassword ? "#0EA5E9" : "#8B949E"} />
                </TouchableOpacity>
             </View>
 
             <View style={styles.linksRow}>
-               <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-                  <Text style={styles.linkText}>forgot-password</Text>
+               <TouchableOpacity onPress={() => {}}>
+                  <Text style={styles.linkText}>Forgot password?</Text>
                </TouchableOpacity>
-               <TouchableOpacity onPress={() => navigation.navigate('VerifyEmail')}>
-                  <Text style={styles.linkText}>verify-email</Text>
+               <TouchableOpacity onPress={() => {}}>
+                  <Text style={styles.linkText}>Verify Email</Text>
                </TouchableOpacity>
             </View>
 
@@ -120,15 +121,15 @@ const LoginScreen = ({ navigation }) => {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                {loading ? <Loader2 size={24} color="white" /> : <Text style={styles.loginButtonText}>login</Text>}
+                {loading ? <Loader2 size={24} color="white" /> : <Text style={styles.loginButtonText}>Login</Text>}
               </LinearGradient>
             </TouchableOpacity>
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>dont-have-account </Text>
+            <Text style={styles.footerText}>Don't have an account? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-              <Text style={styles.signupLink}>signup</Text>
+              <Text style={styles.signupLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
         </View>

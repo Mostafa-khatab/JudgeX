@@ -32,6 +32,7 @@ const apiRequest = async (endpoint, options = {}) => {
   }
   
   const config = {
+    credentials: Platform.OS === 'web' ? 'include' : 'same-origin',
     ...options,
     headers,
   };
@@ -45,11 +46,13 @@ const apiRequest = async (endpoint, options = {}) => {
         await AsyncStorage.removeItem('authToken');
         await AsyncStorage.removeItem('user');
       }
-      throw { message: data.message || 'Request failed', status: response.status, data };
+      const errorMsg = data.message || data.msg || 'Request failed';
+      throw { message: errorMsg, status: response.status, data };
     }
     
     return data;
   } catch (error) {
+    console.error(`API Error on ${endpoint}:`, error);
     if (error.message === 'Network request failed') {
       throw { message: 'Network error. Please check your connection.' };
     }

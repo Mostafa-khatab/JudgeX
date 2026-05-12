@@ -176,7 +176,6 @@ const routes = [
 	{
 		path: routesConfig.interviewDashboard,
 		page: InterviewIndex,
-		layout: null,
 		type: 'auth',
 	},
 	{

@@ -602,7 +602,7 @@ const ProblemSolve = () => {
 					<button
 						onClick={() => setIsChatOpen((p) => !p)}
 						aria-label={isChatOpen ? 'Close assistant' : 'Open assistant'}
-						className="fixed right-6 bottom-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 p-0 shadow-lg hover:from-blue-700 hover:to-indigo-700 dark:from-blue-700 dark:to-indigo-700"
+						className="fixed right-6 bottom-20 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 p-0 shadow-lg hover:from-blue-700 hover:to-indigo-700 dark:from-blue-700 dark:to-indigo-700"
 					>
 						<MessageSquare className="h-6 w-6 text-white" />
 					</button>

@@ -200,10 +200,7 @@ const InterviewDashboard = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#09090b] text-white overflow-hidden">
-      <TechPattern />
-      <FloatingBlobs />
-
+    <div className="relative min-h-[calc(100vh-4rem)] text-slate-900 dark:text-white overflow-hidden">
       <div className="relative z-10 mx-auto max-w-7xl px-4 md:px-8 py-12 md:py-20">
         <div className="flex flex-col gap-12">
           
@@ -223,10 +220,10 @@ const InterviewDashboard = () => {
                   <Sparkles size={28} className="neural-flicker" />
                 </ClayIcon>
                 <div>
-                  <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
+                  <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-b from-slate-900 to-slate-500 dark:from-white dark:to-white/60">
                     JudgeX <span className="text-blue-500">Interviews</span>
                   </h1>
-                  <p className="mt-2 text-white/40 text-sm md:text-lg font-medium max-w-xl">
+                  <p className="mt-2 text-slate-500 dark:text-neutral-400 text-sm md:text-lg font-medium max-w-xl">
                     High-fidelity collaborative workspaces for technical evaluation.
                   </p>
                 </div>
@@ -240,20 +237,20 @@ const InterviewDashboard = () => {
                   Launch New Session
                 </Button>
               </DialogTrigger>
-              <DialogContent className="jx-glass-strong border-white/10 text-white rounded-[2.5rem] p-0 overflow-hidden max-w-2xl">
+              <DialogContent className="bg-white dark:bg-[#0f0f11] border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-[2.5rem] p-0 overflow-hidden max-w-2xl">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-purple-600/5 pointer-events-none" />
                 <DialogHeader className="px-10 pt-10 relative z-10">
                   <DialogTitle className="text-3xl font-black tracking-tight">Session Configuration</DialogTitle>
-                  <DialogDescription className="text-white/50 text-base">Initialize your premium collaborative workspace.</DialogDescription>
+                  <DialogDescription className="text-slate-500 dark:text-neutral-400 text-base">Initialize your premium collaborative workspace.</DialogDescription>
                 </DialogHeader>
                 <div className="px-10 py-8 grid grid-cols-2 gap-6 relative z-10">
                   <div className="col-span-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-3 block">Interview Blueprint</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-neutral-400 mb-3 block">Interview Blueprint</label>
                     <Select value={type} onValueChange={setType}>
-                      <SelectTrigger className="h-14 rounded-2xl bg-white/5 border-white/10 text-white focus:ring-blue-500/20">
+                      <SelectTrigger className="h-14 rounded-2xl bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:ring-blue-500/20">
                         <SelectValue placeholder="Type" />
                       </SelectTrigger>
-                      <SelectContent className="bg-[#0f0f11] border-white/10 text-white rounded-2xl">
+                      <SelectContent className="bg-white dark:bg-[#0f0f11] border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-2xl">
                         <SelectItem value="technical">Technical (Algorithm)</SelectItem>
                         <SelectItem value="system">System Design</SelectItem>
                         <SelectItem value="behavioral">Behavioral / HR</SelectItem>
@@ -261,12 +258,12 @@ const InterviewDashboard = () => {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-3 block">Duration</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-neutral-400 mb-3 block">Duration</label>
                     <Select value={duration} onValueChange={setDuration}>
-                      <SelectTrigger className="h-14 rounded-2xl bg-white/5 border-white/10 text-white">
+                      <SelectTrigger className="h-14 rounded-2xl bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white">
                         <SelectValue placeholder="Duration" />
                       </SelectTrigger>
-                      <SelectContent className="bg-[#0f0f11] border-white/10 text-white rounded-2xl">
+                      <SelectContent className="bg-white dark:bg-[#0f0f11] border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-2xl">
                         <SelectItem value="30">30 Minutes</SelectItem>
                         <SelectItem value="45">45 Minutes</SelectItem>
                         <SelectItem value="60">60 Minutes</SelectItem>
@@ -275,8 +272,8 @@ const InterviewDashboard = () => {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-3 block">Tech Stack</label>
-                    <div className="h-14 rounded-2xl bg-white/5 border border-white/10 px-4 flex items-center gap-2 overflow-x-auto no-scrollbar">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-neutral-400 mb-3 block">Tech Stack</label>
+                    <div className="h-14 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 px-4 flex items-center gap-2 overflow-x-auto no-scrollbar">
                       {['cpp', 'python', 'javascript', 'java'].map(l => {
                         const on = langs.includes(l);
                         return (
@@ -284,7 +281,7 @@ const InterviewDashboard = () => {
                             key={l}
                             onClick={() => setLangs(prev => (prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l]))}
                             className={`shrink-0 h-8 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all duration-300 ${
-                              on ? 'bg-blue-500 border-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-transparent border-white/10 text-white/40 hover:text-white'
+                              on ? 'bg-blue-500 border-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-transparent border-slate-200 dark:border-white/10 text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
                             }`}
                           >
                             {l}

@@ -27,7 +27,8 @@ import {
   Database,
   Trophy,
   RefreshCw,
-  X
+  X,
+  ArrowLeft
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Markdown from 'react-native-markdown-display';
@@ -476,6 +477,14 @@ const ProblemDetailScreen = ({ route, navigation }) => {
     <SafeAreaView style={styles.container}>
       {renderResultModal()}
       <StatusBar barStyle="light-content" />
+      
+      {/* Back Button Row */}
+      <View style={styles.backRow}>
+         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <ArrowLeft size={20} color="#fff" />
+         </TouchableOpacity>
+      </View>
+
       <View style={styles.topHeader}>
          <View style={styles.breadcrumbRow}>
             <Text style={styles.breadcrumbGrey}>problems</Text>
@@ -511,6 +520,8 @@ const ProblemDetailScreen = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
+  backRow: { paddingHorizontal: 15, paddingTop: 10, paddingBottom: 5 },
+  backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#1a1a1a', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#27272a' },
   topHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 15, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
   breadcrumbRow: { flexDirection: 'row', alignItems: 'center', flex: 1.5 },
   breadcrumbGrey: { color: '#52525b', fontSize: 13 },

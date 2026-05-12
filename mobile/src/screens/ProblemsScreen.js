@@ -106,8 +106,8 @@ const ProblemsScreen = ({ navigation }) => {
       {/* Title Header */}
       <View style={styles.titleHeader}>
         <View>
-          <Text style={styles.mainTitle}>ALL-PROBLEMS</Text>
-          <Text style={styles.subtitle}>{problems.length} CHALLENGES-AVAILABLE</Text>
+          <Text style={styles.mainTitle}>ALL PROBLEMS</Text>
+          <Text style={styles.subtitle}>{problems.length} CHALLENGES AVAILABLE</Text>
         </View>
       </View>
 

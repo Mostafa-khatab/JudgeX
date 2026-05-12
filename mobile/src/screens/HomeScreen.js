@@ -161,7 +161,7 @@ const HomeScreen = ({ navigation }) => {
                 style={styles.adminGradient}
               >
                 <LayoutGrid size={20} color="#fff" />
-                <Text style={styles.adminText}>admin-dashboard</Text>
+                <Text style={styles.adminText}>Admin Dashboard</Text>
               </LinearGradient>
             </TouchableOpacity>
           )}
@@ -171,33 +171,33 @@ const HomeScreen = ({ navigation }) => {
             <TouchableOpacity style={styles.menuListItem} onPress={() => { setIsMenuVisible(false); navigation.navigate('ProblemsTab'); }}>
               <View style={styles.listItemLeft}>
                 <FileCode size={20} color="#71717a" />
-                <Text style={styles.listItemText}>editor</Text>
+                <Text style={styles.listItemText}>Editor</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity style={styles.menuListItem} onPress={() => { setIsMenuVisible(false); navigation.navigate('EditProfile'); }}>
               <View style={styles.listItemLeft}>
                 <Settings size={20} color="#71717a" />
-                <Text style={styles.listItemText}>setting</Text>
+                <Text style={styles.listItemText}>Settings</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity style={styles.menuListItem} onPress={() => { alert('Appearance Settings Coming Soon'); }}>
               <View style={styles.listItemLeft}>
                 <Moon size={20} color="#71717a" />
-                <Text style={styles.listItemText}>appearance</Text>
+                <Text style={styles.listItemText}>Appearance</Text>
               </View>
               <ChevronRight size={16} color="#444" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.menuListItem} onPress={() => { alert('Language Settings Coming Soon'); }}>
               <View style={styles.listItemLeft}>
                 <Languages size={20} color="#71717a" />
-                <Text style={styles.listItemText}>language</Text>
+                <Text style={styles.listItemText}>Language</Text>
               </View>
               <ChevronRight size={16} color="#444" />
             </TouchableOpacity>
             <TouchableOpacity style={[styles.menuListItem, { borderBottomWidth: 0 }]} onPress={() => { setIsMenuVisible(false); logout(); }}>
               <View style={styles.listItemLeft}>
                 <LogOut size={20} color="#ef4444" />
-                <Text style={[styles.listItemText, { color: '#ef4444' }]}>log-out</Text>
+                <Text style={[styles.listItemText, { color: '#ef4444' }]}>Log Out</Text>
               </View>
             </TouchableOpacity>
           </View>

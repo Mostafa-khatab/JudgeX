@@ -385,33 +385,32 @@ const Course = () => {
 			</div>
 
 			{/* Floating AI Toggle Button */}
-			<div className="fixed bottom-6 right-6 z-50">
-				<Button
-					onClick={() => setIsChatOpen(!isChatOpen)}
-					className={`size-14 rounded-full shadow-2xl transition-all duration-300 ${
-						isChatOpen ? 'bg-red-500 hover:bg-red-600 rotate-90' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-110'
-					}`}
-					size="icon"
-				>
-					{isChatOpen ? <X className="size-6 text-white" /> : <Bot className="size-6 text-white" />}
-					{!isChatOpen && (
-						<span className="absolute -top-1 -right-1 flex h-4 w-4">
-							<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-							<span className="relative inline-flex rounded-full h-4 w-4 bg-sky-500 border-2 border-white dark:border-neutral-900"></span>
-						</span>
-					)}
-				</Button>
-			</div>
+			{!isChatOpen && (
+				<div className="fixed bottom-6 right-6 z-50">
+					<Button
+						onClick={() => setIsChatOpen(true)}
+						className="size-14 rounded-full shadow-2xl transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-110"
+						size="icon"
+					>
+						<Bot className="size-6 text-white" />
+					</Button>
+				</div>
+			)}
 
 			{/* AI Chat Side Panel */}
 			{isChatOpen && (
-				<div className="fixed top-16 right-0 h-[calc(100vh-64px)] w-full sm:w-[400px] z-40 animate-in slide-in-from-right-full duration-500 ease-in-out border-l border-gray-200 dark:border-neutral-800 shadow-2xl bg-white dark:bg-neutral-900">
-					<ChatBot 
-						courseId={id} 
-						isOpen={isChatOpen} 
-						onClose={() => setIsChatOpen(false)} 
-					/>
-				</div>
+				<>
+					{/* Overlay to close on outside click */}
+					<div onClick={() => setIsChatOpen(false)} className="fixed inset-0 z-30 bg-black/10" />
+					
+					<div className="fixed top-16 right-0 h-[calc(100vh-64px)] w-full sm:w-[400px] z-40 animate-in slide-in-from-right-full duration-500 ease-in-out border-l border-gray-200 dark:border-neutral-800 shadow-2xl bg-white dark:bg-neutral-900">
+						<ChatBot 
+							courseId={id} 
+							isOpen={isChatOpen} 
+							onClose={() => setIsChatOpen(false)} 
+						/>
+					</div>
+				</>
 			)}
 		</div>
 	);

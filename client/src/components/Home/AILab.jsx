@@ -76,7 +76,7 @@ const TOOLS = [
         dropShadow: 'drop-shadow-[0_0_18px_rgba(217,70,239,0.8)]',
         glowColor: 'shadow-fuchsia-500',
         isRoute: true,
-        route: '/roadmap?action=generate'
+        route: '/roadmaps'
     }
 ];
 

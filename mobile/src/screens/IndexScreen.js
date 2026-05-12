@@ -41,16 +41,16 @@ const IndexScreen = ({ navigation }) => {
         <View style={styles.navBar}>
           <Logo size={42} />
           <View style={styles.navLinks}>
-            <Text style={styles.navText}>home</Text>
-            <Text style={styles.navText}>product</Text>
-            <Text style={styles.navText}>developer</Text>
-            <Text style={[styles.navText, { marginRight: 0 }]}>about-me</Text>
+            <Text style={styles.navText}>Home</Text>
+            <Text style={styles.navText}>Product</Text>
+            <Text style={styles.navText}>Developer</Text>
+            <Text style={[styles.navText, { marginRight: 0 }]}>About Me</Text>
           </View>
           <TouchableOpacity 
             onPress={() => navigation.navigate('Login')}
             style={styles.loginBtn}
           >
-            <Text style={styles.loginBtnText}>login</Text>
+            <Text style={styles.loginBtnText}>Login</Text>
             <ArrowRight size={14} color="#FFFFFF" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </View>
@@ -59,21 +59,21 @@ const IndexScreen = ({ navigation }) => {
         <View style={styles.hero}>
           <View style={styles.sloganWrapper}>
             {/* On Web we can use CSS gradient text, on Native we use a vibrant fallback */}
-            <Text style={styles.sloganText}>slogan</Text>
+            <Text style={styles.sloganText}>A New Way to Learn</Text>
           </View>
           
-          <Text style={styles.heroDescription}>description</Text>
+          <Text style={styles.heroDescription}>JudgeX is the best platform to help you enhance your skills, practice new competive program algorithm.</Text>
 
           <View style={styles.heroActions}>
             <TouchableOpacity 
               onPress={() => navigation.navigate('SignUp')}
               style={styles.getStartedBtn}
             >
-              <Text style={styles.getStartedText}>get-started</Text>
+              <Text style={styles.getStartedText}>Get Started</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.learnMoreBtn}>
-              <Text style={styles.learnMoreText}>learn-more</Text>
+              <Text style={styles.learnMoreText}>Learn More</Text>
               <ArrowRight size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
             </TouchableOpacity>
           </View>
@@ -96,10 +96,10 @@ const IndexScreen = ({ navigation }) => {
                    </View>
                 </View>
              </View>
-             <Text style={styles.featureTitle}>product-title</Text>
-             <Text style={styles.featureDesc}>product-description</Text>
+             <Text style={styles.featureTitle}>Questions, Community & Contests</Text>
+             <Text style={styles.featureDesc}>Over 7749 questions for you to practice. Come and join one of the (maybe) largest tech communities with hundreds of thousands of active users and participate in our contests to challenge yourself.</Text>
              <TouchableOpacity style={styles.linkRow}>
-                <Text style={styles.linkText}>view-questions</Text>
+                <Text style={styles.linkText}>View Questions</Text>
                 <ChevronRight size={14} color="#0EA5E9" style={{ marginLeft: 2 }} />
              </TouchableOpacity>
           </View>
@@ -111,8 +111,8 @@ const IndexScreen = ({ navigation }) => {
                    <Moon size={24} color="white" />
                 </View>
              </View>
-             <Text style={styles.featureTitle}>appearance</Text>
-             <Text style={styles.featureDesc}>appearance-description</Text>
+             <Text style={styles.featureTitle}>Appearance</Text>
+             <Text style={styles.featureDesc}>JudgeX offers a modern and user-friendly experience, featuring an intuitive Light-Dark Mode that allows you to switch effortlessly between light and dark themes with just a click.</Text>
              <TouchableOpacity style={styles.themeToggle}>
                 <Moon size={16} color="#8B949E" />
              </TouchableOpacity>
@@ -126,8 +126,8 @@ const IndexScreen = ({ navigation }) => {
                  <Code2 size={24} color="white" />
               </View>
            </View>
-           <Text style={[styles.featureTitle, { color: '#0D9488', marginTop: 12 }]}>developer</Text>
-           <Text style={[styles.featureDesc, { textAlign: 'center' }]}>developer-description</Text>
+           <Text style={[styles.featureTitle, { color: '#0D9488', marginTop: 12 }]}>Developer</Text>
+           <Text style={[styles.featureDesc, { textAlign: 'center' }]}>We now support 3 popular coding languages. Our powerful development tools such as Online Editor help you code and even submit code online.</Text>
 
            {/* Code Mockup */}
            <View style={styles.codeMockup}>

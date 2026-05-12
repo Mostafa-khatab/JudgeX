@@ -139,7 +139,7 @@ const EditProfileScreen = ({ navigation }) => {
         {/* Section 1: Profile */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Profile</Text>
-          <Text style={styles.sectionWarn}>profile-warn</Text>
+          <Text style={styles.sectionWarn}>Customize your basic profile information displayed on JudgeX.</Text>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Fullname</Text>
@@ -162,7 +162,7 @@ const EditProfileScreen = ({ navigation }) => {
               placeholderTextColor={colors.textSecondary}
               multiline
             />
-            <Text style={styles.inputMsg}>about-msg</Text>
+            <Text style={styles.inputMsg}>Brief description for your profile.</Text>
           </View>
 
           <View style={styles.inputGroup}>
@@ -188,8 +188,8 @@ const EditProfileScreen = ({ navigation }) => {
 
         {/* Section 2: Personal Info */}
         <View style={styles.section}>
-           <Text style={styles.sectionTitle}>Personal-Information</Text>
-           <Text style={styles.sectionWarn}>personal-warn</Text>
+           <Text style={styles.sectionTitle}>Personal Information</Text>
+           <Text style={styles.sectionWarn}>Keep your contact details up to date.</Text>
            
            <View style={styles.inputGroup}>
               <Text style={styles.label}>Username</Text>
@@ -214,22 +214,22 @@ const EditProfileScreen = ({ navigation }) => {
 
         {/* Section 3: Language & Theme */}
         <View style={styles.section}>
-           <Text style={styles.label}>Default-Language</Text>
+           <Text style={styles.label}>Default Language</Text>
            <TouchableOpacity style={styles.dropdown}>
               <Text style={styles.dropdownText}>English</Text>
               <ChevronRight size={16} color={colors.textSecondary} style={{ transform: [{ rotate: '90deg' }] }} />
            </TouchableOpacity>
-           <Text style={styles.inputMsg}>default-language-msg</Text>
+           <Text style={styles.inputMsg}>Choose your preferred programming language.</Text>
 
            <Text style={[styles.label, { marginTop: 20 }]}>Language</Text>
            <TouchableOpacity style={styles.dropdown}>
               <Text style={styles.dropdownText}>{selectedLang}</Text>
               <ChevronRight size={16} color={colors.textSecondary} style={{ transform: [{ rotate: '90deg' }] }} />
            </TouchableOpacity>
-           <Text style={styles.inputMsg}>language-msg</Text>
+           <Text style={styles.inputMsg}>Select interface language.</Text>
 
            <Text style={[styles.label, { marginTop: 20 }]}>Theme</Text>
-           <Text style={styles.inputMsg}>theme-msg</Text>
+           <Text style={styles.inputMsg}>Select your view mode.</Text>
            
            <View style={styles.themeGrid}>
               <ThemeBox type="light" active={mode === 'light'} />
@@ -237,9 +237,9 @@ const EditProfileScreen = ({ navigation }) => {
               <ThemeBox type="system" active={mode === 'system'} />
            </View>
 
-           <Text style={[styles.label, { marginTop: 20 }]}>Change-Password</Text>
+           <Text style={[styles.label, { marginTop: 20 }]}>Change Password</Text>
            <TouchableOpacity style={styles.passwordBtn}>
-              <Text style={styles.passwordBtnText}>Change-Password</Text>
+              <Text style={styles.passwordBtnText}>Change Password</Text>
               <Key size={16} color={colors.text} />
            </TouchableOpacity>
         </View>
