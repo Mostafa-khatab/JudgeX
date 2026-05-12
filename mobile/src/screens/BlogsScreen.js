@@ -20,11 +20,13 @@ import {
 import { MessageSquare, Plus, User, Clock, ChevronDown, Image as ImageIcon, Star, Heart, Share2, Send, X, Type, Tag, AlignLeft, MessageCircle } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import blogService from '../services/blogService';
+import { API_BASE_URL } from '../services/api';
 import theme, { colors } from '../theme/theme';
 
+
 const { width } = Dimensions.get('window');
-const LOCAL_IP = '192.168.1.2';
-const BASE_URL = Platform.OS === 'web' ? 'http://localhost:8080' : `http://${LOCAL_IP}:8080`;
+const BASE_URL = API_BASE_URL;
+
 
 const getImgUri = (uri) => {
   if (!uri) return null;
