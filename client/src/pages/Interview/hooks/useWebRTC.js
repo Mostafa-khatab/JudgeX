@@ -257,9 +257,14 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
       pc.addTransceiver('video', { direction: 'sendrecv' });
     }
     
+    // Create a stable stream to hold remote tracks
+    const remoteStreamObj = new MediaStream();
+    
     pc.ontrack = (event) => {
-      console.log('[WebRTC] Remote track received:', event.streams[0]);
-      setRemoteStream(event.streams[0]);
+      console.log(`[WebRTC] Remote track received: ${event.track.kind}`);
+      remoteStreamObj.addTrack(event.track);
+      // Create a fresh reference so React triggers a re-render
+      setRemoteStream(new MediaStream(remoteStreamObj.getTracks()));
     };
     
     pc.onicecandidate = (event) => {
@@ -390,22 +395,12 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
       return;
     }
 
-    const pc = createPeerConnection(stream);
-    try {
-      makingOfferRef.current = true;
-      const offer = await pc.createOffer({ iceRestart: true });
-      await pc.setLocalDescription(offer);
-      
-      console.log('[WebRTC] Sending Offer to peer...');
-      socketHandlers?.emit('interview-webrtc-offer', {
-        interviewId,
-        offer: pc.localDescription
-      });
-    } catch (err) {
-      console.error('[WebRTC] Failed to create/set offer:', err);
-    } finally {
-      makingOfferRef.current = false;
-    }
+    // createPeerConnection automatically triggers onnegotiationneeded,
+    // which will handle creating the offer and sending it to the peer.
+    // We just need to assign the new pc to the ref.
+    pcRef.current = createPeerConnection(stream);
+    
+    console.log('[WebRTC] Peer Connection reset, waiting for negotiation...');
   }, [startMedia, createPeerConnection, interviewId, socketHandlers]);
 
   // If we were asked to connect before we had media, initiate once ready.
