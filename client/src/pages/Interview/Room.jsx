@@ -971,6 +971,7 @@ const InterviewRoom = () => {
                   isSocketConnected={isSocketConnected}
                   peerInfo={peerInfo || { name: role === 'interviewer' ? 'Candidate' : 'Interviewer' }}
                   onLeave={() => {
+                    webrtc.cleanup();
                     emit('leave-interview', { interviewId: interview?._id });
                     navigate('/interview');
                   }}

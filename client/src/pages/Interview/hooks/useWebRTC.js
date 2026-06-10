@@ -577,7 +577,7 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     }
   }, [interviewId, socketHandlers]);
 
-  // Toggles (Optimized for Mobile/Reliability)
+  // Toggles — fully release hardware (stop tracks) when turning off
   const toggleAudio = useCallback(async () => {
     if (!interviewId) return;
     
@@ -589,21 +589,20 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
 
     const stream = localStreamRef.current;
     const next = !isAudioEnabledRef.current;
-    const track = stream.getAudioTracks()[0];
 
-    if (track) {
-      track.enabled = next;
-      setIsAudioEnabled(next);
-      isAudioEnabledRef.current = next;
-    } else if (next) {
-      // If no track exists, we must get a new one
+    if (next) {
+      // Turning ON → re-acquire mic from hardware
       try {
         const newStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         const newTrack = newStream.getAudioTracks()[0];
         if (newTrack) {
+          // Remove old dead track if any
+          const oldTrack = stream.getAudioTracks()[0];
+          if (oldTrack) stream.removeTrack(oldTrack);
           stream.addTrack(newTrack);
           attachTrackRecovery(newStream);
-          const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'audio');
+          // Replace in peer connection sender
+          const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'audio' || !s.track);
           if (sender) await sender.replaceTrack(newTrack);
           setIsAudioEnabled(true);
           isAudioEnabledRef.current = true;
@@ -612,6 +611,18 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
         console.error('[WebRTC] Failed to acquire audio:', err);
         toast.error('Could not access microphone');
       }
+    } else {
+      // Turning OFF → stop track to release mic hardware
+      const track = stream.getAudioTracks()[0];
+      if (track) {
+        track.stop();
+        stream.removeTrack(track);
+        // Null out the sender so peer knows audio stopped
+        const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'audio');
+        if (sender) { try { await sender.replaceTrack(null); } catch {} }
+      }
+      setIsAudioEnabled(false);
+      isAudioEnabledRef.current = false;
     }
 
     socketHandlers?.emit('interview-media-state', {
@@ -630,13 +641,9 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
 
     const stream = localStreamRef.current;
     const next = !isVideoEnabledRef.current;
-    const track = stream.getVideoTracks()[0];
 
-    if (track) {
-      track.enabled = next;
-      setIsVideoEnabled(next);
-      isVideoEnabledRef.current = next;
-    } else if (next) {
+    if (next) {
+      // Turning ON → re-acquire camera from hardware
       try {
         const newStream = await navigator.mediaDevices.getUserMedia({ 
           audio: false, 
@@ -644,9 +651,11 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
         });
         const newTrack = newStream.getVideoTracks()[0];
         if (newTrack) {
+          const oldTrack = stream.getVideoTracks()[0];
+          if (oldTrack) stream.removeTrack(oldTrack);
           stream.addTrack(newTrack);
           attachTrackRecovery(newStream);
-          const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'video');
+          const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'video' || (!s.track && s !== pcRef.current?.getSenders().find(x => x.track?.kind === 'audio')));
           if (sender) await sender.replaceTrack(newTrack);
           setIsVideoEnabled(true);
           isVideoEnabledRef.current = true;
@@ -655,6 +664,17 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
         console.error('[WebRTC] Failed to acquire video:', err);
         toast.error('Could not access camera');
       }
+    } else {
+      // Turning OFF → stop track to release camera hardware (light off)
+      const track = stream.getVideoTracks()[0];
+      if (track) {
+        track.stop();
+        stream.removeTrack(track);
+        const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'video');
+        if (sender) { try { await sender.replaceTrack(null); } catch {} }
+      }
+      setIsVideoEnabled(false);
+      isVideoEnabledRef.current = false;
     }
 
     socketHandlers?.emit('interview-media-state', {
@@ -716,6 +736,42 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     return () => { u1(); u2(); u3(); u3b(); u4(); u4b(); u4c(); u5(); u6(); u7(); u7b(); u7c(); u8(); };
   }, [socketHandlers, handleOffer, handleAnswer, handleIce, handleScreenOffer]);
 
+  // Cleanup: stop all tracks and close peer connections
+  const cleanup = useCallback(() => {
+    // Stop all local media tracks (camera light off, mic released)
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(t => t.stop());
+      localStreamRef.current = null;
+    }
+    setLocalStream(null);
+    setRemoteStream(null);
+
+    // Close main peer connection
+    if (pcRef.current) {
+      try { pcRef.current.close(); } catch { /* ignore */ }
+      pcRef.current = null;
+    }
+
+    // Stop screen share
+    if (screenStream) {
+      screenStream.getTracks().forEach(t => t.stop());
+    }
+    setScreenStream(null);
+    setRemoteScreenStream(null);
+    if (screenPcRef.current) {
+      try { screenPcRef.current.close(); } catch { /* ignore */ }
+      screenPcRef.current = null;
+    }
+
+    setIsScreenSharing(false);
+    setIsConnected(false);
+    setIsReconnecting(false);
+    setIsAudioEnabled(false);
+    setIsVideoEnabled(false);
+    isAudioEnabledRef.current = false;
+    isVideoEnabledRef.current = false;
+  }, [screenStream]);
+
   return {
     localStream, remoteStream, 
     isAudioEnabled, isVideoEnabled, isConnected,
@@ -723,7 +779,8 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     isScreenSharing, screenStream, remoteScreenStream,
     startMedia, createPeerConnection, initiateCall,
     toggleAudio, toggleVideo,
-    startScreenShare, stopScreenShare
+    startScreenShare, stopScreenShare,
+    cleanup
   };
 };
 

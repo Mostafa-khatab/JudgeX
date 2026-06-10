@@ -37,23 +37,27 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected, authUser 
   const [stream, setStream] = useState(null);
   const [isPreviewActive, setIsPreviewActive] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(false);
-  const [isMicOn, setIsMicOn] = useState(true);
+  const [isMicOn, setIsMicOn] = useState(false);
   const videoRef = useRef(null);
 
   useEffect(() => {
     getDevices();
+    let acquiredStream = null;
     // Auto-acquire audio stream so there's always an audio track for WebRTC
+    // Track is muted (disabled) — user must toggle mic ON to speak
     (async () => {
       try {
         const s = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        s.getAudioTracks().forEach(t => { t.enabled = false; }); // muted by default
         setStream(s);
-        setIsMicOn(true);
+        acquiredStream = s;
       } catch (err) {
         console.warn('Lobby: Could not auto-acquire audio:', err);
       }
     })();
     return () => {
-      if (stream) stream.getTracks().forEach(t => t.stop());
+      if (acquiredStream) acquiredStream.getTracks().forEach(t => t.stop());
+      else if (stream) stream.getTracks().forEach(t => t.stop());
     };
   }, []);
 

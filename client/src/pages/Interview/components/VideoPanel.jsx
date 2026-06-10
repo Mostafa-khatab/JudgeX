@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { 
   Video, VideoOff, Mic, MicOff, 
-  Monitor, PhoneOff, User, LogOut, RefreshCw
+  Monitor, User, LogOut, RefreshCw
 } from 'lucide-react';
 import { Button } from '~/components/ui/button';
 import { Badge } from '~/components/ui/badge';
@@ -9,7 +9,7 @@ import { Badge } from '~/components/ui/badge';
 const VideoPanel = ({
   localStream, remoteStream,
   isAudioEnabled, isVideoEnabled,
-  toggleAudio, toggleVideo, initiateCall,
+  toggleAudio, toggleVideo,
   isConnected, // WebRTC status
   isReconnecting, // Reconnecting status
   isSocketConnected, // Socket status
@@ -181,18 +181,6 @@ const VideoPanel = ({
             >
               <LogOut className="h-3.5 w-3.5 mr-1.5" />
               Leave
-            </Button>
-            <Button
-              variant="outline"
-              className={`w-10 h-9 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 ${
-                isReconnecting 
-                  ? 'text-amber-400 animate-pulse' 
-                  : 'text-white/70 hover:text-white'
-              }`}
-              onClick={initiateCall}
-              title="Reconnect"
-            >
-              <PhoneOff className={`h-3.5 w-3.5 rotate-[135deg] ${isReconnecting ? 'animate-spin' : ''}`} />
             </Button>
           </div>
 
