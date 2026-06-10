@@ -8,23 +8,26 @@ const ICE_SERVERS = {
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
-    { urls: 'stun:stun.services.mozilla.com' },
-    { urls: 'stun:stun.l.google.com:19305' },
     {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
+      urls: 'turn:a.relay.metered.ca:80',
+      username: 'e8dd65b92f3c1bd74e507846',
+      credential: 'V5kBlnCR3GFxtFXZ',
     },
     {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
+      urls: 'turn:a.relay.metered.ca:80?transport=tcp',
+      username: 'e8dd65b92f3c1bd74e507846',
+      credential: 'V5kBlnCR3GFxtFXZ',
     },
     {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    }
+      urls: 'turn:a.relay.metered.ca:443',
+      username: 'e8dd65b92f3c1bd74e507846',
+      credential: 'V5kBlnCR3GFxtFXZ',
+    },
+    {
+      urls: 'turns:a.relay.metered.ca:443?transport=tcp',
+      username: 'e8dd65b92f3c1bd74e507846',
+      credential: 'V5kBlnCR3GFxtFXZ',
+    },
   ],
   iceCandidatePoolSize: 10,
 };
@@ -150,35 +153,27 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
   }, []);
 
   // Initialize Media
+  // IMPORTANT: Always acquire at least an audio track so the peer connection
+  // has an audio sender from the start. If the user doesn't want audio, we
+  // disable the track (mute) instead of omitting it entirely.
   const startMedia = useCallback(async (options = {}, existingStream = null) => {
     try {
       const wantAudio = options.audio !== false;
       const wantVideo = options.video !== false;
 
-      // Allow joining with mic+cam off without prompting for permissions.
-      if (!wantAudio && !wantVideo) {
-        setLocalStream(null);
-        localStreamRef.current = null;
-        setIsAudioEnabled(false);
-        setIsVideoEnabled(false);
-        isAudioEnabledRef.current = false;
-        isVideoEnabledRef.current = false;
-        return null;
-      }
-
       // Prefer reusing an existing lobby preview stream, but only if it actually has live tracks.
       if (existingStream) {
         const hasLiveAudio = existingStream.getAudioTracks().some(t => t.readyState === 'live');
         const hasLiveVideo = existingStream.getVideoTracks().some(t => t.readyState === 'live');
-        const usable = (!wantAudio || hasLiveAudio) && (!wantVideo || hasLiveVideo);
+
+        // Reusable if it has audio (we always need it) and video when wanted
+        const usable = hasLiveAudio && (!wantVideo || hasLiveVideo);
 
         if (usable) {
-          // Stop unwanted tracks to release hardware light
-          if (!wantAudio) {
-            existingStream.getAudioTracks().forEach(t => { t.stop(); existingStream.removeTrack(t); });
-          }
+          // Disable (mute) unwanted tracks instead of removing them
+          existingStream.getAudioTracks().forEach(t => { t.enabled = wantAudio; });
           if (!wantVideo) {
-            existingStream.getVideoTracks().forEach(t => { t.stop(); existingStream.removeTrack(t); });
+            existingStream.getVideoTracks().forEach(t => { t.enabled = false; });
           }
 
           setLocalStream(existingStream);
@@ -197,8 +192,10 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
         }
       }
 
+      // Always request audio so the peer connection has an audio sender.
+      // If the user doesn't want audio, we'll disable (mute) the track below.
       const constraints = {
-        audio: wantAudio,
+        audio: true,
         video: wantVideo ? {
           width: { ideal: 640 },
           height: { ideal: 480 },
@@ -207,6 +204,12 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+      // Mute audio track if user doesn't want audio (but keep the track)
+      if (!wantAudio) {
+        stream.getAudioTracks().forEach(t => { t.enabled = false; });
+      }
+
       setLocalStream(stream);
       localStreamRef.current = stream;
       setIsAudioEnabled(wantAudio);

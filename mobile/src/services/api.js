@@ -1,13 +1,9 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// IMPORTANT: Change this to your computer's ACTUAL IP address (e.g., 192.168.1.5)
-// Find it by running 'ipconfig' (Windows) or 'ifconfig' (Mac/Linux)
-const LOCAL_IP = '192.168.1.3'; 
+// Use the active Cloudflare Tunnel URL for better reliability
+export const API_BASE_URL = 'https://casino-presentations-holes-chemical.trycloudflare.com';
 
-export const API_BASE_URL = Platform.OS === 'web' 
-  ? 'http://localhost:8080' 
-  : `http://${LOCAL_IP}:8080`;
 
 
 const getAuthToken = async () => {

@@ -37,11 +37,21 @@ const Lobby = ({ interview, role, onJoin, candidateToken, isConnected, authUser 
   const [stream, setStream] = useState(null);
   const [isPreviewActive, setIsPreviewActive] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(false);
-  const [isMicOn, setIsMicOn] = useState(false);
+  const [isMicOn, setIsMicOn] = useState(true);
   const videoRef = useRef(null);
 
   useEffect(() => {
     getDevices();
+    // Auto-acquire audio stream so there's always an audio track for WebRTC
+    (async () => {
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        setStream(s);
+        setIsMicOn(true);
+      } catch (err) {
+        console.warn('Lobby: Could not auto-acquire audio:', err);
+      }
+    })();
     return () => {
       if (stream) stream.getTracks().forEach(t => t.stop());
     };

@@ -1,0 +1,33 @@
+Part 1. Ahlan beek. Hena benebda demo JudgeX men login page. El user beyedkhol bel email wel password, ashan negrrab el website ka user haqiqi.
+
+Part 2. Baad el login, di el dashboard. Hena el user yeshof el activity, daily challenge, upcoming contests, we top users.
+
+Part 3. El roadmap beyqassem tareeq el taallom le topics wa khotawat. Da beysaaed el user yaaraf yebda menen we yekammel ezzay.
+
+Part 4. El AI lab feeh tools zay roadmap generation, learning helpers, we experiments tesaaed fel practice wel analysis.
+
+Part 5. Di problem bank. El user yeshof el difficulty, tags, status, we yefilter aw yedawwar ala problem besor3a.
+
+Part 6. Hena bengarrab search. Lama el problems tekbar, el filter we search beykhaloo el user yewsal lel problem aw el topic besor3a.
+
+Part 7. Di problem details page. Feeha statement, constraints, time limit, memory limit, tags, statistics, we solve action.
+
+Part 8. Di solve workspace. Problem statement shmal, code editor yemeen, language selector, run button, we submit button.
+
+Part 9. Hena bengarrab Run. El code yetshaghal ala sample test cases, we el user yeshof output we expected output qabl el submit.
+
+Part 10. Baad keda bengarrab Submit. El solution betetbaat lel judge, we tetseggel fel submissions ma3 verdict, time, we memory.
+
+Part 11. Di submissions page. El user yeraage3 kol el attempts, yefilter by problem, language, aw verdict, we yeftah details.
+
+Part 12. Di contests page. Betعرض contests, start time, end time, we tedkhallak ala contest page wel standings.
+
+Part 13. Gowa contest page, el user yeshof problems, participation state, we standings ashan yetabe3 el ranking.
+
+Part 14. El courses section monazzam lel learning content. Courses, descriptions, resources, we links tesaaed el user yetaalem.
+
+Part 15. Course details page betعرض el content wel resources, fa el practice mayebqash random, yebqa learning path.
+
+Part 16. Users page betعرض leaderboard we scores. Da beyضيف competitive side lel platform.
+
+Part 17. Interview system le live coding sessions. Room, editor, chat, activity tracking, we candidate evaluation.

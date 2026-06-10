@@ -27,18 +27,21 @@ const VideoPanel = ({
   useEffect(() => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => {});
     }
   }, [localStream]);
 
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
+      remoteVideoRef.current.play().catch(() => {});
     }
   }, [remoteStream]);
 
   useEffect(() => {
     if (remoteScreenRef.current && remoteScreenStream) {
       remoteScreenRef.current.srcObject = remoteScreenStream;
+      remoteScreenRef.current.play().catch(() => {});
     }
   }, [remoteScreenStream]);
 

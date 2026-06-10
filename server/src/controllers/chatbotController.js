@@ -23,14 +23,21 @@ export const sendMessage = async (req, res) => {
     let problemContext = "General Context: No specific problem selected.";
     if (problemId) {
       try {
-        const problem = await Problem.findById(problemId);
+        // Try searching by custom string 'id' field first, then fallback to _id
+        let problem = await Problem.findOne({ id: problemId });
+        
+        // If not found by string id, try by _id if it's a valid ObjectId
+        if (!problem && problemId.match(/^[0-9a-fA-F]{24}$/)) {
+          problem = await Problem.findById(problemId);
+        }
+
         if (problem) {
           problemContext = `
 Problem_Context:
-- Title: ${problem.title}
+- Title: ${problem.name}
 - Description: ${problem.task}
-- Time Limit: ${problem.timeLimit || '1s'}
-- Memory Limit: ${problem.memoryLimit || '256MB'}
+- Time Limit: ${problem.timeLimit}s
+- Memory Limit: ${problem.memoryLimit}MB
 - Difficulty: ${problem.difficulty}
 - Tags: ${problem.tags?.join(', ')}
 `;
@@ -80,74 +87,73 @@ User_Query:
 ${message}
 `;
 
+    // --- AI Interaction using SDK ---
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === 'your_gemini_api_key_here') {
       throw new Error('Invalid or missing GEMINI_API_KEY');
     }
 
-    // 1. List available models for this key
-    let availableModels = [];
-    try {
-      const listUrl = `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`;
-      const listRes = await fetch(listUrl);
-      const listData = await listRes.json();
-      availableModels = listData.models?.map(m => m.name.replace('models/', '')) || [];
-      console.log('[ChatBot] Available Models:', availableModels.join(', '));
-    } catch (e) {
-      console.error('[ChatBot] ListModels failed:', e.message);
-    }
-
-    // 3. Try models
-    const apiVersions = ['v1', 'v1beta'];
-    const modelsToTry = [...new Set(['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro', ...availableModels])];
+    const genAI = new GoogleGenerativeAI(apiKey);
     
-    let success = false;
+    // Try models in order of preference (including newer Gemini 2.x models found in this key)
+    const modelsToTry = [
+      'gemini-2.5-flash', 
+      'gemini-2.0-flash', 
+      'gemini-1.5-flash', 
+      'gemini-1.5-pro', 
+      'gemini-pro'
+    ];
     let aiText = '';
     let lastErrorMsg = '';
+    let success = false;
 
-    for (const version of apiVersions) {
-      for (const modelName of modelsToTry) {
-        try {
-          console.log(`[ChatBot] Trying ${modelName} on ${version}...`);
-          const url = `https://generativelanguage.googleapis.com/${version}/models/${modelName}:generateContent?key=${apiKey}`;
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }]
-            })
-          });
-
-          const data = await response.json();
-          if (response.ok) {
-            aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            if (aiText) {
-              success = true;
-              console.log(`[ChatBot] SUCCESS with ${modelName} (${version})`);
-              break;
-            }
-          } else {
-            lastErrorMsg = data.error?.message || response.statusText;
+    for (const modelName of modelsToTry) {
+      try {
+        console.log(`[ChatBot] Attempting with ${modelName} via SDK...`);
+        const model = genAI.getGenerativeModel({ 
+          model: modelName,
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 2048,
           }
-        } catch (e) {
-          lastErrorMsg = e.message;
+        });
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        aiText = response.text();
+
+        if (aiText) {
+          success = true;
+          console.log(`[ChatBot] SUCCESS with ${modelName}`);
+          break;
         }
+      } catch (e) {
+        lastErrorMsg = e.message;
+        console.warn(`[ChatBot] ${modelName} failed:`, e.message);
+        
+        // If the error is about model not found, continue to next model
+        if (e.message.includes('not found') || e.message.includes('404')) {
+          continue;
+        }
+        // If it's a critical error (like invalid API key), we might want to stop, 
+        // but for now, we'll try all models.
       }
-      if (success) break;
     }
 
     if (!success) {
-      throw new Error(`Gemini API failed on all versions/models. Last error: ${lastErrorMsg}`);
+      throw new Error(`Gemini API failed on all models. Last error: ${lastErrorMsg}`);
     }
 
-    return res.status(200).json({ success: true, message: aiText });
+    return res.status(200).json({ success: true, data: { message: aiText } });
 
   } catch (error) {
     console.error('[ChatBot] Error:', error.message);
     return res.status(500).json({
       success: false,
-      message: `Neural Link Error: ${error.message}`,
-      hint: 'Check your GEMINI_API_KEY in server/.env'
+      msg: `Neural Link Error: ${error.message}`,
+      hint: 'Your API key may have been leaked and revoked. Please generate a new one at https://aistudio.google.com/'
     });
   }
 };
