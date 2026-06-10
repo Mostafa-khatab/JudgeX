@@ -606,6 +606,11 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
           if (sender) await sender.replaceTrack(newTrack);
           setIsAudioEnabled(true);
           isAudioEnabledRef.current = true;
+
+          // Force React state update with new stream reference
+          const updatedStream = new MediaStream(stream.getTracks());
+          setLocalStream(updatedStream);
+          localStreamRef.current = updatedStream;
         }
       } catch (err) {
         console.error('[WebRTC] Failed to acquire audio:', err);
@@ -620,6 +625,11 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
         // Null out the sender so peer knows audio stopped
         const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'audio');
         if (sender) { try { await sender.replaceTrack(null); } catch {} }
+
+        // Force React state update
+        const updatedStream = new MediaStream(stream.getTracks());
+        setLocalStream(updatedStream);
+        localStreamRef.current = updatedStream;
       }
       setIsAudioEnabled(false);
       isAudioEnabledRef.current = false;
@@ -659,6 +669,11 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
           if (sender) await sender.replaceTrack(newTrack);
           setIsVideoEnabled(true);
           isVideoEnabledRef.current = true;
+
+          // Force React state update with new stream reference
+          const updatedStream = new MediaStream(stream.getTracks());
+          setLocalStream(updatedStream);
+          localStreamRef.current = updatedStream;
         }
       } catch (err) {
         console.error('[WebRTC] Failed to acquire video:', err);
@@ -672,6 +687,11 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
         stream.removeTrack(track);
         const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'video');
         if (sender) { try { await sender.replaceTrack(null); } catch {} }
+
+        // Force React state update
+        const updatedStream = new MediaStream(stream.getTracks());
+        setLocalStream(updatedStream);
+        localStreamRef.current = updatedStream;
       }
       setIsVideoEnabled(false);
       isVideoEnabledRef.current = false;
