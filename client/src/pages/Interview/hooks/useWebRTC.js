@@ -241,7 +241,21 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
     
     const pc = new RTCPeerConnection(ICE_SERVERS);
     
-    stream?.getTracks().forEach(track => pc.addTrack(track, stream));
+    // Explicitly add transceivers to establish fixed m-line order (audio then video)
+    // This prevents "order of m-lines doesn't match" and "Track kind does not match" errors.
+    const audioTrack = stream?.getAudioTracks()[0];
+    if (audioTrack) {
+      pc.addTransceiver(audioTrack, { direction: 'sendrecv', streams: stream ? [stream] : [] });
+    } else {
+      pc.addTransceiver('audio', { direction: 'sendrecv' });
+    }
+
+    const videoTrack = stream?.getVideoTracks()[0];
+    if (videoTrack) {
+      pc.addTransceiver(videoTrack, { direction: 'sendrecv', streams: stream ? [stream] : [] });
+    } else {
+      pc.addTransceiver('video', { direction: 'sendrecv' });
+    }
     
     pc.ontrack = (event) => {
       console.log('[WebRTC] Remote track received:', event.streams[0]);
@@ -601,9 +615,11 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
           if (oldTrack) stream.removeTrack(oldTrack);
           stream.addTrack(newTrack);
           attachTrackRecovery(newStream);
-          // Replace in peer connection sender
-          const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'audio' || !s.track);
-          if (sender) await sender.replaceTrack(newTrack);
+          // Replace in peer connection sender using transceivers to guarantee correct kind
+          const transceiver = pcRef.current?.getTransceivers().find(t => t.receiver.track?.kind === 'audio');
+          if (transceiver && transceiver.sender) {
+            await transceiver.sender.replaceTrack(newTrack);
+          }
           setIsAudioEnabled(true);
           isAudioEnabledRef.current = true;
 
@@ -623,8 +639,10 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
         track.stop();
         stream.removeTrack(track);
         // Null out the sender so peer knows audio stopped
-        const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'audio');
-        if (sender) { try { await sender.replaceTrack(null); } catch {} }
+        const transceiver = pcRef.current?.getTransceivers().find(t => t.receiver.track?.kind === 'audio');
+        if (transceiver && transceiver.sender) {
+          try { await transceiver.sender.replaceTrack(null); } catch {}
+        }
 
         // Force React state update
         const updatedStream = new MediaStream(stream.getTracks());
@@ -665,8 +683,10 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
           if (oldTrack) stream.removeTrack(oldTrack);
           stream.addTrack(newTrack);
           attachTrackRecovery(newStream);
-          const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'video' || (!s.track && s !== pcRef.current?.getSenders().find(x => x.track?.kind === 'audio')));
-          if (sender) await sender.replaceTrack(newTrack);
+          const transceiver = pcRef.current?.getTransceivers().find(t => t.receiver.track?.kind === 'video');
+          if (transceiver && transceiver.sender) {
+            await transceiver.sender.replaceTrack(newTrack);
+          }
           setIsVideoEnabled(true);
           isVideoEnabledRef.current = true;
 
@@ -685,8 +705,10 @@ export const useWebRTC = (socketHandlers, interviewId, role) => {
       if (track) {
         track.stop();
         stream.removeTrack(track);
-        const sender = pcRef.current?.getSenders().find(s => s.track?.kind === 'video');
-        if (sender) { try { await sender.replaceTrack(null); } catch {} }
+        const transceiver = pcRef.current?.getTransceivers().find(t => t.receiver.track?.kind === 'video');
+        if (transceiver && transceiver.sender) {
+          try { await transceiver.sender.replaceTrack(null); } catch {}
+        }
 
         // Force React state update
         const updatedStream = new MediaStream(stream.getTracks());
